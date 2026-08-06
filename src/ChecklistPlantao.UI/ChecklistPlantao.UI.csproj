@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!--
+    Razor Class Library compartilhada entre os heads Android e Windows.
+    Só conhece as abstrações da Application — nada de EF Core, HttpClient ou MAUI aqui.
+    Isso mantém a RCL testável com bUnit em net10.0 puro.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>ChecklistPlantao.UI</RootNamespace>
+    <AddRazorSupportForMvc>false</AddRazorSupportForMvc>
+    <StaticWebAssetBasePath>_content/ChecklistPlantao.UI</StaticWebAssetBasePath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ChecklistPlantao.Application\ChecklistPlantao.Application.csproj" />
+    <ProjectReference Include="..\ChecklistPlantao.Contracts\ChecklistPlantao.Contracts.csproj" />
+    <ProjectReference Include="..\ChecklistPlantao.Domain\ChecklistPlantao.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" />
+  </ItemGroup>
+
+</Project>

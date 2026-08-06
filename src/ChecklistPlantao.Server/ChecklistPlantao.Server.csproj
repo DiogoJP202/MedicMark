@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>ChecklistPlantao.Server</RootNamespace>
+    <UserSecretsId>checklistplantao-server</UserSecretsId>
+    <!-- Necessário para que o projeto de testes de integração enxergue Program. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ChecklistPlantao.Domain\ChecklistPlantao.Domain.csproj" />
+    <ProjectReference Include="..\ChecklistPlantao.Application\ChecklistPlantao.Application.csproj" />
+    <ProjectReference Include="..\ChecklistPlantao.Contracts\ChecklistPlantao.Contracts.csproj" />
+    <ProjectReference Include="..\ChecklistPlantao.Infrastructure\ChecklistPlantao.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ChecklistPlantao.Server.IntegrationTests" />
+  </ItemGroup>
+
+</Project>

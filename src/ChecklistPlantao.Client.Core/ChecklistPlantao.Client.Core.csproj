@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Núcleo do cliente, independente de plataforma (net10.0 puro).
+
+    Motivo de existir separado do projeto MAUI: os TFMs de MAUI
+    (net10.0-android / net10.0-windows) não executam testes nem as
+    ferramentas do EF Core. Mantendo aqui o banco local, o Outbox, o motor de
+    sincronização, a autenticação offline e a resolução de horários de
+    notificação, toda a lógica crítica fica testável e migrável.
+    Ver docs/DECISIONS.md (D-004).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>ChecklistPlantao.Client.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ChecklistPlantao.Domain\ChecklistPlantao.Domain.csproj" />
+    <ProjectReference Include="..\ChecklistPlantao.Application\ChecklistPlantao.Application.csproj" />
+    <ProjectReference Include="..\ChecklistPlantao.Contracts\ChecklistPlantao.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+  </ItemGroup>
+
+</Project>

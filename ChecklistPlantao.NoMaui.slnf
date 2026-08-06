@@ -1,0 +1,19 @@
+{
+  "solution": {
+    "path": "ChecklistPlantao.sln",
+    "projects": [
+      "src\\ChecklistPlantao.Application\\ChecklistPlantao.Application.csproj",
+      "src\\ChecklistPlantao.Client.Core\\ChecklistPlantao.Client.Core.csproj",
+      "src\\ChecklistPlantao.Contracts\\ChecklistPlantao.Contracts.csproj",
+      "src\\ChecklistPlantao.Domain\\ChecklistPlantao.Domain.csproj",
+      "src\\ChecklistPlantao.Infrastructure\\ChecklistPlantao.Infrastructure.csproj",
+      "src\\ChecklistPlantao.Server\\ChecklistPlantao.Server.csproj",
+      "src\\ChecklistPlantao.UI\\ChecklistPlantao.UI.csproj",
+      "tests\\ChecklistPlantao.Application.Tests\\ChecklistPlantao.Application.Tests.csproj",
+      "tests\\ChecklistPlantao.Client.Core.Tests\\ChecklistPlantao.Client.Core.Tests.csproj",
+      "tests\\ChecklistPlantao.Domain.Tests\\ChecklistPlantao.Domain.Tests.csproj",
+      "tests\\ChecklistPlantao.Server.IntegrationTests\\ChecklistPlantao.Server.IntegrationTests.csproj",
+      "tests\\ChecklistPlantao.UI.Tests\\ChecklistPlantao.UI.Tests.csproj"
+    ]
+  }
+}

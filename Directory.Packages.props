@@ -1,0 +1,69 @@
+<Project>
+
+  <!--
+    Central Package Management. Todas as versões ficam aqui, fixadas.
+    Regra do projeto: antes de adicionar um pacote, justifique a necessidade em docs/DECISIONS.md.
+  -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- Linha do .NET 10 usada em toda a solução (exceto pacotes do workload MAUI). -->
+    <MicrosoftDotNetVersion>10.0.10</MicrosoftDotNetVersion>
+  </PropertyGroup>
+
+  <ItemGroup Label="Extensions / hospedagem">
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(MicrosoftDotNetVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="$(MicrosoftDotNetVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="$(MicrosoftDotNetVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="$(MicrosoftDotNetVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="$(MicrosoftDotNetVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="$(MicrosoftDotNetVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="$(MicrosoftDotNetVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="$(MicrosoftDotNetVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="$(MicrosoftDotNetVersion)" />
+  </ItemGroup>
+
+  <ItemGroup Label="EF Core / SQLite">
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="$(MicrosoftDotNetVersion)" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="$(MicrosoftDotNetVersion)" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="$(MicrosoftDotNetVersion)" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="$(MicrosoftDotNetVersion)" />
+  </ItemGroup>
+
+  <ItemGroup Label="ASP.NET Core (servidor)">
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="$(MicrosoftDotNetVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="$(MicrosoftDotNetVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="$(MicrosoftDotNetVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Diagnostics.HealthChecks" Version="2.2.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Blazor / cliente">
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="$(MicrosoftDotNetVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="$(MicrosoftDotNetVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="$(MicrosoftDotNetVersion)" />
+  </ItemGroup>
+
+  <!--
+    Pinos de segurança sobre dependências transitivas (CentralPackageTransitivePinningEnabled).
+    Sem eles o restore reporta NU1903 (vulnerabilidade alta). Reavaliar quando o
+    EF Core / ASP.NET Core passarem a trazer versões já corrigidas.
+  -->
+  <ItemGroup Label="Correções de segurança transitivas">
+    <!-- GHSA-2m69-gcr7-jv3q: SQLite vulnerável em <= 2.1.11. -->
+    <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" />
+    <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3.android" Version="2.1.12" />
+    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
+    <PackageVersion Include="SQLitePCLRaw.core" Version="2.1.12" />
+    <PackageVersion Include="SQLitePCLRaw.provider.e_sqlite3" Version="2.1.12" />
+    <!-- GHSA-v5pm-xwqc-g5wc: corrigido em 2.7.5. -->
+    <PackageVersion Include="Microsoft.OpenApi" Version="2.11.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Testes">
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageVersion Include="bunit" Version="2.9.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="$(MicrosoftDotNetVersion)" />
+  </ItemGroup>
+
+</Project>

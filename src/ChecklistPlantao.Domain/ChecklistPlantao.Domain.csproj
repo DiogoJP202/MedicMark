@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Domínio puro: entidades, value objects, enums e regras.
+    Não referencia nenhum pacote de infraestrutura, EF Core, ASP.NET ou MAUI.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>ChecklistPlantao.Domain</RootNamespace>
+  </PropertyGroup>
+
+</Project>

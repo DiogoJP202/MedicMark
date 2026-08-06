@@ -1,0 +1,49 @@
+## Build output
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+artifacts/
+publish/
+*.binlog
+
+## Visual Studio / Rider / VS Code
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userprefs
+
+## Test results
+[Tt]est[Rr]esult*/
+coverage*.json
+coverage*.xml
+*.coverage
+*.trx
+
+## MAUI / Android
+*.apk
+*.aab
+*.keystore
+*.jks
+
+## Local data — never commit operational databases
+*.db
+*.db-shm
+*.db-wal
+data/
+deploy/data/
+
+## Secrets — never commit
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+appsettings.*.Local.json
+*.pfx
+*.p12
+
+## OS
+Thumbs.db
+desktop.ini
+.DS_Store

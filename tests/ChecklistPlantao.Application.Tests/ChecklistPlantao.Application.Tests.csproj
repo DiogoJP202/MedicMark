@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>ChecklistPlantao.Application.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ChecklistPlantao.Application\ChecklistPlantao.Application.csproj" />
+    <ProjectReference Include="..\..\src\ChecklistPlantao.Domain\ChecklistPlantao.Domain.csproj" />
+    <ProjectReference Include="..\..\src\ChecklistPlantao.Contracts\ChecklistPlantao.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

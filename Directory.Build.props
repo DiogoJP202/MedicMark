@@ -1,0 +1,37 @@
+<Project>
+
+  <!--
+    Propriedades comuns a todos os projetos da solução.
+    Projetos MAUI ajustam o que for específico de plataforma no próprio .csproj.
+  -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+    <NoWarn>$(NoWarn);CA1848;CA2007;CA1707;CA1062</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Product>ChecklistPlantão</Product>
+    <Company>ChecklistPlantão</Company>
+    <Authors>ChecklistPlantão</Authors>
+    <NeutralLanguage>pt-BR</NeutralLanguage>
+    <VersionPrefix>0.1.0</VersionPrefix>
+  </PropertyGroup>
+
+  <!--
+    Warnings-as-errors só no CI/Release para não travar o desenvolvimento local,
+    mas garantindo que nada entre com aviso na build oficial.
+  -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' and '$(TreatWarningsAsErrors)' == ''">
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>

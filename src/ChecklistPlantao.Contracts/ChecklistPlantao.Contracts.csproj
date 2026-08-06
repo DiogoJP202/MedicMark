@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Contratos trocados entre servidor e cliente: DTOs, requests, responses,
+    contratos de sincronização e nomes de eventos do SignalR.
+    Sem dependências além da BCL para poder ser consumido por qualquer head.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>ChecklistPlantao.Contracts</RootNamespace>
+  </PropertyGroup>
+
+</Project>
