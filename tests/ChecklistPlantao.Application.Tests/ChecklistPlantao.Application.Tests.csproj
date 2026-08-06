@@ -8,6 +8,11 @@
     <ProjectReference Include="..\..\src\ChecklistPlantao.Application\ChecklistPlantao.Application.csproj" />
     <ProjectReference Include="..\..\src\ChecklistPlantao.Domain\ChecklistPlantao.Domain.csproj" />
     <ProjectReference Include="..\..\src\ChecklistPlantao.Contracts\ChecklistPlantao.Contracts.csproj" />
+    <!--
+      Os casos de uso são exercitados contra SQLite em memória, e não contra um duplo de teste do
+      DbContext: consultas LINQ que não traduzem só aparecem com um provedor relacional de verdade.
+    -->
+    <ProjectReference Include="..\..\src\ChecklistPlantao.Infrastructure\ChecklistPlantao.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

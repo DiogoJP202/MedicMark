@@ -19,6 +19,8 @@
     <ProjectReference Include="..\ChecklistPlantao.Domain\ChecklistPlantao.Domain.csproj" />
     <ProjectReference Include="..\ChecklistPlantao.Application\ChecklistPlantao.Application.csproj" />
     <ProjectReference Include="..\ChecklistPlantao.Contracts\ChecklistPlantao.Contracts.csproj" />
+    <!-- Implementa as abstrações de apresentação declaradas pela RCL. -->
+    <ProjectReference Include="..\ChecklistPlantao.UI\ChecklistPlantao.UI.csproj" />
   </ItemGroup>
 
   <ItemGroup>

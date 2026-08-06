@@ -187,6 +187,83 @@ solução sem o head MAUI, para acelerar o ciclo de build e teste do servidor e 
 
 ---
 
+## D-013 — Credenciais e autorização em tabelas separadas
+
+**Contexto.** O enunciado pede ASP.NET Identity, mas o domínio precisa ficar livre de infraestrutura
+e o `PasswordHash` do Identity nunca pode sair do servidor.
+
+**Decisão.** Duas entidades com o mesmo `Id`: `AppIdentityUser` (tabela `Credenciais`, só credenciais e
+bloqueio) e `AppUser` (tabela `Usuarios`, nome de exibição, ativo e grupos). São escritas na mesma
+unidade de trabalho por `AccessAdminService`. A camada de aplicação enxerga apenas
+`IUserCredentialStore`, que **não expõe nenhum método para ler o hash**.
+
+**Consequências.** O domínio permanece sem dependência de Identity e o cliente MAUI nunca carrega
+`Microsoft.AspNetCore.Identity`. O custo é manter as duas linhas em sincronia, o que acontece em um
+único ponto do código.
+
+**Status.** Aceita.
+
+---
+
+## D-014 — EF Core na camada Application
+
+**Contexto.** Os casos de uso precisam consultar o banco. Sem acesso ao `DbContext` seria necessário
+um repositório por consulta — exatamente a abstração inútil que o enunciado proíbe.
+
+**Decisão.** `Application` referencia `Microsoft.EntityFrameworkCore` (nenhum provedor) e define
+`IAppDataContext`, a superfície reduzida do `DbContext`. Consultas que o provedor relacional não
+traduz (log de alterações, idempotência) ficam em `Infrastructure`, atrás de métodos da interface.
+
+**Consequências.** Consultas LINQ legíveis e testáveis contra SQLite real. A RCL **não** referencia
+`Application`, então a interface continua livre de EF Core; ela declara suas próprias abstrações de
+apresentação, que `Client.Core` implementa.
+
+**Status.** Aceita.
+
+---
+
+## D-015 — Configuração sempre pelo contêiner, nunca lida antes de `Build()`
+
+**Contexto.** A primeira versão do `Program.cs` fazia
+`builder.Configuration.GetSection("Jwt").Get<JwtOptions>()` na hora de registrar os serviços, e
+`AddChecklistInfrastructure` fazia o mesmo com `DatabaseOptions`. Fontes de configuração
+acrescentadas depois desse ponto — o que `WebApplicationFactory` faz, e o que qualquer provedor
+tardio faria — eram simplesmente ignoradas.
+
+O sintoma foi grave e silencioso: o servidor **assinava** os tokens com a chave das opções resolvidas
+pelo contêiner e os **validava** com a chave lida antecipadamente, devolvendo 401 em todo endpoint
+protegido; e todos os testes de integração abriam o mesmo arquivo de banco em vez de bancos
+temporários isolados, contaminando-se entre execuções.
+
+**Decisão.** Nenhum ponto do servidor lê a configuração antes de `Build()`.
+- JWT: `ConfigureJwtBearerOptions : IConfigureNamedOptions<JwtBearerOptions>` recebe `IOptions<JwtOptions>`.
+- Banco: `AddDbContext` usa a sobrecarga com `IServiceProvider` e resolve `IOptions<DatabaseOptions>`.
+- Bloqueio do Identity: `AddOptions<IdentityOptions>().Configure<IOptions<LoginLockoutOptions>>(...)`.
+- Limites de requisição: lidos por requisição, de `context.RequestServices`.
+
+**Consequências.** As opções passam a valer independentemente de quando a fonte foi registrada. É a
+regra a seguir ao acrescentar qualquer configuração nova.
+
+**Status.** Aceita.
+
+---
+
+## D-016 — Índices únicos filtrados por estado ativo
+
+**Contexto.** Impedir dois leitos com o mesmo código no mesmo setor é requisito. Mas um leito
+desativado não deve travar o cadastro de um novo com o mesmo código.
+
+**Decisão.** Índices únicos parciais (`HasFilter("\"IsActive\" = 1")`) em `Leitos (SectorId, Code)` e
+`ColunasChecklist (ChecklistTemplateId, DisplayName)`; e em `Sessoes (SectorId, ServiceDate)` filtrado
+por `Status = 'Open'`, o que garante no máximo uma sessão aberta por setor.
+
+**Consequências.** A regra é imposta pelo banco, não só pelo código de aplicação — duas requisições
+concorrentes não conseguem burlar.
+
+**Status.** Aceita.
+
+---
+
 ## D-012 — Administrador inicial sem senha no repositório
 
 **Contexto.** O enunciado proíbe senha padrão no código.

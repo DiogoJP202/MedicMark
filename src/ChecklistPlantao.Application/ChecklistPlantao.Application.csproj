@@ -18,6 +18,12 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Options" />
+    <!--
+      EF Core entra aqui apenas pelos operadores assíncronos de consulta e pela abstração
+      IAppDataContext. Nenhum provedor de banco é referenciado: a escolha entre SQLite central
+      e SQLite local pertence a Infrastructure e a Client.Core. Ver D-014 em docs/DECISIONS.md.
+    -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
   </ItemGroup>
 
 </Project>
