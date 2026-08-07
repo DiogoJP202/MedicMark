@@ -237,7 +237,13 @@ public sealed class NotificationReceiver : BroadcastReceiver
             .SetContentIntent(pending)!
             .SetSmallIcon(global::Android.Resource.Drawable.IcDialogInfo)!;
 
-        NotificationManagerCompat.From(context).Notify(id.GetHashCode(StringComparison.Ordinal), builder.Build());
+        var notificacao = builder.Build();
+        var gerenciador = NotificationManagerCompat.From(context);
+
+        if (notificacao is not null && gerenciador is not null)
+        {
+            gerenciador.Notify(id.GetHashCode(StringComparison.Ordinal), notificacao);
+        }
     }
 }
 
@@ -273,7 +279,11 @@ public sealed class AndroidNotificationPermissionService : INotificationPermissi
 {
     public async Task<NotificationPermissions> GetAsync(CancellationToken cancellationToken = default)
     {
-        var notificacoes = NotificationManagerCompat.From(AndroidApp.Context).AreNotificationsEnabled();
+        var contexto = AndroidApp.Context;
+
+        // Sem gerenciador não há como afirmar que as notificações funcionam: assume-se o pior,
+        // e a faixa de saúde denuncia. Nunca o contrário.
+        var notificacoes = NotificationManagerCompat.From(contexto)?.AreNotificationsEnabled() ?? false;
 
         bool? exato = OperatingSystem.IsAndroidVersionAtLeast(31)
             ? ((AlarmManager?)AndroidApp.Context.GetSystemService(Context.AlarmService))?.CanScheduleExactAlarms() ?? false
@@ -294,19 +304,40 @@ public sealed class AndroidNotificationPermissionService : INotificationPermissi
         return await GetAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Leva direto à tela onde a permissão que falta pode ser concedida — pedir para o usuário
+    /// "procurar nas configurações" seria pedir demais no meio de um plantão.
+    /// </summary>
     public Task OpenSettingsAsync(CancellationToken cancellationToken = default)
     {
-        // Leva direto à tela onde a permissão que falta pode ser concedida — pedir para o
-        // usuário "procurar nas configurações" seria pedir demais no meio de um plantão.
-        var intent = OperatingSystem.IsAndroidVersionAtLeast(31) && !(((AlarmManager?)AndroidApp.Context.GetSystemService(Context.AlarmService))?.CanScheduleExactAlarms() ?? true)
-            ? new Intent(global::Android.Provider.Settings.ActionRequestScheduleExactAlarm)
-            : new Intent(global::Android.Provider.Settings.ActionAppNotificationSettings)
-                .PutExtra(global::Android.Provider.Settings.ExtraAppPackage, AndroidApp.Context.PackageName);
+        var contexto = AndroidApp.Context;
+        var intent = BuildSettingsIntent(contexto);
 
         intent.SetFlags(ActivityFlags.NewTask);
-        AndroidApp.Context.StartActivity(intent);
+        contexto.StartActivity(intent);
 
         return Task.CompletedTask;
+    }
+
+    private static Intent BuildSettingsIntent(Context contexto)
+    {
+        // Falta o alarme exato: vai direto para a tela dele (Android 12+).
+        if (OperatingSystem.IsAndroidVersionAtLeast(31)
+            && !(((AlarmManager?)contexto.GetSystemService(Context.AlarmService))?.CanScheduleExactAlarms() ?? true))
+        {
+            return new Intent(global::Android.Provider.Settings.ActionRequestScheduleExactAlarm);
+        }
+
+        // A tela de notificações por aplicativo só existe a partir do Android 8.
+        if (OperatingSystem.IsAndroidVersionAtLeast(26))
+        {
+            return new Intent(global::Android.Provider.Settings.ActionAppNotificationSettings)
+                .PutExtra(global::Android.Provider.Settings.ExtraAppPackage, contexto.PackageName);
+        }
+
+        // Android 7 e anteriores: a tela de detalhes do aplicativo é o mais específico possível.
+        return new Intent(global::Android.Provider.Settings.ActionApplicationDetailsSettings,
+            global::Android.Net.Uri.Parse($"package:{contexto.PackageName}"));
     }
 
     private static bool IsBatteryOptimizationIgnored()

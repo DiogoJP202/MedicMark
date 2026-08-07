@@ -54,6 +54,27 @@
         <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.10" />
+
+        <!--
+            Correção de segurança GHSA-2m69-gcr7-jv3q (SQLite vulnerável em <= 2.1.11).
+            Precisa ser declarada aqui: este projeto tem Central Package Management desligado
+            (ver o comentário no topo), então os pinos de Directory.Packages.props não o alcançam.
+        -->
+        <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
+        <PackageReference Include="SQLitePCLRaw.core" Version="2.1.12" />
+        <PackageReference Include="SQLitePCLRaw.provider.e_sqlite3" Version="2.1.12" />
+    </ItemGroup>
+
+    <!--
+        A biblioteca nativa é escolhida por plataforma. Referenciar as duas ao mesmo tempo faz o
+        empacotador do Android encontrar libe_sqlite3.so em duas origens (aviso XA4301).
+    -->
+    <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+        <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3.android" Version="2.1.12" />
+    </ItemGroup>
+
+    <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'android'">
+        <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" />
     </ItemGroup>
 
 </Project>

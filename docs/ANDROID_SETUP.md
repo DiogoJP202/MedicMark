@@ -1,0 +1,96 @@
+# Android
+
+> Não foi possível validar em aparelho neste ambiente: não havia dispositivo conectado nem
+> emulador instalado. O projeto **compila** para `net10.0-android`; o comportamento em aparelho
+> real precisa ser verificado com [MANUAL_TEST_PLAN.md](MANUAL_TEST_PLAN.md), seção 5.
+
+## Requisitos
+
+| Item | Versão |
+|---|---|
+| .NET SDK | 10.0.2xx |
+| Workload | `android` (e `maui-android`, se o build reclamar) |
+| Android SDK | Platform 35 ou 36, build-tools 36.x |
+| JDK | 17 ou superior |
+| Android mínimo | 7.0 (API 24) |
+
+```bash
+dotnet workload install maui-android
+```
+
+Se o SDK não estiver no caminho padrão:
+
+```bash
+export ANDROID_HOME=/caminho/para/android-sdk
+```
+
+## Compilar e executar
+
+```bash
+dotnet build src/ChecklistPlantao.Client -f net10.0-android -c Debug
+```
+
+Com o aparelho conectado por USB e depuração USB ativa:
+
+```bash
+dotnet build src/ChecklistPlantao.Client -f net10.0-android -t:Run -c Debug
+```
+
+APK para distribuição interna:
+
+```bash
+dotnet publish src/ChecklistPlantao.Client -f net10.0-android -c Release
+```
+
+O APK sai em `bin/Release/net10.0-android/publish/`. Para distribuir fora da Play Store é preciso
+assinar com uma chave própria (`AndroidSigningKeyStore`) — **nunca** versione o keystore.
+
+## Permissões declaradas
+
+| Permissão | Para quê | Quando é pedida |
+|---|---|---|
+| `INTERNET`, `ACCESS_NETWORK_STATE` | Falar com o servidor | Instalação |
+| `POST_NOTIFICATIONS` | Exibir alertas (Android 13+) | Em execução, no primeiro uso |
+| `RECEIVE_BOOT_COMPLETED` | Reagendar após reinício | Instalação |
+| `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM` | Alerta no horário exato | Depende da versão |
+| `VIBRATE` | Vibração no alerta | Instalação |
+| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Oferecer isenção de economia de bateria | Em execução, opcional |
+
+## Alarme exato
+
+A partir do Android 12, alarme exato exige permissão. Sem ela o aplicativo usa alarme inexato: o
+alerta chega, mas pode atrasar alguns minutos.
+
+O aplicativo detecta e **informa** — a tela "Estado do dispositivo" mostra "Permissão de alarmes
+exatos: não" e o botão "Corrigir agora" abre exatamente a tela do sistema onde ela é concedida.
+Nunca dizemos "no horário" quando pode não estar.
+
+## Economia de bateria
+
+O modo Soneca e as restrições do fabricante podem adiar alarmes. Xiaomi (MIUI), Huawei (EMUI),
+Samsung, Oppo e outros mantêm listas próprias de aplicativos restritos, **independentes** das
+configurações padrão do Android.
+
+Recomendação para a instituição: em "Bateria" → "Uso de bateria do aplicativo", marcar o Checklist
+de Plantão como **irrestrito**. O diagnóstico do aplicativo mostra se a isenção está ativa.
+
+## Como validar as notificações
+
+1. Abrir o aplicativo e **conceder** a permissão de notificações.
+2. Ir em "Estado do dispositivo" e conferir que não há faixa de alerta.
+3. Tocar em "Testar notificação" — deve aparecer em segundos.
+4. Configurar uma coluna para 2 minutos à frente, deixar pendências e **fechar o aplicativo**.
+5. Aguardar: o alerta deve chegar com o aplicativo fechado.
+6. Tocar na notificação: deve abrir o checklist **na coluna certa**.
+7. Marcar tudo daquela coluna: as repetições devem parar.
+8. Reiniciar o aparelho e repetir o passo 4 — o `BootReceiver` deve ter reagendado.
+
+## Problemas comuns
+
+| Sintoma | Causa provável |
+|---|---|
+| Nenhum alerta | Permissão de notificações negada — a faixa vermelha aponta |
+| Alerta atrasado | Sem alarme exato, ou economia de bateria ativa |
+| Alertas somem após reiniciar | `RECEIVE_BOOT_COMPLETED` bloqueada pelo fabricante |
+| Não conecta ao servidor | Endereço com `localhost`; use o IP da rede. Android 9+ bloqueia HTTP em texto claro por padrão — ver [DEPLOYMENT.md](DEPLOYMENT.md) |
+| "Primeiro acesso exige conexão" | Correto: o primeiro login de cada aparelho precisa do servidor |

@@ -264,6 +264,39 @@ concorrentes não conseguem burlar.
 
 ---
 
+## D-017 — Banco local do aparelho sem migrations
+
+**Contexto.** O servidor usa EF Core Migrations. Repetir isso no aparelho significaria carregar o
+histórico de migrations dentro do aplicativo.
+
+**Decisão.** O banco local usa `EnsureCreated`. Quando o esquema mudar entre versões do aplicativo,
+o banco é recriado e repovoado pelo bootstrap.
+
+**Consequências.** Aplicativo menor e mais simples. O custo é que uma atualização com mudança de
+esquema descarta o que ainda estiver na fila de envio — por isso a atualização deve ser feita com
+os aparelhos sincronizados, o que está registrado em `docs/DEPLOYMENT.md`. Cadastros e marcações
+já sincronizados voltam do servidor.
+
+**Status.** Aceita.
+
+---
+
+## D-018 — Sessão local com identificador determinístico
+
+**Contexto.** Sem servidor, o aparelho precisa poder abrir o plantão para o checklist funcionar.
+Se cada aparelho gerasse um Id aleatório, dois aparelhos offline criariam duas sessões diferentes
+para o mesmo setor e a mesma data.
+
+**Decisão.** A sessão criada offline usa `DeterministicGuid.From("session:{setor}:{data}")`. Dois
+aparelhos offline chegam ao mesmo identificador, e ao sincronizar convergem para a mesma sessão.
+
+**Consequências.** Nenhum plantão duplicado. Se o servidor já tiver criado a sessão com outro Id, o
+aparelho adota a do servidor na primeira sincronização — ele é a autoridade.
+
+**Status.** Aceita.
+
+---
+
 ## D-012 — Administrador inicial sem senha no repositório
 
 **Contexto.** O enunciado proíbe senha padrão no código.
