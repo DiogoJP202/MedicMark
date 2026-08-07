@@ -1,14 +1,19 @@
-﻿namespace ChecklistPlantao.Client;
+namespace ChecklistPlantao.Client;
 
-public partial class App : Application
+/// <summary>
+/// Aplicativo MAUI.
+///
+/// <c>Application</c> é qualificado porque o projeto também referencia o namespace
+/// <c>ChecklistPlantao.Application</c>, e de dentro de <c>ChecklistPlantao.Client</c> o nome
+/// curto resolveria para o namespace errado.
+/// </summary>
+public partial class App : Microsoft.Maui.Controls.Application
 {
-	public App()
-	{
-		InitializeComponent();
-	}
+    public App()
+    {
+        InitializeComponent();
+    }
 
-	protected override Window CreateWindow(IActivationState? activationState)
-	{
-		return new Window(new MainPage()) { Title = "ChecklistPlantao.Client" };
-	}
+    protected override Window CreateWindow(IActivationState? activationState) =>
+        new(new MainPage()) { Title = "Checklist de Plantão" };
 }

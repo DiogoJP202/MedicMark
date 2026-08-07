@@ -1,0 +1,53 @@
+/*
+  Ajustes específicos do host MAUI. O design system em si vive na RCL
+  (_content/ChecklistPlantao.UI/css/design-system.css).
+*/
+
+/* Área segura do notch/barra de status no Android. */
+.status-bar-safe-area {
+    display: none;
+}
+
+@supports (-webkit-touch-callout: none) {
+    .status-bar-safe-area {
+        display: flex;
+        position: sticky;
+        top: 0;
+        height: env(safe-area-inset-top);
+        background-color: var(--cor-primaria);
+        width: 100%;
+        z-index: 60;
+    }
+}
+
+/* Impede seleção acidental de texto ao tocar rápido nas células. */
+body {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+input,
+textarea {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+#blazor-error-ui {
+    background: var(--cor-erro-suave);
+    border-top: 2px solid var(--cor-erro);
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    display: none;
+    left: 0;
+    padding: 0.8rem 1rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}

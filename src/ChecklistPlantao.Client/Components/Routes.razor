@@ -1,6 +1,20 @@
-﻿<Router AppAssembly="typeof(MauiProgram).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+@*
+    As páginas vivem na RCL, compartilhadas entre Android e Windows. AdditionalAssemblies é o
+    que permite ao roteador encontrá-las lá.
+*@
+
+<Router AppAssembly="@typeof(MauiProgram).Assembly"
+        AdditionalAssemblies="new[] { typeof(ChecklistPlantao.UI.Layout.MainLayout).Assembly }">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(ChecklistPlantao.UI.Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1, h2" />
     </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(ChecklistPlantao.UI.Layout.MainLayout)">
+            <div class="estado-vazio">
+                <p class="estado-vazio__titulo">Página não encontrada</p>
+                <a class="botao botao--primario" href="/">Voltar ao início</a>
+            </div>
+        </LayoutView>
+    </NotFound>
 </Router>

@@ -63,8 +63,14 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>Cria o banco local e carrega as configurações. Chamado uma vez, na subida do aplicativo.</summary>
-    public static async Task InitializeChecklistClientAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Cria o banco local e as linhas de estado. Chamado uma vez, na subida do aplicativo.
+    ///
+    /// Deliberadamente SÍNCRONO: a subida do MAUI é síncrona e bloquear em um método assíncrono
+    /// (<c>.Result</c>, <c>GetAwaiter().GetResult()</c>) arrisca deadlock. Usar a API síncrona do
+    /// EF Core é correto aqui — é criação de esquema local, rápida e feita uma única vez.
+    /// </summary>
+    public static void InitializeChecklistClient(this IServiceProvider services)
     {
         ArgumentNullException.ThrowIfNull(services);
 
@@ -72,24 +78,20 @@ public static class DependencyInjection
         var db = escopo.ServiceProvider.GetRequiredService<LocalDbContext>();
 
         // EnsureCreated e não Migrate: o esquema local é recriado a partir do bootstrap quando
-        // muda de versão, e um banco de cache não justifica manter histórico de migrations no
-        // aparelho. Ver docs/DECISIONS.md (D-017).
-        await db.Database.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+        // a versão muda, e um banco que é reconstituível do servidor não justifica carregar
+        // histórico de migrations no aparelho. Ver docs/DECISIONS.md (D-017).
+        db.Database.EnsureCreated();
 
-        if (await db.DeviceState.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false) is null)
+        if (db.DeviceState.FirstOrDefault() is null)
         {
             db.DeviceState.Add(new DeviceState());
         }
 
-        if (await db.SyncState.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false) is null)
+        if (db.SyncState.FirstOrDefault() is null)
         {
             db.SyncState.Add(new SyncState());
         }
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        await escopo.ServiceProvider.GetRequiredService<IInstitutionSettingsProvider>()
-            .ReloadAsync(cancellationToken)
-            .ConfigureAwait(false);
+        db.SaveChanges();
     }
 }
