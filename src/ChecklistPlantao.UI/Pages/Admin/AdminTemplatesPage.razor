@@ -1,0 +1,275 @@
+@page "/admin/templates"
+
+@inject IAdministrationService Admin
+
+@*
+    Tipos de checklist e suas colunas.
+
+    É aqui que "Jantar" deixa de ser só um rótulo: cada coluna tem horário real, e é ele que
+    manda no agendamento das notificações em todos os dispositivos.
+*@
+
+<PageTitle>Tipos de checklist</PageTitle>
+
+<h2>Tipos de checklist</h2>
+
+<AdminFeedback Result="_resultado" />
+
+<div class="cartao">
+    <h3 class="cartao__titulo">@(_templateEditando is null ? "Novo tipo" : $"Editando: {_templateEditando.Name}")</h3>
+    <div class="linha">
+        <div class="campo" style="flex:1 1 200px">
+            <label class="campo__rotulo" for="tpl-nome">Nome</label>
+            <input id="tpl-nome" class="campo__controle" data-testid="template-name" @bind="_nomeTemplate" />
+        </div>
+        <div class="campo" style="flex:0 1 120px">
+            <label class="campo__rotulo" for="tpl-ordem">Ordem</label>
+            <input id="tpl-ordem" class="campo__controle" type="number" @bind="_ordemTemplate" />
+        </div>
+        <label class="campo campo--horizontal">
+            <input type="checkbox" style="width:24px;height:24px" @bind="_templateAtivo" />
+            <span class="campo__rotulo">Ativo</span>
+        </label>
+        <button type="button" class="botao botao--primario" data-testid="template-save" @onclick="SalvarTemplateAsync">Salvar</button>
+        @if (_templateEditando is not null)
+        {
+            <button type="button" class="botao botao--texto" @onclick="LimparTemplate">Cancelar</button>
+        }
+    </div>
+</div>
+
+@foreach (var template in _templates)
+{
+    <div class="cartao" style="margin-top:var(--esp-4)">
+        <div class="linha linha--entre">
+            <h3 class="cartao__titulo">@template.Name @(template.IsActive ? "" : "(desativado)")</h3>
+            <button type="button" class="botao botao--texto" @onclick="() => EditarTemplate(template)">Editar tipo</button>
+        </div>
+
+        <div class="tabela__area">
+            <table class="tabela">
+                <thead>
+                    <tr>
+                        <th>Coluna</th><th>Horário</th><th>Ordem</th><th>Notifica</th>
+                        <th>Tolerância</th><th>Repetições</th><th>Situação</th><th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var coluna in template.Columns.OrderBy(c => c.SortOrder))
+                    {
+                        <tr data-testid="@($"column-row-{coluna.Id}")">
+                            <td>@coluna.DisplayName</td>
+                            <td>@(coluna.TriggerTime is { } h ? h.ToString("HH\\:mm", CultureInfo.InvariantCulture) : "sem horário")</td>
+                            <td>@coluna.SortOrder</td>
+                            <td>@(coluna.NotificationEnabled ? "sim" : "não")</td>
+                            <td>@coluna.GracePeriodMinutes min</td>
+                            <td>@coluna.MaximumRepeats × @coluna.RepeatIntervalMinutes min</td>
+                            <td>@(coluna.IsActive ? "ativa" : "desativada")</td>
+                            <td>
+                                <button type="button" class="botao botao--texto" @onclick="() => EditarColuna(template, coluna)">Editar</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <button type="button" class="botao botao--contorno" @onclick="() => NovaColuna(template)">Nova coluna</button>
+    </div>
+}
+
+@if (_templateDaColuna is not null)
+{
+    <div class="cartao" style="margin-top:var(--esp-4)" data-testid="column-editor">
+        <h3 class="cartao__titulo">
+            @(_colunaEditando is null ? $"Nova coluna em {_templateDaColuna.Name}" : $"Editando {_colunaEditando.DisplayName}")
+        </h3>
+
+        <div class="linha">
+            <div class="campo" style="flex:1 1 160px">
+                <label class="campo__rotulo" for="col-nome">Nome exibido</label>
+                <input id="col-nome" class="campo__controle" data-testid="column-name" @bind="_nomeColuna" />
+            </div>
+            <div class="campo" style="flex:0 1 140px">
+                <label class="campo__rotulo" for="col-hora">Horário real</label>
+                <input id="col-hora" class="campo__controle" type="time" data-testid="column-time" @bind="_horaColuna" />
+                <span class="campo__ajuda">Sem horário, a coluna não gera notificação.</span>
+            </div>
+            <div class="campo" style="flex:0 1 100px">
+                <label class="campo__rotulo" for="col-ordem">Ordem</label>
+                <input id="col-ordem" class="campo__controle" type="number" @bind="_ordemColuna" />
+            </div>
+        </div>
+
+        <div class="linha">
+            <label class="campo campo--horizontal">
+                <input type="checkbox" style="width:24px;height:24px" data-testid="column-notify" @bind="_notificar" />
+                <span class="campo__rotulo">Notificar</span>
+            </label>
+            <label class="campo campo--horizontal">
+                <input type="checkbox" style="width:24px;height:24px" @bind="_colunaAtiva" />
+                <span class="campo__rotulo">Ativa</span>
+            </label>
+            <label class="campo campo--horizontal">
+                <input type="checkbox" style="width:24px;height:24px" @bind="_permitirAdiar" />
+                <span class="campo__rotulo">Permitir adiar</span>
+            </label>
+        </div>
+
+        <div class="linha">
+            <div class="campo" style="flex:0 1 130px">
+                <label class="campo__rotulo" for="col-antecedencia">Antecedência (min)</label>
+                <input id="col-antecedencia" class="campo__controle" type="number" min="0" @bind="_antecedencia" />
+            </div>
+            <div class="campo" style="flex:0 1 130px">
+                <label class="campo__rotulo" for="col-tolerancia">Tolerância (min)</label>
+                <input id="col-tolerancia" class="campo__controle" type="number" min="0" @bind="_tolerancia" />
+            </div>
+            <div class="campo" style="flex:0 1 150px">
+                <label class="campo__rotulo" for="col-intervalo">Intervalo de repetição (min)</label>
+                <input id="col-intervalo" class="campo__controle" type="number" min="0" @bind="_intervalo" />
+            </div>
+            <div class="campo" style="flex:0 1 130px">
+                <label class="campo__rotulo" for="col-repeticoes">Máximo de repetições</label>
+                <input id="col-repeticoes" class="campo__controle" type="number" min="0" @bind="_repeticoes" />
+            </div>
+            <div class="campo" style="flex:0 1 130px">
+                <label class="campo__rotulo" for="col-adiar">Minutos do adiamento</label>
+                <input id="col-adiar" class="campo__controle" type="number" min="1" @bind="_minutosAdiar" />
+            </div>
+        </div>
+
+        <div class="linha">
+            <button type="button" class="botao botao--primario" data-testid="column-save" @onclick="SalvarColunaAsync">Salvar coluna</button>
+            <button type="button" class="botao botao--texto" @onclick="FecharEditorColuna">Cancelar</button>
+        </div>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<ChecklistTemplateDto> _templates = [];
+    private Result? _resultado;
+
+    private ChecklistTemplateDto? _templateEditando;
+    private string _nomeTemplate = string.Empty;
+    private int _ordemTemplate = 10;
+    private bool _templateAtivo = true;
+
+    private ChecklistTemplateDto? _templateDaColuna;
+    private ChecklistColumnDto? _colunaEditando;
+    private string _nomeColuna = string.Empty;
+    private TimeOnly? _horaColuna;
+    private int _ordemColuna = 10;
+    private bool _notificar = true;
+    private bool _colunaAtiva = true;
+    private bool _permitirAdiar = true;
+    private int _antecedencia;
+    private int _tolerancia = 15;
+    private int _intervalo = 10;
+    private int _repeticoes = 3;
+    private int _minutosAdiar = 5;
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync() => _templates = await Admin.GetTemplatesAsync();
+
+    private void EditarTemplate(ChecklistTemplateDto template)
+    {
+        _templateEditando = template;
+        _nomeTemplate = template.Name;
+        _ordemTemplate = template.SortOrder;
+        _templateAtivo = template.IsActive;
+    }
+
+    private void LimparTemplate()
+    {
+        _templateEditando = null;
+        _nomeTemplate = string.Empty;
+        _ordemTemplate = 10;
+        _templateAtivo = true;
+    }
+
+    private async Task SalvarTemplateAsync()
+    {
+        _resultado = await Admin.SaveTemplateAsync(
+            _templateEditando?.Id,
+            new SaveTemplateRequest(_nomeTemplate, null, _ordemTemplate, _templateAtivo, [], _templateEditando?.Version ?? 0));
+
+        if (_resultado.Succeeded)
+        {
+            LimparTemplate();
+            await CarregarAsync();
+        }
+    }
+
+    private void NovaColuna(ChecklistTemplateDto template)
+    {
+        _templateDaColuna = template;
+        _colunaEditando = null;
+        _nomeColuna = string.Empty;
+        _horaColuna = null;
+        _ordemColuna = (template.Columns.Count + 1) * 10;
+        _notificar = true;
+        _colunaAtiva = true;
+        _permitirAdiar = true;
+        _antecedencia = 0;
+        _tolerancia = 15;
+        _intervalo = 10;
+        _repeticoes = 3;
+        _minutosAdiar = 5;
+    }
+
+    private void EditarColuna(ChecklistTemplateDto template, ChecklistColumnDto coluna)
+    {
+        _templateDaColuna = template;
+        _colunaEditando = coluna;
+        _nomeColuna = coluna.DisplayName;
+        _horaColuna = coluna.TriggerTime;
+        _ordemColuna = coluna.SortOrder;
+        _notificar = coluna.NotificationEnabled;
+        _colunaAtiva = coluna.IsActive;
+        _permitirAdiar = coluna.AllowSnooze;
+        _antecedencia = coluna.LeadTimeMinutes;
+        _tolerancia = coluna.GracePeriodMinutes;
+        _intervalo = coluna.RepeatIntervalMinutes;
+        _repeticoes = coluna.MaximumRepeats;
+        _minutosAdiar = coluna.SnoozeMinutes;
+    }
+
+    private void FecharEditorColuna()
+    {
+        _templateDaColuna = null;
+        _colunaEditando = null;
+    }
+
+    private async Task SalvarColunaAsync()
+    {
+        if (_templateDaColuna is null)
+        {
+            return;
+        }
+
+        _resultado = await Admin.SaveColumnAsync(
+            _templateDaColuna.Id,
+            _colunaEditando?.Id,
+            new SaveColumnRequest(
+                _nomeColuna,
+                _horaColuna,
+                _ordemColuna,
+                _colunaAtiva,
+                _notificar,
+                _antecedencia,
+                _tolerancia,
+                _intervalo,
+                _repeticoes,
+                _permitirAdiar,
+                _minutosAdiar,
+                _colunaEditando?.Version ?? 0));
+
+        if (_resultado.Succeeded)
+        {
+            FecharEditorColuna();
+            await CarregarAsync();
+        }
+    }
+}

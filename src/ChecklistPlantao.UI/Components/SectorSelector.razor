@@ -1,0 +1,56 @@
+@*
+    Escolha de setor em cartões grandes, com a quantidade de pendências à vista.
+    Só aparecem os setores autorizados — a lista já chega filtrada pelo acesso efetivo.
+*@
+
+@if (Sectors.Count == 0)
+{
+    <EmptyState Icon="—"
+                Title="Nenhum setor disponível"
+                Message="Seu usuário não tem acesso a nenhum setor. Procure o administrador." />
+}
+else
+{
+    <div class="grade-cartoes" data-testid="sector-selector">
+        @foreach (var setor in Sectors)
+        {
+            <button type="button"
+                    class="cartao cartao--acionavel"
+                    data-testid="@($"sector-{setor.Id}")"
+                    aria-current="@(setor.Id == SelectedSectorId ? "true" : null)"
+                    @onclick="() => OnSelect.InvokeAsync(setor.Id)">
+                <span class="cartao__titulo">@setor.Name</span>
+                <span class="linha">
+                    @if (!setor.HasOpenSession)
+                    {
+                        <span class="distintivo">Sem plantão aberto</span>
+                    }
+                    else if (setor.PendingTasks == 0)
+                    {
+                        <span class="distintivo distintivo--sucesso">✓ Tudo feito</span>
+                    }
+                    else
+                    {
+                        <span class="distintivo distintivo--alerta">@setor.PendingTasks pendente@(setor.PendingTasks == 1 ? "" : "s")</span>
+                    }
+
+                    @if (setor.Id == SelectedSectorId)
+                    {
+                        <span class="distintivo">Setor atual</span>
+                    }
+                </span>
+            </button>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<SectorSummary> Sectors { get; set; } = [];
+
+    [Parameter]
+    public Guid? SelectedSectorId { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnSelect { get; set; }
+}

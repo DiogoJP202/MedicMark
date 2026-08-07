@@ -1,0 +1,47 @@
+@*
+    A célula marcável. É o componente mais usado do sistema inteiro, então tudo aqui é sobre
+    velocidade: um toque alterna, sem confirmação e sem esperar rede.
+
+    Acessibilidade: é um <button> de verdade, então Espaço e Enter já funcionam sem código;
+    aria-pressed comunica o estado a leitores de tela; o "X" comunica sem depender de cor.
+*@
+
+<button type="button"
+        class="celula @(Cell.IsCompleted ? "celula--marcada" : "") @(Cell.IsOverdue ? "celula--atrasada" : "")"
+        aria-pressed="@Cell.IsCompleted.ToString().ToLowerInvariant()"
+        aria-label="@RotuloAcessivel"
+        data-testid="@($"cell-{Cell.BedId}-{Cell.ColumnId}")"
+        disabled="@Disabled"
+        @onclick="AlternarAsync">
+    @if (Cell.IsCompleted)
+    {
+        <span aria-hidden="true">✕</span>
+    }
+    else
+    {
+        <span aria-hidden="true" class="visualmente-oculto">vazio</span>
+    }
+</button>
+
+@code {
+    [Parameter, EditorRequired]
+    public ChecklistCell Cell { get; set; } = default!;
+
+    /// <summary>Usado apenas no rótulo acessível, para o leitor de tela dizer o leito.</summary>
+    [Parameter]
+    public string BedCode { get; set; } = string.Empty;
+
+    [Parameter]
+    public string ColumnName { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public EventCallback<ChecklistCell> OnToggle { get; set; }
+
+    private string RotuloAcessivel =>
+        $"Leito {BedCode}, {ColumnName}: {(Cell.IsCompleted ? "realizado" : "não realizado")}{(Cell.IsOverdue && !Cell.IsCompleted ? ", atrasado" : string.Empty)}";
+
+    private Task AlternarAsync() => Disabled ? Task.CompletedTask : OnToggle.InvokeAsync(Cell);
+}

@@ -1,0 +1,150 @@
+@page "/dispositivo"
+
+@inject IDeviceDiagnosticsService Diagnostics
+@inject INotificationStatusService NotificationStatus
+@inject ISyncStatusService SyncStatus
+@inject NavigationManager Navigation
+
+@*
+    Tela "Estado do dispositivo" (item 19 do enunciado).
+
+    Serve para responder, no próprio aparelho, por que um alerta não chegou. Tudo o que é
+    afirmado aqui vem de verificação real — nunca se escreve "notificações ativas" por otimismo.
+*@
+
+<PageTitle>Estado do dispositivo</PageTitle>
+
+<h2>Estado do dispositivo</h2>
+
+@if (_dados is null)
+{
+    <LoadingState Message="Verificando o dispositivo…" />
+}
+else
+{
+    <div class="pilha">
+        <NotificationHealthBanner Status="_dados.Notifications" OnFix="CorrigirAsync" OnTest="TestarAsync" />
+
+        <div class="cartao">
+            <h3 class="cartao__titulo">Conexão</h3>
+            <dl class="tabela__area">
+                <table class="tabela">
+                    <tbody>
+                        <tr><th scope="row">Plataforma</th><td>@_dados.Platform</td></tr>
+                        <tr><th scope="row">Versão do aplicativo</th><td>@_dados.AppVersion</td></tr>
+                        <tr><th scope="row">Servidor configurado</th><td>@(_dados.ServerUrl ?? "não configurado")</td></tr>
+                        <tr>
+                            <th scope="row">Servidor acessível</th>
+                            <td>@(_dados.ServerReachable ? "sim" : "não")</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Última sincronização</th>
+                            <td>@(_dados.LastSyncAtUtc is { } s ? s.ToLocalTime().ToString("dd/MM/yyyy HH:mm", Cultura) : "nunca")</td>
+                        </tr>
+                        <tr><th scope="row">Alterações pendentes</th><td>@_dados.PendingOperations</td></tr>
+                        <tr><th scope="row">Fuso horário</th><td>@_dados.TimeZoneId</td></tr>
+                        <tr><th scope="row">Hora atual do dispositivo</th><td>@_dados.DeviceLocalTime.ToString("dd/MM/yyyy HH:mm:ss", Cultura)</td></tr>
+                    </tbody>
+                </table>
+            </dl>
+        </div>
+
+        <div class="cartao">
+            <h3 class="cartao__titulo">Notificações</h3>
+            <table class="tabela">
+                <tbody>
+                    <tr>
+                        <th scope="row">Permissão de notificações</th>
+                        <td data-testid="perm-notifications">@Sim(_dados.Notifications.PermissionGranted)</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Permissão de alarmes exatos</th>
+                        <td data-testid="perm-exact-alarm">
+                            @(_dados.Notifications.ExactAlarmPermissionGranted is { } exato ? Sim(exato) : "não se aplica nesta plataforma")
+                        </td>
+                    </tr>
+                    <tr><th scope="row">Som</th><td>@Sim(_dados.Notifications.SoundEnabled)</td></tr>
+                    <tr><th scope="row">Vibração</th><td>@Sim(_dados.Notifications.VibrationEnabled)</td></tr>
+                    <tr>
+                        <th scope="row">Economia de bateria ignorada</th>
+                        <td>@Sim(_dados.Notifications.BatteryOptimizationIgnored)</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Alerta exige o app aberto</th>
+                        <td>@Sim(_dados.Notifications.SchedulingRequiresAppRunning)</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Última notificação testada</th>
+                        <td>@(_dados.Notifications.LastTestAtUtc is { } t ? t.ToLocalTime().ToString("dd/MM HH:mm", Cultura) : "nunca")</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Próxima notificação agendada</th>
+                        <td data-testid="next-notification">
+                            @(_dados.Notifications.NextScheduledLocal is { } p ? p.ToString("dd/MM HH:mm", Cultura) : "nenhuma")
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="linha" style="margin-top:var(--esp-3)">
+                <button type="button" class="botao botao--primario" data-testid="test-notification" @onclick="TestarAsync">
+                    Testar notificação
+                </button>
+                <button type="button" class="botao botao--contorno" @onclick="CorrigirAsync">
+                    Abrir configurações do sistema
+                </button>
+                <button type="button" class="botao botao--contorno" @onclick="AtualizarAsync">
+                    Verificar novamente
+                </button>
+            </div>
+
+            @if (_mensagemTeste is not null)
+            {
+                <p class="faixa__texto" role="status" data-testid="test-result">@_mensagemTeste</p>
+            }
+        </div>
+
+        <div class="linha">
+            <button type="button" class="botao botao--contorno" @onclick="SincronizarAsync">Sincronizar agora</button>
+            <button type="button" class="botao botao--texto" @onclick="@(() => Navigation.NavigateTo("/configuracao"))">
+                Alterar servidor
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    private static readonly CultureInfo Cultura = CultureInfo.GetCultureInfo("pt-BR");
+
+    private DeviceDiagnostics? _dados;
+    private string? _mensagemTeste;
+
+    protected override async Task OnInitializedAsync() => await AtualizarAsync();
+
+    private async Task AtualizarAsync()
+    {
+        await NotificationStatus.RefreshAsync();
+        _dados = await Diagnostics.GetAsync();
+    }
+
+    private async Task TestarAsync()
+    {
+        var enviou = await NotificationStatus.SendTestNotificationAsync();
+
+        _mensagemTeste = enviou
+            ? "Notificação de teste enviada. Se ela não apareceu, verifique as permissões acima."
+            : "Não foi possível enviar a notificação de teste neste dispositivo.";
+
+        await AtualizarAsync();
+    }
+
+    private Task CorrigirAsync() => NotificationStatus.OpenSystemSettingsAsync();
+
+    private async Task SincronizarAsync()
+    {
+        await SyncStatus.SyncNowAsync();
+        await AtualizarAsync();
+    }
+
+    private static string Sim(bool valor) => valor ? "sim" : "não";
+}

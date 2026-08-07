@@ -1,0 +1,22 @@
+@page "/setores"
+
+@inject IAppSession Session
+@inject NavigationManager Navigation
+
+<PageTitle>Setores</PageTitle>
+
+<h2>Selecione o setor</h2>
+
+<SectorSelector Sectors="_setores" SelectedSectorId="Session.CurrentSectorId" OnSelect="SelecionarAsync" />
+
+@code {
+    private IReadOnlyList<SectorSummary> _setores = [];
+
+    protected override async Task OnInitializedAsync() => _setores = await Session.GetAvailableSectorsAsync();
+
+    private async Task SelecionarAsync(Guid sectorId)
+    {
+        await Session.SelectSectorAsync(sectorId);
+        Navigation.NavigateTo("/");
+    }
+}

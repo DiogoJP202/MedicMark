@@ -1,0 +1,39 @@
+@*
+    Esconde ou desabilita um trecho da interface conforme a permissão.
+
+    Isto é UX, não segurança: todo endpoint valida a permissão no servidor de qualquer forma.
+    O objetivo aqui é não oferecer ao usuário um botão que só vai resultar em erro.
+*@
+
+@if (_permitido)
+{
+    @ChildContent
+}
+else if (Fallback is not null)
+{
+    @Fallback
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public string Permission { get; set; } = string.Empty;
+
+    /// <summary>Setor cujo acesso também é exigido. Nulo verifica apenas a permissão.</summary>
+    [Parameter]
+    public Guid? SectorId { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Conteúdo alternativo quando não há permissão. Normalmente nada.</summary>
+    [Parameter]
+    public RenderFragment? Fallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EffectiveAccess Access { get; set; } = EffectiveAccess.None;
+
+    private bool _permitido;
+
+    protected override void OnParametersSet() =>
+        _permitido = Access.Has(Permission) && (SectorId is null || Access.CanAccessSector(SectorId.Value));
+}

@@ -1,0 +1,35 @@
+@*
+    Barra de progresso com número explícito. A barra sozinha não informa quantos leitos faltam,
+    e é isso que o plantão precisa saber.
+*@
+
+<div class="progresso" data-testid="checklist-progress">
+    <div class="progresso__rotulo">
+        <span>@Label</span>
+        <span>@Completed de @Total@(Pending > 0 ? $" · {Pending} pendente{(Pending == 1 ? "" : "s")}" : " · tudo feito")</span>
+    </div>
+    <div class="progresso__trilha"
+         role="progressbar"
+         aria-valuemin="0"
+         aria-valuemax="@Total"
+         aria-valuenow="@Completed"
+         aria-label="@Label">
+        <div class="progresso__barra @(Pending == 0 ? "progresso__barra--completo" : "")"
+             style="width:@(Percentual.ToString(CultureInfo.InvariantCulture))%"></div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string Label { get; set; } = "Progresso";
+
+    [Parameter]
+    public int Total { get; set; }
+
+    [Parameter]
+    public int Completed { get; set; }
+
+    private int Pending => Math.Max(0, Total - Completed);
+
+    private int Percentual => Total == 0 ? 100 : (int)Math.Round(Completed * 100d / Total, MidpointRounding.AwayFromZero);
+}

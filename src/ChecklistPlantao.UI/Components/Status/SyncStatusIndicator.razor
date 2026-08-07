@@ -1,0 +1,41 @@
+@*
+    Indicador compacto do estado de sincronização, para a barra do topo.
+    Nunca depende só de cor: sempre há ícone e texto.
+*@
+
+<button type="button"
+        class="distintivo @CssEstado"
+        data-testid="sync-status"
+        title="@Status.Detail"
+        disabled="@(Status.IsSyncing || OnSyncNow.HasDelegate == false)"
+        @onclick="SincronizarAsync">
+    <span aria-hidden="true">@Icone</span>
+    <span>@Status.Headline</span>
+</button>
+
+@code {
+    [Parameter, EditorRequired]
+    public SyncStatus Status { get; set; } = SyncStatus.Unknown;
+
+    [Parameter]
+    public EventCallback OnSyncNow { get; set; }
+
+    private string Icone => Status.Connectivity switch
+    {
+        _ when Status.IsSyncing => "⟳",
+        ConnectivityState.Online => "●",
+        ConnectivityState.LocalNetwork => "◐",
+        ConnectivityState.ServerUnreachable => "▲",
+        _ => "○",
+    };
+
+    private string CssEstado => Status.Connectivity switch
+    {
+        ConnectivityState.Online or ConnectivityState.LocalNetwork when !Status.HasPendingWork => "distintivo--sucesso",
+        ConnectivityState.ServerUnreachable => "distintivo--alerta",
+        ConnectivityState.Offline => "distintivo--alerta",
+        _ => string.Empty,
+    };
+
+    private Task SincronizarAsync() => OnSyncNow.HasDelegate ? OnSyncNow.InvokeAsync() : Task.CompletedTask;
+}

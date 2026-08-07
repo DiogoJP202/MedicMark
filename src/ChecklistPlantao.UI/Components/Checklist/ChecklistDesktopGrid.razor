@@ -1,0 +1,90 @@
+@*
+    Visualização em matriz para o computador — a mesma leitura da folha de papel, porém com
+    coluna de leito fixa, cabeçalho fixo, alvos grandes e navegação por teclado.
+
+    Não é uma cópia da tabela impressa: o horário real aparece sob o nome da coluna, a linha
+    ganha marca de pendência, e o filtro reduz a grade em vez de obrigar a procurar com o olho.
+*@
+
+<div class="grade-checklist__area">
+    <table class="grade-checklist" data-testid="checklist-grid">
+        <caption class="visualmente-oculto">
+            Checklist @Board.Template?.Name do setor @Board.SectorName.
+            Use Tab para navegar e Espaço ou Enter para marcar.
+        </caption>
+        <thead>
+            <tr>
+                <th scope="col" class="grade-checklist__leito">Leito</th>
+                @foreach (var coluna in Board.Columns)
+                {
+                    <th scope="col">
+                        @coluna.DisplayName
+                        @if (coluna.TriggerTime is { } hora)
+                        {
+                            <span class="grade-checklist__hora">@hora.ToString("HH\\:mm", CultureInfo.InvariantCulture)</span>
+                        }
+                        <span class="grade-checklist__hora">
+                            @(coluna.Pending == 0 ? "completo" : $"{coluna.Pending} pend.")
+                        </span>
+                    </th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var linha in LinhasVisiveis)
+            {
+                <tr class="@(linha.IsComplete ? "grade-checklist__linha--completa" : "grade-checklist__linha--pendente")">
+                    <th scope="row" class="grade-checklist__leito">
+                        @linha.BedCode
+                        @if (linha.MarkerNames.Count > 0)
+                        {
+                            <span class="grade-checklist__hora">@string.Join(" · ", linha.MarkerNames)</span>
+                        }
+                    </th>
+                    @foreach (var celula in linha.Cells)
+                    {
+                        <td>
+                            <BedChecklistButton Cell="celula"
+                                                BedCode="@linha.BedCode"
+                                                ColumnName="@NomeDaColuna(celula.ColumnId)"
+                                                Disabled="@(!Board.IsSessionOpen || ReadOnly)"
+                                                OnToggle="OnToggle" />
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (LinhasVisiveis.Count == 0)
+{
+    <EmptyState Icon="✓"
+                Title="Nenhum leito para mostrar"
+                Message="@(OnlyPending ? "Não há pendências com os filtros atuais." : "Nenhum leito corresponde à busca.")" />
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public ChecklistBoard Board { get; set; } = ChecklistBoard.Empty;
+
+    /// <summary>Filtro de busca por número do leito.</summary>
+    [Parameter]
+    public string? Search { get; set; }
+
+    [Parameter]
+    public bool OnlyPending { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    [Parameter]
+    public EventCallback<ChecklistCell> OnToggle { get; set; }
+
+    private IReadOnlyList<ChecklistRow> LinhasVisiveis { get; set; } = [];
+
+    protected override void OnParametersSet() => LinhasVisiveis = ChecklistFilter.Apply(Board.Rows, Search, OnlyPending);
+
+    private string NomeDaColuna(Guid columnId) =>
+        Board.Columns.FirstOrDefault(c => c.ColumnId == columnId)?.DisplayName ?? string.Empty;
+}

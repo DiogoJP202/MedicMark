@@ -1,0 +1,44 @@
+@*
+    Troca de horário no celular. Abas roláveis, nunca um menu escondido: a ação mais frequente
+    da tela precisa estar visível.
+*@
+
+<div class="seletor-colunas" role="tablist" aria-label="Horários do checklist" data-testid="column-selector">
+    @foreach (var coluna in Columns)
+    {
+        <button type="button"
+                role="tab"
+                class="seletor-colunas__item @(coluna.ColumnId == SelectedColumnId ? "seletor-colunas__item--ativo" : "") @(coluna.IsComplete ? "seletor-colunas__item--completo" : "")"
+                aria-selected="@((coluna.ColumnId == SelectedColumnId).ToString().ToLowerInvariant())"
+                data-testid="@($"column-tab-{coluna.ColumnId}")"
+                @onclick="() => SelecionarAsync(coluna.ColumnId)">
+            <span>
+                @coluna.DisplayName
+                @if (coluna.TriggerTime is { } hora)
+                {
+                    <text> · @hora.ToString("HH\\:mm", CultureInfo.InvariantCulture)</text>
+                }
+            </span>
+            <span class="seletor-colunas__pendentes">
+                @(coluna.IsComplete ? "completo" : $"{coluna.Pending} pendente{(coluna.Pending == 1 ? "" : "s")}")
+                @if (coluna.IsOverdue && !coluna.IsComplete)
+                {
+                    <text> · atrasado</text>
+                }
+            </span>
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<ChecklistColumnView> Columns { get; set; } = [];
+
+    [Parameter]
+    public Guid SelectedColumnId { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> SelectedColumnIdChanged { get; set; }
+
+    private Task SelecionarAsync(Guid columnId) => SelectedColumnIdChanged.InvokeAsync(columnId);
+}

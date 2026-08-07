@@ -1,0 +1,51 @@
+@*
+    Faixa de saúde das notificações.
+
+    Regra do enunciado (item 19): enquanto a configuração estiver inadequada, este aviso NÃO
+    pode ser dispensado permanentemente. Por isso não existe botão de fechar — some sozinho
+    quando o problema for resolvido, e não antes.
+*@
+
+@if (!Status.IsHealthy)
+{
+    <div class="faixa @CssFaixa faixa--fixa" role="alert" data-testid="notification-health-banner">
+        <span class="faixa__icone" aria-hidden="true">@(Status.PermissionGranted ? "▲" : "✕")</span>
+        <div class="faixa__conteudo">
+            <p class="faixa__titulo">ATENÇÃO</p>
+            <p class="faixa__texto">
+                As notificações deste dispositivo não estão completamente configuradas.
+                Você pode perder alertas importantes.
+            </p>
+            <ul class="faixa__texto">
+                @foreach (var problema in Status.Problems)
+                {
+                    <li>@problema</li>
+                }
+            </ul>
+            <div class="linha">
+                @if (OnFix.HasDelegate)
+                {
+                    <button type="button" class="botao botao--primario" @onclick="OnFix">Corrigir agora</button>
+                }
+                @if (OnTest.HasDelegate)
+                {
+                    <button type="button" class="botao botao--contorno" @onclick="OnTest">Testar alerta</button>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public NotificationStatus Status { get; set; } = NotificationStatus.Unknown;
+
+    /// <summary>Abre a configuração do sistema operacional onde falta permissão.</summary>
+    [Parameter]
+    public EventCallback OnFix { get; set; }
+
+    [Parameter]
+    public EventCallback OnTest { get; set; }
+
+    private string CssFaixa => Status.PermissionGranted ? "faixa--alerta" : "faixa--erro";
+}

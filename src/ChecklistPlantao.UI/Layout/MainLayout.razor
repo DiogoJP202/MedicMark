@@ -1,0 +1,97 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+
+@inject IAppSession Session
+@inject ISyncStatusService SyncStatus
+@inject INotificationStatusService NotificationStatus
+@inject NavigationManager Navigation
+
+@*
+    Casca do aplicativo.
+
+    O topo concentra o que precisa estar sempre visível: setor atual e estado de sincronização.
+    A faixa de saúde das notificações vem logo abaixo e não pode ser dispensada enquanto houver
+    problema — é requisito, não escolha de layout.
+*@
+
+<div class="app-shell">
+    <header class="app-topo">
+        <h1 class="app-topo__titulo">
+            @(Session.CurrentSectorName is { Length: > 0 } setor ? setor : "Checklist de Plantão")
+        </h1>
+        <SyncStatusIndicator Status="_sync" OnSyncNow="SincronizarAsync" />
+    </header>
+
+    @if (Session.IsAuthenticated)
+    {
+        <nav class="nav-principal" aria-label="Navegação principal">
+            <NavLink class="nav-principal__item" href="/" Match="NavLinkMatch.All">Painel</NavLink>
+            <NavLink class="nav-principal__item" href="/checklist">Checklist</NavLink>
+            <NavLink class="nav-principal__item" href="/classificacoes">Classificações</NavLink>
+            <NavLink class="nav-principal__item" href="/pendencias">Pendências</NavLink>
+            <NavLink class="nav-principal__item" href="/sessao">Plantão</NavLink>
+            <NavLink class="nav-principal__item" href="/dispositivo">Dispositivo</NavLink>
+            <PermissionGuard Permission="@Permissions.AdminSettings" Access="Session.Access">
+                <NavLink class="nav-principal__item" href="/admin">Administração</NavLink>
+            </PermissionGuard>
+        </nav>
+    }
+
+    <NotificationHealthBanner Status="_notificacoes"
+                              OnFix="CorrigirNotificacoesAsync"
+                              OnTest="TestarNotificacaoAsync" />
+
+    <main class="app-conteudo">
+        @if (Session.PermissionsAreStale)
+        {
+            <div class="faixa faixa--alerta" role="status">
+                <span class="faixa__icone" aria-hidden="true">▲</span>
+                <div class="faixa__conteudo">
+                    <p class="faixa__titulo">Permissões podem estar desatualizadas</p>
+                    <p class="faixa__texto">
+                        Este dispositivo está usando as permissões da última sincronização.
+                        Conecte-se ao servidor para atualizá-las.
+                    </p>
+                </div>
+            </div>
+        }
+
+        @Body
+    </main>
+</div>
+
+@code {
+    private SyncStatus _sync = Abstractions.SyncStatus.Unknown;
+    private NotificationStatus _notificacoes = Abstractions.NotificationStatus.Unknown;
+
+    protected override void OnInitialized()
+    {
+        _sync = SyncStatus.Current;
+        _notificacoes = NotificationStatus.Current;
+
+        SyncStatus.Changed += AoMudarSincronizacao;
+        NotificationStatus.Changed += AoMudarNotificacoes;
+        Session.Changed += AoMudarSessao;
+    }
+
+    private void AoMudarSincronizacao(SyncStatus status) =>
+        _ = InvokeAsync(() => { _sync = status; StateHasChanged(); });
+
+    private void AoMudarNotificacoes(NotificationStatus status) =>
+        _ = InvokeAsync(() => { _notificacoes = status; StateHasChanged(); });
+
+    private void AoMudarSessao() => _ = InvokeAsync(StateHasChanged);
+
+    private Task SincronizarAsync() => SyncStatus.SyncNowAsync();
+
+    private Task CorrigirNotificacoesAsync() => NotificationStatus.OpenSystemSettingsAsync();
+
+    private Task TestarNotificacaoAsync() => NotificationStatus.SendTestNotificationAsync();
+
+    public void Dispose()
+    {
+        SyncStatus.Changed -= AoMudarSincronizacao;
+        NotificationStatus.Changed -= AoMudarNotificacoes;
+        Session.Changed -= AoMudarSessao;
+    }
+}

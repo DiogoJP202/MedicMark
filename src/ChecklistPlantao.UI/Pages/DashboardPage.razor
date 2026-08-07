@@ -1,0 +1,159 @@
+@page "/"
+@implements IDisposable
+
+@inject IAppSession Session
+@inject IChecklistStore Store
+@inject ISyncStatusService SyncStatus
+@inject INotificationStatusService NotificationStatus
+@inject NavigationManager Navigation
+
+<PageTitle>Painel</PageTitle>
+
+@if (!Session.IsAuthenticated)
+{
+    <LoadingState Message="Verificando o acesso…" />
+}
+else if (Session.CurrentSectorId is null)
+{
+    <h2>Escolha o setor</h2>
+    <SectorSelector Sectors="_setores" SelectedSectorId="Session.CurrentSectorId" OnSelect="SelecionarSetorAsync" />
+}
+else
+{
+    <div class="pilha">
+        <ConnectionStatusBanner Status="SyncStatus.Current" OnSyncNow="SincronizarAsync" />
+
+        <PendingTasksBanner Groups="_pendencias" OnOpen="@(() => Navigation.NavigateTo("/pendencias"))" />
+
+        <div class="cartao">
+            <h2 class="cartao__titulo">@Session.CurrentSectorName</h2>
+            <p class="faixa__texto">Olá, @Session.DisplayName.</p>
+            <ChecklistProgress Label="Progresso do plantão" Total="_total" Completed="_concluidas" />
+        </div>
+
+        <h3>Tipos de checklist</h3>
+        <div class="grade-cartoes">
+            @foreach (var template in _templates)
+            {
+                var pendentes = _pendencias.Where(p => p.TemplateId == template.Id).Sum(p => p.Count);
+
+                <button type="button"
+                        class="cartao cartao--acionavel"
+                        data-testid="@($"dashboard-template-{template.Id}")"
+                        @onclick="@(() => Navigation.NavigateTo($"/checklist/{template.Id}"))">
+                    <span class="cartao__titulo">@template.Name</span>
+                    <span class="linha">
+                        @if (pendentes == 0)
+                        {
+                            <span class="distintivo distintivo--sucesso">✓ Tudo feito</span>
+                        }
+                        else
+                        {
+                            <span class="distintivo distintivo--alerta">@pendentes pendente@(pendentes == 1 ? "" : "s")</span>
+                        }
+                        <span class="distintivo">@template.Columns.Count(c => c.IsActive) horário(s)</span>
+                    </span>
+                </button>
+            }
+        </div>
+
+        <div class="grade-cartoes">
+            <button type="button" class="cartao cartao--acionavel" @onclick="@(() => Navigation.NavigateTo("/classificacoes"))">
+                <span class="cartao__titulo">Classificações</span>
+                <span class="faixa__texto">C.I., Sondas, Drenos e outros marcadores do plantão.</span>
+            </button>
+
+            <button type="button" class="cartao cartao--acionavel" @onclick="@(() => Navigation.NavigateTo("/sessao"))">
+                <span class="cartao__titulo">Plantão</span>
+                <span class="faixa__texto">Abrir, encerrar ou reiniciar o checklist.</span>
+            </button>
+
+            <button type="button" class="cartao cartao--acionavel" @onclick="@(() => Navigation.NavigateTo("/dispositivo"))">
+                <span class="cartao__titulo">Estado do dispositivo</span>
+                <span class="faixa__texto">
+                    Notificações:
+                    @if (NotificationStatus.Current.IsHealthy)
+                    {
+                        <span class="distintivo distintivo--sucesso">✓ em ordem</span>
+                    }
+                    else
+                    {
+                        <span class="distintivo distintivo--erro">▲ atenção</span>
+                    }
+                </span>
+            </button>
+
+            <PermissionGuard Permission="@Permissions.SectorSelect" Access="Session.Access">
+                <button type="button" class="cartao cartao--acionavel" @onclick="@(() => Navigation.NavigateTo("/setores"))">
+                    <span class="cartao__titulo">Trocar de setor</span>
+                    <span class="faixa__texto">@_setores.Count setor(es) disponível(is).</span>
+                </button>
+            </PermissionGuard>
+        </div>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<SectorSummary> _setores = [];
+    private IReadOnlyList<ChecklistTemplateDto> _templates = [];
+    private IReadOnlyList<PendingGroup> _pendencias = [];
+    private int _total;
+    private int _concluidas;
+
+    protected override void OnInitialized()
+    {
+        Session.Changed += AoMudar;
+        Store.Changed += AoMudar;
+        SyncStatus.Changed += AoMudarSync;
+    }
+
+    protected override async Task OnParametersSetAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        if (!Session.IsAuthenticated)
+        {
+            return;
+        }
+
+        _setores = await Session.GetAvailableSectorsAsync();
+
+        if (Session.CurrentSectorId is not { } sectorId)
+        {
+            return;
+        }
+
+        _templates = await Store.GetTemplatesAsync(sectorId);
+        _pendencias = await Store.GetPendingAsync(sectorId);
+
+        _total = 0;
+        _concluidas = 0;
+
+        foreach (var template in _templates)
+        {
+            var board = await Store.GetBoardAsync(sectorId, template.Id);
+            _total += board.Total;
+            _concluidas += board.Completed;
+        }
+    }
+
+    private async Task SelecionarSetorAsync(Guid sectorId)
+    {
+        await Session.SelectSectorAsync(sectorId);
+        await CarregarAsync();
+    }
+
+    private Task SincronizarAsync() => SyncStatus.SyncNowAsync();
+
+    private void AoMudar() => _ = InvokeAsync(async () => { await CarregarAsync(); StateHasChanged(); });
+
+    // Qualificado porque a propriedade injetada SyncStatus sombreia o tipo de mesmo nome.
+    private void AoMudarSync(Abstractions.SyncStatus status) => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Session.Changed -= AoMudar;
+        Store.Changed -= AoMudar;
+        SyncStatus.Changed -= AoMudarSync;
+    }
+}

@@ -1,0 +1,23 @@
+<div class="estado-vazio" data-testid="empty-state">
+    <span class="estado-vazio__icone" aria-hidden="true">@Icon</span>
+    <p class="estado-vazio__titulo">@Title</p>
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <p>@Message</p>
+    }
+    @ChildContent
+</div>
+
+@code {
+    [Parameter]
+    public string Icon { get; set; } = "—";
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Message { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

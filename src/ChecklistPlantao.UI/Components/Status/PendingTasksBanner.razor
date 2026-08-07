@@ -1,0 +1,50 @@
+@*
+    Faixa de tarefas atrasadas dentro do aplicativo — o alerta que funciona mesmo quando a
+    notificação do sistema falha. Mostra quantidade, o horário atrasado e leva às pendências.
+*@
+
+@if (Atrasadas > 0)
+{
+    <button type="button" class="faixa faixa--alerta" style="width:100%;text-align:left;cursor:pointer" @onclick="OnOpen" data-testid="pending-banner">
+        <span class="faixa__icone" aria-hidden="true">!</span>
+        <span class="faixa__conteudo">
+            <span class="faixa__titulo">@Atrasadas TAREFA@(Atrasadas == 1 ? "" : "S") ATRASADA@(Atrasadas == 1 ? "" : "S")</span>
+            <span class="faixa__texto">@Descricao</span>
+            <span class="faixa__texto">Toque para visualizar</span>
+        </span>
+    </button>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<PendingGroup> Groups { get; set; } = [];
+
+    [Parameter]
+    public EventCallback OnOpen { get; set; }
+
+    private int Atrasadas => Groups.Where(g => g.IsOverdue).Sum(g => g.Count);
+
+    private string Descricao
+    {
+        get
+        {
+            var atrasados = Groups.Where(g => g.IsOverdue).ToList();
+
+            if (atrasados.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            // Cita os horários atrasados por nome: "Gelo 22H, SSVV PM".
+            var nomes = atrasados
+                .OrderBy(g => g.TriggerTime ?? TimeOnly.MaxValue)
+                .Select(g => $"{g.TemplateName} {g.ColumnName}")
+                .Take(3)
+                .ToList();
+
+            var texto = string.Join(", ", nomes);
+
+            return atrasados.Count > nomes.Count ? $"{texto} e outros" : texto;
+        }
+    }
+}

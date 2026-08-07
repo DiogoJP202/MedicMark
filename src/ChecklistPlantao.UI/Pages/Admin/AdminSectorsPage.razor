@@ -1,0 +1,274 @@
+@page "/admin/setores"
+
+@inject IAdministrationService Admin
+
+<PageTitle>Setores e leitos</PageTitle>
+
+<h2>Setores e leitos</h2>
+
+<AdminFeedback Result="_resultado" />
+
+<div class="cartao">
+    <h3 class="cartao__titulo">@(_setorEditando is null ? "Novo setor" : $"Editando: {_setorEditando.Name}")</h3>
+
+    <div class="campo">
+        <label class="campo__rotulo" for="setor-nome">Nome</label>
+        <input id="setor-nome" class="campo__controle" data-testid="sector-name" @bind="_nomeSetor" />
+    </div>
+
+    <div class="linha">
+        <div class="campo" style="flex:1 1 140px">
+            <label class="campo__rotulo" for="setor-ordem">Ordem</label>
+            <input id="setor-ordem" class="campo__controle" type="number" @bind="_ordemSetor" />
+        </div>
+        <label class="campo campo--horizontal">
+            <input type="checkbox" style="width:24px;height:24px" @bind="_setorAtivo" />
+            <span class="campo__rotulo">Ativo</span>
+        </label>
+    </div>
+
+    <div class="campo">
+        <span class="campo__ajuda">
+            Deixe o turno em branco para usar a janela geral do plantão. Preencha os dois campos
+            para dar a este setor um horário próprio.
+        </span>
+        <div class="linha">
+            <input class="campo__controle" style="flex:1 1 120px" type="time" @bind="_inicioTurno" />
+            <input class="campo__controle" style="flex:1 1 120px" type="time" @bind="_fimTurno" />
+        </div>
+    </div>
+
+    <div class="linha">
+        <button type="button" class="botao botao--primario" data-testid="sector-save" @onclick="SalvarSetorAsync">Salvar setor</button>
+        @if (_setorEditando is not null)
+        {
+            <button type="button" class="botao botao--texto" @onclick="LimparSetor">Cancelar edição</button>
+        }
+    </div>
+</div>
+
+<div class="tabela__area" style="margin-top:var(--esp-4)">
+    <table class="tabela">
+        <thead>
+            <tr><th>Setor</th><th>Ordem</th><th>Situação</th><th>Turno</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var setor in _setores)
+            {
+                <tr>
+                    <td>@setor.Name</td>
+                    <td>@setor.SortOrder</td>
+                    <td>@(setor.IsActive ? "ativo" : "desativado")</td>
+                    <td>@(setor.ShiftStart is { } i && setor.ShiftEnd is { } f ? $"{i:HH\\:mm}–{f:HH\\:mm}" : "padrão")</td>
+                    <td>
+                        <button type="button" class="botao botao--texto" @onclick="() => EditarSetor(setor)">Editar</button>
+                        <button type="button" class="botao botao--texto" @onclick="() => PedirDesativacao(setor)">
+                            @(setor.IsActive ? "Desativar" : "Reativar")
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<h3 style="margin-top:var(--esp-6)">Leitos</h3>
+
+<div class="cartao">
+    <div class="linha">
+        <div class="campo" style="flex:1 1 160px">
+            <label class="campo__rotulo" for="leito-setor">Setor</label>
+            <select id="leito-setor" class="campo__controle" @bind="_setorDoLeito">
+                @foreach (var setor in _setores)
+                {
+                    <option value="@setor.Id">@setor.Name</option>
+                }
+            </select>
+        </div>
+        <div class="campo" style="flex:1 1 120px">
+            <label class="campo__rotulo" for="leito-codigo">Código</label>
+            <input id="leito-codigo" class="campo__controle" data-testid="bed-code" @bind="_codigoLeito" />
+        </div>
+        <div class="campo" style="flex:1 1 100px">
+            <label class="campo__rotulo" for="leito-ordem">Ordem</label>
+            <input id="leito-ordem" class="campo__controle" type="number" @bind="_ordemLeito" />
+        </div>
+        <label class="campo campo--horizontal">
+            <input type="checkbox" style="width:24px;height:24px" @bind="_leitoAtivo" />
+            <span class="campo__rotulo">Ativo</span>
+        </label>
+    </div>
+
+    <div class="linha">
+        <button type="button" class="botao botao--primario" data-testid="bed-save" @onclick="SalvarLeitoAsync">
+            @(_leitoEditando is null ? "Adicionar leito" : "Salvar leito")
+        </button>
+        @if (_leitoEditando is not null)
+        {
+            <button type="button" class="botao botao--texto" @onclick="LimparLeito">Cancelar edição</button>
+        }
+    </div>
+</div>
+
+<div class="tabela__area" style="margin-top:var(--esp-3)">
+    <table class="tabela">
+        <thead><tr><th>Leito</th><th>Setor</th><th>Ordem</th><th>Situação</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var leito in _leitos.OrderBy(b => b.SortOrder))
+            {
+                <tr>
+                    <td>@leito.Code</td>
+                    <td>@(_setores.FirstOrDefault(s => s.Id == leito.SectorId)?.Name ?? "—")</td>
+                    <td>@leito.SortOrder</td>
+                    <td>@(leito.IsActive ? "ativo" : "desativado")</td>
+                    <td>
+                        <button type="button" class="botao botao--texto" @onclick="() => EditarLeito(leito)">Editar</button>
+                        <button type="button" class="botao botao--texto" @onclick="() => PedirDesativacaoLeito(leito)">
+                            @(leito.IsActive ? "Desativar" : "Reativar")
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<ConfirmDialog @bind-Visible="_confirmarDesativacao"
+               Title="@_tituloConfirmacao"
+               Message="Itens desativados deixam de aparecer nos novos plantões. Os dados do plantão atual não são apagados."
+               ConfirmText="Desativar"
+               OnConfirm="ConfirmarDesativacaoAsync" />
+
+@code {
+    private IReadOnlyList<SectorDto> _setores = [];
+    private IReadOnlyList<BedDto> _leitos = [];
+    private Result? _resultado;
+
+    private SectorDto? _setorEditando;
+    private string _nomeSetor = string.Empty;
+    private int _ordemSetor = 10;
+    private bool _setorAtivo = true;
+    private TimeOnly? _inicioTurno;
+    private TimeOnly? _fimTurno;
+
+    private BedDto? _leitoEditando;
+    private Guid _setorDoLeito;
+    private string _codigoLeito = string.Empty;
+    private int _ordemLeito = 10;
+    private bool _leitoAtivo = true;
+
+    private bool _confirmarDesativacao;
+    private string _tituloConfirmacao = string.Empty;
+    private Func<Task>? _acaoConfirmada;
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        _setores = await Admin.GetSectorsAsync();
+        _leitos = await Admin.GetBedsAsync(null);
+
+        if (_setorDoLeito == Guid.Empty && _setores.Count > 0)
+        {
+            _setorDoLeito = _setores[0].Id;
+        }
+    }
+
+    private void EditarSetor(SectorDto setor)
+    {
+        _setorEditando = setor;
+        _nomeSetor = setor.Name;
+        _ordemSetor = setor.SortOrder;
+        _setorAtivo = setor.IsActive;
+        _inicioTurno = setor.ShiftStart;
+        _fimTurno = setor.ShiftEnd;
+    }
+
+    private void LimparSetor()
+    {
+        _setorEditando = null;
+        _nomeSetor = string.Empty;
+        _ordemSetor = 10;
+        _setorAtivo = true;
+        _inicioTurno = null;
+        _fimTurno = null;
+    }
+
+    private async Task SalvarSetorAsync()
+    {
+        _resultado = await Admin.SaveSectorAsync(
+            _setorEditando?.Id,
+            new SaveSectorRequest(_nomeSetor, null, _ordemSetor, _setorAtivo, _inicioTurno, _fimTurno, _setorEditando?.Version ?? 0));
+
+        if (_resultado.Succeeded)
+        {
+            LimparSetor();
+            await CarregarAsync();
+        }
+    }
+
+    private void EditarLeito(BedDto leito)
+    {
+        _leitoEditando = leito;
+        _setorDoLeito = leito.SectorId;
+        _codigoLeito = leito.Code;
+        _ordemLeito = leito.SortOrder;
+        _leitoAtivo = leito.IsActive;
+    }
+
+    private void LimparLeito()
+    {
+        _leitoEditando = null;
+        _codigoLeito = string.Empty;
+        _ordemLeito = 10;
+        _leitoAtivo = true;
+    }
+
+    private async Task SalvarLeitoAsync()
+    {
+        _resultado = await Admin.SaveBedAsync(
+            _leitoEditando?.Id,
+            new SaveBedRequest(_setorDoLeito, _codigoLeito, null, _ordemLeito, _leitoAtivo, _leitoEditando?.Version ?? 0));
+
+        if (_resultado.Succeeded)
+        {
+            LimparLeito();
+            await CarregarAsync();
+        }
+    }
+
+    private void PedirDesativacao(SectorDto setor)
+    {
+        _tituloConfirmacao = setor.IsActive ? $"Desativar o setor {setor.Name}?" : $"Reativar o setor {setor.Name}?";
+        _acaoConfirmada = async () =>
+        {
+            _resultado = await Admin.SaveSectorAsync(
+                setor.Id,
+                new SaveSectorRequest(setor.Name, setor.Description, setor.SortOrder, !setor.IsActive, setor.ShiftStart, setor.ShiftEnd, setor.Version));
+            await CarregarAsync();
+        };
+        _confirmarDesativacao = true;
+    }
+
+    private void PedirDesativacaoLeito(BedDto leito)
+    {
+        _tituloConfirmacao = leito.IsActive ? $"Desativar o leito {leito.Code}?" : $"Reativar o leito {leito.Code}?";
+        _acaoConfirmada = async () =>
+        {
+            _resultado = await Admin.SaveBedAsync(
+                leito.Id,
+                new SaveBedRequest(leito.SectorId, leito.Code, leito.Description, leito.SortOrder, !leito.IsActive, leito.Version));
+            await CarregarAsync();
+        };
+        _confirmarDesativacao = true;
+    }
+
+    private async Task ConfirmarDesativacaoAsync()
+    {
+        if (_acaoConfirmada is not null)
+        {
+            await _acaoConfirmada();
+            _acaoConfirmada = null;
+        }
+    }
+}

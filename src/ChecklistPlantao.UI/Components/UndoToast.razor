@@ -1,0 +1,88 @@
+@*
+    Desfazer por alguns segundos, sem modal.
+
+    Substitui a confirmação a cada marcação: marcar é instantâneo e o erro é reversível por
+    alguns segundos. Também não é uma notificação de sucesso — só aparece quando há algo a desfazer.
+*@
+
+@if (Visible)
+{
+    <div class="toast-desfazer" role="status" aria-live="polite" data-testid="undo-toast">
+        <span>@Message</span>
+        <button type="button" class="toast-desfazer__acao" data-testid="undo-action" @onclick="DesfazerAsync">
+            Desfazer
+        </button>
+    </div>
+}
+
+@implements IDisposable
+
+@code {
+    [Parameter]
+    public bool Visible { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> VisibleChanged { get; set; }
+
+    [Parameter]
+    public string Message { get; set; } = "Alteração salva.";
+
+    [Parameter]
+    public int DurationSeconds { get; set; } = 6;
+
+    [Parameter]
+    public EventCallback OnUndo { get; set; }
+
+    private CancellationTokenSource? _cts;
+    private bool _visivelAnterior;
+
+    protected override void OnParametersSet()
+    {
+        if (Visible == _visivelAnterior)
+        {
+            return;
+        }
+
+        _visivelAnterior = Visible;
+
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
+
+        if (!Visible)
+        {
+            return;
+        }
+
+        // Some sozinho. O erro de digitação é raro; deixar o aviso fixo na tela atrapalharia
+        // mais do que ajudaria em um plantão.
+        _cts = new CancellationTokenSource();
+        _ = FecharDepoisAsync(_cts.Token);
+    }
+
+    private async Task FecharDepoisAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(DurationSeconds), cancellationToken);
+            await InvokeAsync(async () => await VisibleChanged.InvokeAsync(false));
+        }
+        catch (OperationCanceledException)
+        {
+            // Substituído por outra marcação ou desfeito antes do prazo.
+        }
+    }
+
+    private async Task DesfazerAsync()
+    {
+        _cts?.Cancel();
+        await VisibleChanged.InvokeAsync(false);
+        await OnUndo.InvokeAsync();
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+}

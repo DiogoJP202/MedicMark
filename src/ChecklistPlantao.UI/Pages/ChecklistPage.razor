@@ -1,0 +1,318 @@
+@page "/checklist"
+@page "/checklist/{TemplateId:guid}"
+@page "/checklist/{TemplateId:guid}/{ColumnId:guid}"
+
+@implements IDisposable
+
+@inject IAppSession Session
+@inject IChecklistStore Store
+@inject NavigationManager Navigation
+
+@*
+    A tela central do sistema.
+
+    Mesma fonte de dados, duas composições: matriz no desktop, uma coluna por vez no celular.
+    A marcação é otimista — a célula muda antes de qualquer I/O — e reversível por alguns
+    segundos pelo Desfazer. As rotas com Id existem para o deep link das notificações.
+*@
+
+<PageTitle>Checklist</PageTitle>
+
+@if (_carregando)
+{
+    <LoadingState Message="Carregando o checklist…" />
+}
+else if (_erro is not null)
+{
+    <ErrorState Message="@_erro" OnRetry="CarregarAsync" />
+}
+else if (Session.CurrentSectorId is null)
+{
+    <EmptyState Icon="—" Title="Nenhum setor selecionado" Message="Escolha um setor para ver o checklist.">
+        <button type="button" class="botao botao--primario" @onclick="@(() => Navigation.NavigateTo("/setores"))">
+            Escolher setor
+        </button>
+    </EmptyState>
+}
+else
+{
+    <div class="pilha">
+        @if (!_board.IsSessionOpen)
+        {
+            <div class="faixa faixa--alerta" role="status">
+                <span class="faixa__icone" aria-hidden="true">▲</span>
+                <div class="faixa__conteudo">
+                    <p class="faixa__titulo">Plantão encerrado</p>
+                    <p class="faixa__texto">Este checklist está apenas para consulta. Abra um novo plantão para marcar tarefas.</p>
+                </div>
+            </div>
+        }
+
+        <div class="linha linha--entre">
+            <div class="linha">
+                @foreach (var template in _templates)
+                {
+                    <button type="button"
+                            class="botao @(template.Id == _templateAtual?.Id ? "botao--primario" : "botao--contorno")"
+                            data-testid="@($"template-{template.Id}")"
+                            @onclick="() => TrocarTemplateAsync(template.Id)">
+                        @template.Name
+                    </button>
+                }
+            </div>
+
+            <ChecklistProgress Label="@($"{_templateAtual?.Name}")" Total="_board.Total" Completed="_board.Completed" />
+        </div>
+
+        <div class="linha">
+            <div class="campo" style="flex:1 1 200px;margin:0">
+                <label class="campo__rotulo" for="busca-leito">Pesquisar leito</label>
+                <input id="busca-leito"
+                       class="campo__controle"
+                       type="search"
+                       inputmode="numeric"
+                       placeholder="Número do leito"
+                       data-testid="search-bed"
+                       value="@_busca"
+                       @oninput="AoDigitarBusca" />
+            </div>
+
+            <label class="campo campo--horizontal" style="margin:0">
+                <input type="checkbox"
+                       style="width:24px;height:24px"
+                       data-testid="only-pending"
+                       checked="@_somentePendentes"
+                       @onchange="AlternarSomentePendentes" />
+                <span class="campo__rotulo">Somente pendentes</span>
+            </label>
+        </div>
+
+        @* --------------------------------------------------------- celular *@
+        <div class="somente-mobile">
+            <ChecklistColumnSelector Columns="_board.Columns"
+                                     SelectedColumnId="_colunaAtual"
+                                     SelectedColumnIdChanged="TrocarColunaAsync" />
+
+            @if (_board.Columns.FirstOrDefault(c => c.ColumnId == _colunaAtual) is { } colunaAtual)
+            {
+                <ChecklistProgress Label="@($"{_templateAtual?.Name} · {colunaAtual.DisplayName}")"
+                                   Total="colunaAtual.Total"
+                                   Completed="colunaAtual.Completed" />
+            }
+
+            <ChecklistMobileList Rows="_board.Rows"
+                                 ColumnId="_colunaAtual"
+                                 Search="@_busca"
+                                 OnlyPending="_somentePendentes"
+                                 ReadOnly="@(!_podeMarcar)"
+                                 OnToggle="AlternarAsync" />
+        </div>
+
+        @* --------------------------------------------------------- desktop *@
+        <div class="somente-desktop">
+            <ChecklistDesktopGrid Board="_board"
+                                  Search="@_busca"
+                                  OnlyPending="_somentePendentes"
+                                  ReadOnly="@(!_podeMarcar)"
+                                  OnToggle="AlternarAsync" />
+        </div>
+    </div>
+
+    <UndoToast Visible="_mostrarDesfazer"
+               VisibleChanged="v => _mostrarDesfazer = v"
+               Message="@_mensagemDesfazer"
+               OnUndo="DesfazerAsync" />
+}
+
+@code {
+    [Parameter]
+    public Guid? TemplateId { get; set; }
+
+    [Parameter]
+    public Guid? ColumnId { get; set; }
+
+    private IReadOnlyList<ChecklistTemplateDto> _templates = [];
+    private ChecklistTemplateDto? _templateAtual;
+    private ChecklistBoard _board = ChecklistBoard.Empty;
+    private Guid _colunaAtual;
+    private string _busca = string.Empty;
+    private bool _somentePendentes;
+    private bool _carregando = true;
+    private string? _erro;
+
+    private bool _mostrarDesfazer;
+    private string _mensagemDesfazer = string.Empty;
+    private ChecklistCell? _ultimaCelula;
+    private bool _ultimoEstado;
+
+    private bool _podeMarcar;
+
+    protected override void OnInitialized()
+    {
+        Store.Changed += AoMudarDados;
+        Session.Changed += AoMudarDados;
+    }
+
+    protected override async Task OnParametersSetAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        var sectorId = Session.CurrentSectorId;
+
+        if (sectorId is null)
+        {
+            _carregando = false;
+            return;
+        }
+
+        _carregando = true;
+        _erro = null;
+
+        try
+        {
+            _templates = await Store.GetTemplatesAsync(sectorId.Value);
+
+            if (_templates.Count == 0)
+            {
+                _board = ChecklistBoard.Empty;
+                return;
+            }
+
+            _templateAtual = _templates.FirstOrDefault(t => t.Id == TemplateId) ?? _templates[0];
+            _board = await Store.GetBoardAsync(sectorId.Value, _templateAtual.Id);
+
+            // Coluna preferida: a da rota (deep link da notificação); senão a primeira pendente;
+            // senão a primeira. Cair na coluna certa evita um toque a mais no plantão.
+            _colunaAtual = EscolherColuna();
+
+            _podeMarcar = _board.IsSessionOpen
+                && Session.Access.Has(Permissions.ChecklistUpdate)
+                && Session.Access.CanAccessSector(sectorId.Value);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _erro = "Não foi possível carregar o checklist neste momento.";
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private Guid EscolherColuna()
+    {
+        if (ColumnId is { } rota && _board.Columns.Any(c => c.ColumnId == rota))
+        {
+            return rota;
+        }
+
+        if (_colunaAtual != Guid.Empty && _board.Columns.Any(c => c.ColumnId == _colunaAtual))
+        {
+            return _colunaAtual;
+        }
+
+        var pendente = _board.Columns.FirstOrDefault(c => !c.IsComplete);
+        return pendente?.ColumnId ?? _board.Columns.FirstOrDefault()?.ColumnId ?? Guid.Empty;
+    }
+
+    private async Task TrocarTemplateAsync(Guid templateId)
+    {
+        _colunaAtual = Guid.Empty;
+        Navigation.NavigateTo($"/checklist/{templateId}");
+        await Task.CompletedTask;
+    }
+
+    private Task TrocarColunaAsync(Guid columnId)
+    {
+        _colunaAtual = columnId;
+        return Task.CompletedTask;
+    }
+
+    private void AoDigitarBusca(ChangeEventArgs args) => _busca = args.Value?.ToString() ?? string.Empty;
+
+    private void AlternarSomentePendentes(ChangeEventArgs args) => _somentePendentes = args.Value is true;
+
+    /// <summary>
+    /// Atualização otimista: o estado local muda primeiro e a tela redesenha na hora.
+    /// A gravação e o enfileiramento acontecem em seguida; só um erro local irrecuperável reverte.
+    /// </summary>
+    private async Task AlternarAsync(ChecklistCell celula)
+    {
+        var desejado = !celula.IsCompleted;
+        AplicarLocal(celula, desejado);
+
+        _ultimaCelula = celula;
+        _ultimoEstado = celula.IsCompleted;
+        _mensagemDesfazer = desejado ? "Marcado." : "Desmarcado.";
+        _mostrarDesfazer = true;
+
+        var resultado = await Store.ToggleCellAsync(celula, desejado);
+
+        if (!resultado.Succeeded)
+        {
+            AplicarLocal(celula, celula.IsCompleted);
+            _mostrarDesfazer = false;
+            _erro = resultado.Message;
+        }
+        else if (resultado.Cell is { } atual && atual.IsCompleted != desejado)
+        {
+            // O servidor devolveu um estado diferente (conflito resolvido a favor dele).
+            // A célula é atualizada em silêncio: mensagem técnica não ajuda quem está no plantão.
+            AplicarLocal(celula, atual.IsCompleted);
+            _mostrarDesfazer = false;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task DesfazerAsync()
+    {
+        if (_ultimaCelula is null)
+        {
+            return;
+        }
+
+        AplicarLocal(_ultimaCelula, _ultimoEstado);
+        await Store.ToggleCellAsync(_ultimaCelula, _ultimoEstado);
+        _ultimaCelula = null;
+        StateHasChanged();
+    }
+
+    /// <summary>Reescreve a célula no board em memória, mantendo as contagens coerentes.</summary>
+    private void AplicarLocal(ChecklistCell celula, bool concluido)
+    {
+        var linhas = _board.Rows.Select(linha =>
+        {
+            if (linha.BedId != celula.BedId)
+            {
+                return linha;
+            }
+
+            var celulas = linha.Cells
+                .Select(c => c.ColumnId == celula.ColumnId ? c with { IsCompleted = concluido } : c)
+                .ToList();
+
+            return linha with { Cells = celulas };
+        }).ToList();
+
+        var colunas = _board.Columns.Select(coluna =>
+        {
+            var concluidas = linhas.Sum(l => l.Cells.Count(c => c.ColumnId == coluna.ColumnId && c.IsCompleted));
+            return coluna with { Completed = concluidas };
+        }).ToList();
+
+        _board = _board with { Rows = linhas, Columns = colunas };
+    }
+
+    private void AoMudarDados() => _ = InvokeAsync(async () =>
+    {
+        await CarregarAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose()
+    {
+        Store.Changed -= AoMudarDados;
+        Session.Changed -= AoMudarDados;
+    }
+}

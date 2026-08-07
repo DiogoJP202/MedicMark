@@ -1,0 +1,109 @@
+@page "/entrar"
+@layout EmptyLayout
+
+@inject IAppSession Session
+@inject IServerConfigurationService ServerConfiguration
+@inject ISyncStatusService SyncStatus
+@inject NavigationManager Navigation
+
+<PageTitle>Entrar</PageTitle>
+
+<div class="app-conteudo" style="max-width:440px;margin:0 auto">
+    <h1>Checklist de Plantão</h1>
+
+    @if (!ServerConfiguration.IsConfigured)
+    {
+        <div class="faixa faixa--alerta">
+            <span class="faixa__icone" aria-hidden="true">▲</span>
+            <div class="faixa__conteudo">
+                <p class="faixa__titulo">Servidor não configurado</p>
+                <p class="faixa__texto">Configure o endereço do servidor antes do primeiro acesso.</p>
+                <button type="button" class="botao botao--primario" @onclick="@(() => Navigation.NavigateTo("/configuracao"))">
+                    Configurar servidor
+                </button>
+            </div>
+        </div>
+    }
+
+    <EditForm Model="_modelo" OnValidSubmit="EntrarAsync">
+        <div class="campo">
+            <label class="campo__rotulo" for="usuario">Usuário</label>
+            <InputText id="usuario" class="campo__controle" @bind-Value="_modelo.UserName" autocomplete="username" data-testid="login-user" />
+        </div>
+
+        <div class="campo">
+            <label class="campo__rotulo" for="senha">Senha</label>
+            <InputText id="senha" type="password" class="campo__controle" @bind-Value="_modelo.Password" autocomplete="current-password" data-testid="login-password" />
+        </div>
+
+        @if (_erro is not null)
+        {
+            <div class="faixa faixa--erro" role="alert" data-testid="login-error">
+                <span class="faixa__icone" aria-hidden="true">✕</span>
+                <div class="faixa__conteudo">
+                    <p class="faixa__texto">@_erro</p>
+                </div>
+            </div>
+        }
+
+        <button type="submit" class="botao botao--primario botao--bloco botao--grande" disabled="@_entrando" data-testid="login-submit">
+            @(_entrando ? "Entrando…" : "Entrar")
+        </button>
+    </EditForm>
+
+    <div class="cartao" style="margin-top:var(--esp-5)">
+        <p class="faixa__texto">
+            <strong>Estado da conexão:</strong> @SyncStatus.Current.Headline
+        </p>
+        @if (SyncStatus.Current.LastSyncAtUtc is { } ultima)
+        {
+            <p class="faixa__texto">Última sincronização: @ultima.ToLocalTime().ToString("dd/MM/yyyy HH:mm", CultureInfo.GetCultureInfo("pt-BR"))</p>
+        }
+        else
+        {
+            <p class="faixa__texto">Este dispositivo ainda não sincronizou.</p>
+        }
+
+        @if (SyncStatus.Current.Connectivity is ConnectivityState.Offline or ConnectivityState.ServerUnreachable)
+        {
+            <p class="faixa__texto">
+                Sem servidor no momento. Se você já entrou neste aparelho antes e o acesso offline
+                ainda é válido, é possível entrar normalmente.
+            </p>
+        }
+    </div>
+</div>
+
+@code {
+    private readonly LoginModel _modelo = new();
+    private bool _entrando;
+    private string? _erro;
+
+    private sealed class LoginModel
+    {
+        public string UserName { get; set; } = string.Empty;
+
+        public string Password { get; set; } = string.Empty;
+    }
+
+    private async Task EntrarAsync()
+    {
+        _entrando = true;
+        _erro = null;
+
+        try
+        {
+            if (await Session.SignInAsync(_modelo.UserName, _modelo.Password))
+            {
+                Navigation.NavigateTo("/", replace: true);
+                return;
+            }
+
+            _erro = Session.LastSignInError ?? "Usuário ou senha inválidos.";
+        }
+        finally
+        {
+            _entrando = false;
+        }
+    }
+}

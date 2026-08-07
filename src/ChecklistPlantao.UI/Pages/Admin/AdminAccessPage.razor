@@ -1,0 +1,346 @@
+@page "/admin/acessos"
+
+@inject IAdministrationService Admin
+
+@*
+    Usuários e grupos.
+
+    O acesso efetivo é a união dos grupos ativos — a tela deixa isso explícito para o
+    administrador não precisar deduzir por que alguém enxerga (ou não) um setor.
+*@
+
+<PageTitle>Usuários e grupos</PageTitle>
+
+<h2>Grupos</h2>
+
+<AdminFeedback Result="_resultado" />
+
+<div class="cartao">
+    <h3 class="cartao__titulo">@(_grupoEditando is null ? "Novo grupo" : $"Editando: {_grupoEditando.Name}")</h3>
+
+    <div class="campo">
+        <label class="campo__rotulo" for="grupo-nome">Nome</label>
+        <input id="grupo-nome" class="campo__controle" data-testid="group-name" @bind="_nomeGrupo" />
+    </div>
+
+    <label class="campo campo--horizontal">
+        <input type="checkbox" style="width:24px;height:24px" data-testid="group-all-sectors" @bind="_todosSetores" />
+        <span class="campo__rotulo">Acesso a todos os setores, inclusive os criados depois</span>
+    </label>
+
+    @if (!_todosSetores)
+    {
+        <fieldset class="campo">
+            <legend class="campo__rotulo">Setores autorizados</legend>
+            @foreach (var setor in _setores)
+            {
+                <label class="campo campo--horizontal">
+                    <input type="checkbox"
+                           style="width:24px;height:24px"
+                           checked="@_setoresSelecionados.Contains(setor.Id)"
+                           @onchange="args => AlternarSetor(setor.Id, args.Value is true)" />
+                    <span>@setor.Name</span>
+                </label>
+            }
+        </fieldset>
+    }
+
+    <fieldset class="campo">
+        <legend class="campo__rotulo">Permissões</legend>
+        @foreach (var permissao in _permissoes)
+        {
+            <label class="campo campo--horizontal">
+                <input type="checkbox"
+                       style="width:24px;height:24px"
+                       data-testid="@($"perm-{permissao.Key}")"
+                       checked="@_permissoesSelecionadas.Contains(permissao.Key)"
+                       @onchange="args => AlternarPermissao(permissao.Key, args.Value is true)" />
+                <span>@permissao.Description <code class="campo__ajuda">@permissao.Key</code></span>
+            </label>
+        }
+    </fieldset>
+
+    <div class="linha">
+        <label class="campo campo--horizontal">
+            <input type="checkbox" style="width:24px;height:24px" @bind="_grupoAtivo" />
+            <span class="campo__rotulo">Ativo</span>
+        </label>
+        <button type="button" class="botao botao--primario" data-testid="group-save" @onclick="SalvarGrupoAsync">Salvar grupo</button>
+        @if (_grupoEditando is not null)
+        {
+            <button type="button" class="botao botao--texto" @onclick="LimparGrupo">Cancelar</button>
+        }
+    </div>
+</div>
+
+<div class="tabela__area" style="margin-top:var(--esp-4)">
+    <table class="tabela">
+        <thead><tr><th>Grupo</th><th>Setores</th><th>Permissões</th><th>Situação</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var grupo in _grupos)
+            {
+                <tr>
+                    <td>@grupo.Name</td>
+                    <td>@(grupo.GrantsAllSectors ? "todos" : grupo.SectorIds.Count.ToString(CultureInfo.InvariantCulture))</td>
+                    <td>@grupo.Permissions.Count</td>
+                    <td>@(grupo.IsActive ? "ativo" : "desativado")</td>
+                    <td><button type="button" class="botao botao--texto" @onclick="() => EditarGrupo(grupo)">Editar</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<h2 style="margin-top:var(--esp-6)">Usuários</h2>
+
+<div class="cartao">
+    <div class="linha">
+        <div class="campo" style="flex:1 1 160px">
+            <label class="campo__rotulo" for="user-login">Usuário</label>
+            <input id="user-login" class="campo__controle" data-testid="user-login" @bind="_login" disabled="@(_usuarioEditando is not null)" />
+        </div>
+        <div class="campo" style="flex:1 1 200px">
+            <label class="campo__rotulo" for="user-nome">Nome de exibição</label>
+            <input id="user-nome" class="campo__controle" data-testid="user-name" @bind="_nomeUsuario" />
+        </div>
+        @if (_usuarioEditando is null)
+        {
+            <div class="campo" style="flex:1 1 160px">
+                <label class="campo__rotulo" for="user-senha">Senha inicial</label>
+                <input id="user-senha" type="password" class="campo__controle" data-testid="user-password" @bind="_senha" />
+                <span class="campo__ajuda">Mínimo 8 caracteres, com letra e número.</span>
+            </div>
+        }
+        <label class="campo campo--horizontal">
+            <input type="checkbox" style="width:24px;height:24px" @bind="_usuarioAtivo" />
+            <span class="campo__rotulo">Ativo</span>
+        </label>
+    </div>
+
+    <fieldset class="campo">
+        <legend class="campo__rotulo">Grupos (o acesso é a soma de todos)</legend>
+        @foreach (var grupo in _grupos)
+        {
+            <label class="campo campo--horizontal">
+                <input type="checkbox"
+                       style="width:24px;height:24px"
+                       data-testid="@($"user-group-{grupo.Id}")"
+                       checked="@_gruposSelecionados.Contains(grupo.Id)"
+                       @onchange="args => AlternarGrupo(grupo.Id, args.Value is true)" />
+                <span>@grupo.Name</span>
+            </label>
+        }
+    </fieldset>
+
+    <div class="linha">
+        <button type="button" class="botao botao--primario" data-testid="user-save" @onclick="SalvarUsuarioAsync">
+            @(_usuarioEditando is null ? "Criar usuário" : "Salvar usuário")
+        </button>
+        @if (_usuarioEditando is not null)
+        {
+            <button type="button" class="botao botao--contorno" @onclick="() => _redefinirSenha = true">Redefinir senha</button>
+            <button type="button" class="botao botao--texto" @onclick="LimparUsuario">Cancelar</button>
+        }
+    </div>
+</div>
+
+<div class="tabela__area" style="margin-top:var(--esp-4)">
+    <table class="tabela">
+        <thead><tr><th>Usuário</th><th>Nome</th><th>Grupos</th><th>Situação</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var usuario in _usuarios)
+            {
+                <tr>
+                    <td>@usuario.UserName</td>
+                    <td>@usuario.DisplayName</td>
+                    <td>@string.Join(", ", usuario.GroupIds.Select(id => _grupos.FirstOrDefault(g => g.Id == id)?.Name ?? "?"))</td>
+                    <td>@(usuario.IsActive ? "ativo" : "desativado")</td>
+                    <td><button type="button" class="botao botao--texto" @onclick="() => EditarUsuario(usuario)">Editar</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<ConfirmDialog @bind-Visible="_redefinirSenha"
+               Title="Redefinir a senha?"
+               ConfirmText="Redefinir"
+               Destructive="false"
+               OnConfirm="RedefinirSenhaAsync">
+    <div class="campo">
+        <label class="campo__rotulo" for="nova-senha">Nova senha</label>
+        <input id="nova-senha" type="password" class="campo__controle" @bind="_novaSenha" />
+        <span class="campo__ajuda">O usuário será desconectado de todos os dispositivos.</span>
+    </div>
+</ConfirmDialog>
+
+@code {
+    private IReadOnlyList<AccessGroupDto> _grupos = [];
+    private IReadOnlyList<AppUserDto> _usuarios = [];
+    private IReadOnlyList<SectorDto> _setores = [];
+    private IReadOnlyList<PermissionDto> _permissoes = [];
+    private Result? _resultado;
+
+    private AccessGroupDto? _grupoEditando;
+    private string _nomeGrupo = string.Empty;
+    private bool _grupoAtivo = true;
+    private bool _todosSetores;
+    private readonly HashSet<Guid> _setoresSelecionados = [];
+    private readonly HashSet<string> _permissoesSelecionadas = new(StringComparer.Ordinal);
+
+    private AppUserDto? _usuarioEditando;
+    private string _login = string.Empty;
+    private string _nomeUsuario = string.Empty;
+    private string _senha = string.Empty;
+    private bool _usuarioAtivo = true;
+    private readonly HashSet<Guid> _gruposSelecionados = [];
+
+    private bool _redefinirSenha;
+    private string _novaSenha = string.Empty;
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        _grupos = await Admin.GetGroupsAsync();
+        _usuarios = await Admin.GetUsersAsync();
+        _setores = await Admin.GetSectorsAsync();
+        _permissoes = await Admin.GetPermissionsAsync();
+    }
+
+    private void AlternarSetor(Guid id, bool marcado)
+    {
+        if (marcado)
+        {
+            _setoresSelecionados.Add(id);
+        }
+        else
+        {
+            _setoresSelecionados.Remove(id);
+        }
+    }
+
+    private void AlternarPermissao(string chave, bool marcado)
+    {
+        if (marcado)
+        {
+            _permissoesSelecionadas.Add(chave);
+        }
+        else
+        {
+            _permissoesSelecionadas.Remove(chave);
+        }
+    }
+
+    private void AlternarGrupo(Guid id, bool marcado)
+    {
+        if (marcado)
+        {
+            _gruposSelecionados.Add(id);
+        }
+        else
+        {
+            _gruposSelecionados.Remove(id);
+        }
+    }
+
+    private void EditarGrupo(AccessGroupDto grupo)
+    {
+        _grupoEditando = grupo;
+        _nomeGrupo = grupo.Name;
+        _grupoAtivo = grupo.IsActive;
+        _todosSetores = grupo.GrantsAllSectors;
+
+        _setoresSelecionados.Clear();
+        foreach (var id in grupo.SectorIds)
+        {
+            _setoresSelecionados.Add(id);
+        }
+
+        _permissoesSelecionadas.Clear();
+        foreach (var chave in grupo.Permissions)
+        {
+            _permissoesSelecionadas.Add(chave);
+        }
+    }
+
+    private void LimparGrupo()
+    {
+        _grupoEditando = null;
+        _nomeGrupo = string.Empty;
+        _grupoAtivo = true;
+        _todosSetores = false;
+        _setoresSelecionados.Clear();
+        _permissoesSelecionadas.Clear();
+    }
+
+    private async Task SalvarGrupoAsync()
+    {
+        _resultado = await Admin.SaveGroupAsync(
+            _grupoEditando?.Id,
+            new SaveGroupRequest(
+                _nomeGrupo,
+                null,
+                _grupoAtivo,
+                _todosSetores,
+                [.. _permissoesSelecionadas],
+                [.. _setoresSelecionados],
+                _grupoEditando?.Version ?? 0));
+
+        if (_resultado.Succeeded)
+        {
+            LimparGrupo();
+            await CarregarAsync();
+        }
+    }
+
+    private void EditarUsuario(AppUserDto usuario)
+    {
+        _usuarioEditando = usuario;
+        _login = usuario.UserName;
+        _nomeUsuario = usuario.DisplayName;
+        _usuarioAtivo = usuario.IsActive;
+
+        _gruposSelecionados.Clear();
+        foreach (var id in usuario.GroupIds)
+        {
+            _gruposSelecionados.Add(id);
+        }
+    }
+
+    private void LimparUsuario()
+    {
+        _usuarioEditando = null;
+        _login = string.Empty;
+        _nomeUsuario = string.Empty;
+        _senha = string.Empty;
+        _usuarioAtivo = true;
+        _gruposSelecionados.Clear();
+    }
+
+    private async Task SalvarUsuarioAsync()
+    {
+        _resultado = _usuarioEditando is null
+            ? await Admin.CreateUserAsync(new CreateUserRequest(_login, _nomeUsuario, _senha, [.. _gruposSelecionados]))
+            : await Admin.UpdateUserAsync(
+                _usuarioEditando.Id,
+                new UpdateUserRequest(_nomeUsuario, _usuarioAtivo, [.. _gruposSelecionados], _usuarioEditando.Version));
+
+        if (_resultado.Succeeded)
+        {
+            LimparUsuario();
+            await CarregarAsync();
+        }
+    }
+
+    private async Task RedefinirSenhaAsync()
+    {
+        if (_usuarioEditando is null)
+        {
+            return;
+        }
+
+        _resultado = await Admin.ResetPasswordAsync(_usuarioEditando.Id, new ResetPasswordRequest(_novaSenha));
+        _novaSenha = string.Empty;
+    }
+}

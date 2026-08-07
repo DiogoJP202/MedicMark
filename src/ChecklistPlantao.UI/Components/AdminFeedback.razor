@@ -1,0 +1,31 @@
+@*
+    Retorno padrão das telas administrativas. Conflito de versão recebe um texto próprio,
+    porque a ação do usuário é diferente: atualizar a tela e refazer, não tentar de novo igual.
+*@
+
+@if (Result is { } resultado)
+{
+    <div class="faixa @(resultado.Succeeded ? "faixa--sucesso" : "faixa--erro")" role="status" data-testid="admin-feedback">
+        <span class="faixa__icone" aria-hidden="true">@(resultado.Succeeded ? "✓" : "✕")</span>
+        <div class="faixa__conteudo">
+            @if (resultado.Succeeded)
+            {
+                <p class="faixa__texto">Alteração salva e enviada aos dispositivos.</p>
+            }
+            else if (resultado.IsVersionConflict)
+            {
+                <p class="faixa__titulo">Outra pessoa alterou este item</p>
+                <p class="faixa__texto">Atualize a tela para ver os dados atuais e refaça a alteração.</p>
+            }
+            else
+            {
+                <p class="faixa__texto">@resultado.Message</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Result? Result { get; set; }
+}

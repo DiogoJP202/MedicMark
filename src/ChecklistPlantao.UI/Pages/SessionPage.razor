@@ -1,0 +1,178 @@
+@page "/sessao"
+
+@inject IAppSession Session
+@inject IChecklistStore Store
+@inject NavigationManager Navigation
+
+@*
+    Abrir, encerrar e reiniciar o plantão.
+
+    Toda ação destrutiva pede confirmação; o resumo de fechamento traz o que o item 9 do
+    enunciado exige, incluindo os leitos com C.I., Sondas e Drenos.
+*@
+
+<PageTitle>Plantão</PageTitle>
+
+<h2>Plantão do setor @Session.CurrentSectorName</h2>
+
+@if (_carregando)
+{
+    <LoadingState />
+}
+else if (_board.SessionId == Guid.Empty)
+{
+    <EmptyState Icon="—" Title="Nenhum plantão aberto" Message="Abra um plantão para começar o checklist." />
+}
+else
+{
+    <div class="pilha">
+        <div class="cartao">
+            <p class="faixa__texto"><strong>Data do plantão:</strong> @_board.ServiceDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)</p>
+            <p class="faixa__texto"><strong>Situação:</strong> @(_board.IsSessionOpen ? "Aberto" : "Encerrado")</p>
+        </div>
+
+        @if (_resumo is not null)
+        {
+            <div class="cartao">
+                <h3 class="cartao__titulo">Resumo</h3>
+                <ChecklistProgress Label="Tarefas" Total="_resumo.Overall.Total" Completed="_resumo.Overall.Completed" />
+
+                @if (_resumo.HasPending)
+                {
+                    <div class="faixa faixa--alerta" style="margin-top:var(--esp-3)" role="status">
+                        <span class="faixa__icone" aria-hidden="true">▲</span>
+                        <div class="faixa__conteudo">
+                            <p class="faixa__titulo">@_resumo.Overall.Pending tarefa(s) pendente(s)</p>
+                            <p class="faixa__texto">Encerrar assim mesmo exige confirmação.</p>
+                        </div>
+                    </div>
+                }
+
+                <h4>Classificações</h4>
+                <ul>
+                    @foreach (var marcador in _resumo.Markers)
+                    {
+                        <li data-testid="@($"summary-marker-{marcador.MarkerDefinitionId}")">
+                            <strong>@marcador.MarkerName:</strong>
+                            @(marcador.BedCodes.Count == 0 ? "nenhum leito" : string.Join(", ", marcador.BedCodes))
+                        </li>
+                    }
+                </ul>
+
+                <h4>Por tipo de checklist</h4>
+                <ul>
+                    @foreach (var template in _resumo.Templates)
+                    {
+                        <li>
+                            <strong>@template.TemplateName:</strong>
+                            @template.Progress.Completed de @template.Progress.Total
+                            @if (template.Progress.Pending > 0)
+                            {
+                                <text> (@template.Progress.Pending pendente(s))</text>
+                            }
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <PermissionGuard Permission="@Permissions.ChecklistClose" Access="Session.Access">
+            <ChildContent>
+                <div class="linha">
+                    @if (_board.IsSessionOpen)
+                    {
+                        <button type="button" class="botao botao--perigo" data-testid="close-session" @onclick="() => _confirmarFechamento = true">
+                            Encerrar plantão
+                        </button>
+                        <button type="button" class="botao botao--contorno" data-testid="reset-session" @onclick="() => _confirmarReinicio = true">
+                            Reiniciar checklist
+                        </button>
+                    }
+                </div>
+            </ChildContent>
+            <Fallback>
+                <p class="campo__ajuda">Você não tem permissão para encerrar ou reiniciar o plantão.</p>
+            </Fallback>
+        </PermissionGuard>
+
+        @if (_mensagem is not null)
+        {
+            <div class="faixa faixa--info" role="status"><div class="faixa__conteudo"><p class="faixa__texto">@_mensagem</p></div></div>
+        }
+    </div>
+}
+
+<ConfirmDialog @bind-Visible="_confirmarFechamento"
+               Title="@(_resumo?.HasPending == true ? "Encerrar com pendências?" : "Encerrar o plantão?")"
+               Message="@MensagemFechamento"
+               ConfirmText="Encerrar"
+               OnConfirm="FecharAsync" />
+
+<ConfirmDialog @bind-Visible="_confirmarReinicio"
+               Title="Reiniciar o checklist?"
+               Message="Todas as marcações voltam a pendente. As classificações dos leitos são mantidas."
+               ConfirmText="Reiniciar"
+               OnConfirm="ReiniciarAsync" />
+
+@code {
+    private ChecklistBoard _board = ChecklistBoard.Empty;
+    private SessionSummaryDto? _resumo;
+    private bool _carregando = true;
+    private bool _confirmarFechamento;
+    private bool _confirmarReinicio;
+    private string? _mensagem;
+
+    private string MensagemFechamento => _resumo?.HasPending == true
+        ? $"Ainda há {_resumo.Overall.Pending} tarefa(s) pendente(s). O plantão será encerrado mesmo assim."
+        : "O checklist deste plantão será encerrado.";
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        _carregando = true;
+
+        try
+        {
+            if (Session.CurrentSectorId is not { } sectorId)
+            {
+                return;
+            }
+
+            var templates = await Store.GetTemplatesAsync(sectorId);
+
+            if (templates.Count == 0)
+            {
+                return;
+            }
+
+            _board = await Store.GetBoardAsync(sectorId, templates[0].Id);
+
+            if (_board.SessionId != Guid.Empty)
+            {
+                _resumo = await Store.GetSessionSummaryAsync(_board.SessionId);
+            }
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private async Task FecharAsync()
+    {
+        var ok = await Store.CloseSessionAsync(_board.SessionId, confirmWithPending: true);
+        _mensagem = ok
+            ? "Plantão encerrado."
+            : "Não foi possível encerrar agora. Tente novamente quando o servidor estiver acessível.";
+
+        await CarregarAsync();
+    }
+
+    private async Task ReiniciarAsync()
+    {
+        var ok = await Store.ResetSessionAsync(_board.SessionId);
+        _mensagem = ok ? "Checklist reiniciado." : "Não foi possível reiniciar agora.";
+        await CarregarAsync();
+    }
+}

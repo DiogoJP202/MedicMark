@@ -1,0 +1,70 @@
+@*
+    Visualização do celular: uma coluna por vez, lista vertical de leitos com alvo de toque
+    grande. Sem rolagem horizontal como fluxo principal — é o que o item 12 do enunciado exige.
+*@
+
+<ul class="lista-leitos" data-testid="checklist-mobile-list">
+    @foreach (var linha in LinhasVisiveis)
+    {
+        var celula = linha.Cells.FirstOrDefault(c => c.ColumnId == ColumnId);
+
+        if (celula is null)
+        {
+            continue;
+        }
+
+        <li class="lista-leitos__item">
+            <button type="button"
+                    class="leito-botao @(celula.IsCompleted ? "leito-botao--marcado" : "") @(celula.IsOverdue && !celula.IsCompleted ? "leito-botao--atrasado" : "")"
+                    aria-pressed="@celula.IsCompleted.ToString().ToLowerInvariant()"
+                    aria-label="@($"Leito {linha.BedCode}: {(celula.IsCompleted ? "realizado" : "não realizado")}")"
+                    data-testid="@($"bed-{linha.BedId}")"
+                    disabled="@ReadOnly"
+                    @onclick="() => OnToggle.InvokeAsync(celula)">
+                <span class="leito-botao__caixa" aria-hidden="true">@(celula.IsCompleted ? "✕" : "")</span>
+                <span class="leito-botao__codigo">@linha.BedCode</span>
+                @if (linha.MarkerNames.Count > 0)
+                {
+                    <span class="leito-botao__marcadores">
+                        @foreach (var marcador in linha.MarkerNames)
+                        {
+                            <span class="distintivo">@marcador</span>
+                        }
+                    </span>
+                }
+            </button>
+        </li>
+    }
+</ul>
+
+@if (LinhasVisiveis.Count == 0)
+{
+    <EmptyState Icon="✓"
+                Title="@(OnlyPending ? "Nada pendente aqui" : "Nenhum leito encontrado")"
+                Message="@(OnlyPending ? "Todos os leitos deste horário já foram marcados." : "Nenhum leito corresponde à busca.")" />
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<ChecklistRow> Rows { get; set; } = [];
+
+    [Parameter]
+    public Guid ColumnId { get; set; }
+
+    [Parameter]
+    public string? Search { get; set; }
+
+    [Parameter]
+    public bool OnlyPending { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    [Parameter]
+    public EventCallback<ChecklistCell> OnToggle { get; set; }
+
+    private IReadOnlyList<ChecklistRow> LinhasVisiveis { get; set; } = [];
+
+    protected override void OnParametersSet() =>
+        LinhasVisiveis = ChecklistFilter.ApplyForColumn(Rows, ColumnId, Search, OnlyPending);
+}

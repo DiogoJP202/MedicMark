@@ -1,0 +1,63 @@
+@*
+    Faixa explicativa do estado de conexão.
+
+    Só aparece quando há algo a dizer: com tudo sincronizado, a tela não gasta espaço nem
+    atenção do plantão. Distingue os três casos que o enunciado exige separar — sem internet,
+    sem servidor e tudo certo.
+*@
+
+@if (Mostrar)
+{
+    <div class="faixa @CssFaixa" role="status" data-testid="connection-banner">
+        <span class="faixa__icone" aria-hidden="true">@Icone</span>
+        <div class="faixa__conteudo">
+            <p class="faixa__titulo">@Status.Headline</p>
+            <p class="faixa__texto">@Status.Detail</p>
+            @if (Status.LastSyncAtUtc is { } ultima)
+            {
+                <p class="faixa__texto">Última sincronização: @FormatarData(ultima)</p>
+            }
+        </div>
+        @if (OnSyncNow.HasDelegate)
+        {
+            <button type="button" class="botao botao--contorno" disabled="@Status.IsSyncing" @onclick="OnSyncNow">
+                Sincronizar agora
+            </button>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public SyncStatus Status { get; set; } = SyncStatus.Unknown;
+
+    [Parameter]
+    public EventCallback OnSyncNow { get; set; }
+
+    /// <summary>Converte UTC para o horário local de exibição. Injetado para ser testável.</summary>
+    [Parameter]
+    public Func<DateTime, DateTime>? ToLocal { get; set; }
+
+    private bool Mostrar =>
+        Status.Connectivity is ConnectivityState.Offline or ConnectivityState.ServerUnreachable
+        || Status.HasPendingWork;
+
+    private string Icone => Status.Connectivity switch
+    {
+        ConnectivityState.ServerUnreachable => "▲",
+        ConnectivityState.Offline => "○",
+        _ => "⟳",
+    };
+
+    private string CssFaixa => Status.Connectivity switch
+    {
+        ConnectivityState.ServerUnreachable or ConnectivityState.Offline => "faixa--alerta",
+        _ => "faixa--info",
+    };
+
+    private string FormatarData(DateTime utc)
+    {
+        var local = ToLocal?.Invoke(utc) ?? utc.ToLocalTime();
+        return local.ToString("dd/MM HH:mm", CultureInfo.GetCultureInfo("pt-BR"));
+    }
+}

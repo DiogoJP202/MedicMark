@@ -1,0 +1,81 @@
+@page "/pendencias"
+
+@inject IAppSession Session
+@inject IChecklistStore Store
+@inject NavigationManager Navigation
+
+@*
+    Pendências agrupadas por tipo de checklist e horário, com os leitos que faltam.
+    Os horários atrasados vêm primeiro — é a informação acionável do plantão.
+*@
+
+<PageTitle>Pendências</PageTitle>
+
+<h2>Pendências</h2>
+
+@if (_carregando)
+{
+    <LoadingState />
+}
+else if (_grupos.Count == 0)
+{
+    <EmptyState Icon="✓" Title="Nenhuma pendência" Message="Todas as tarefas deste setor estão marcadas." />
+}
+else
+{
+    <div class="pilha">
+        @foreach (var grupo in _grupos)
+        {
+            <div class="cartao">
+                <div class="linha linha--entre">
+                    <h3 class="cartao__titulo">
+                        @grupo.TemplateName · @grupo.ColumnName
+                        @if (grupo.TriggerTime is { } hora)
+                        {
+                            <span class="campo__ajuda"> (@hora.ToString("HH\\:mm", CultureInfo.InvariantCulture))</span>
+                        }
+                    </h3>
+                    @if (grupo.IsOverdue)
+                    {
+                        <span class="distintivo distintivo--erro">! Atrasado</span>
+                    }
+                    else
+                    {
+                        <span class="distintivo distintivo--alerta">@grupo.Count pendente@(grupo.Count == 1 ? "" : "s")</span>
+                    }
+                </div>
+
+                <p class="faixa__texto"><strong>Setor:</strong> @grupo.SectorName</p>
+                <p class="faixa__texto"><strong>Leitos:</strong> @string.Join(", ", grupo.BedCodes)</p>
+
+                <button type="button"
+                        class="botao botao--primario"
+                        data-testid="@($"open-{grupo.ColumnId}")"
+                        @onclick="@(() => Navigation.NavigateTo($"/checklist/{grupo.TemplateId}/{grupo.ColumnId}"))">
+                    Abrir checklist
+                </button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private IReadOnlyList<PendingGroup> _grupos = [];
+    private bool _carregando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Session.CurrentSectorId is { } sectorId)
+        {
+            var pendencias = await Store.GetPendingAsync(sectorId);
+
+            // Atrasados primeiro; dentro de cada grupo, ordem cronológica.
+            _grupos = [.. pendencias
+                .OrderByDescending(p => p.IsOverdue)
+                .ThenBy(p => p.TriggerTime ?? TimeOnly.MaxValue)
+                .ThenBy(p => p.TemplateName, StringComparer.Ordinal)];
+        }
+
+        _carregando = false;
+    }
+}

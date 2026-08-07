@@ -1,0 +1,144 @@
+@page "/classificacoes"
+
+@inject IAppSession Session
+@inject IChecklistStore Store
+
+@*
+    C.I., Sondas, Drenos e o que mais o administrador cadastrar.
+
+    Nenhuma regra aqui compara o nome do marcador: tudo é identificado por Id, e a lista vem
+    da configuração sincronizada. Renomear "Sondas" no painel administrativo não quebra nada.
+*@
+
+<PageTitle>Classificações</PageTitle>
+
+<h2>Classificações dos leitos</h2>
+<p>Estas marcações valem apenas para o plantão atual. Um leito pode ter mais de uma.</p>
+
+@if (_carregando)
+{
+    <LoadingState />
+}
+else if (_leitos.Count == 0)
+{
+    <EmptyState Icon="—" Title="Nenhum leito no plantão" Message="Abra um plantão para classificar os leitos." />
+}
+else
+{
+    <div class="linha" role="group" aria-label="Filtrar por classificação">
+        <button type="button"
+                class="botao @(_filtro is null ? "botao--primario" : "botao--contorno")"
+                @onclick="() => _filtro = null">
+            Todos os leitos
+        </button>
+
+        @foreach (var definicao in _definicoes)
+        {
+            var quantidade = _leitos.Count(l => l.Markers.Any(m => m.MarkerDefinitionId == definicao.MarkerDefinitionId && m.IsSelected));
+
+            <button type="button"
+                    class="botao @(_filtro == definicao.MarkerDefinitionId ? "botao--primario" : "botao--contorno")"
+                    data-testid="@($"filter-{definicao.MarkerDefinitionId}")"
+                    @onclick="() => _filtro = definicao.MarkerDefinitionId">
+                @definicao.Name (@quantidade)
+            </button>
+        }
+    </div>
+
+    <div class="pilha" style="margin-top:var(--esp-4)">
+        @foreach (var leito in LeitosVisiveis)
+        {
+            <div class="cartao" data-testid="@($"markers-bed-{leito.BedId}")">
+                <h3 class="cartao__titulo">Leito @leito.BedCode</h3>
+                <div class="linha">
+                    @foreach (var marcador in leito.Markers)
+                    {
+                        <label class="campo campo--horizontal" style="margin:0;min-height:var(--toque-min)">
+                            <input type="checkbox"
+                                   style="width:26px;height:26px"
+                                   data-testid="@($"marker-{leito.BedId}-{marcador.MarkerDefinitionId}")"
+                                   checked="@marcador.IsSelected"
+                                   disabled="@(!_podeEditar)"
+                                   @onchange="args => AlternarAsync(leito, marcador, args.Value is true)" />
+                            <span>@marcador.Name</span>
+                        </label>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (_mensagem is not null)
+    {
+        <div class="faixa faixa--alerta" role="status" data-testid="markers-message">
+            <span class="faixa__icone" aria-hidden="true">▲</span>
+            <div class="faixa__conteudo"><p class="faixa__texto">@_mensagem</p></div>
+        </div>
+    }
+}
+
+@code {
+    private IReadOnlyList<BedMarkersView> _leitos = [];
+    private IReadOnlyList<BedMarkerState> _definicoes = [];
+    private Guid? _filtro;
+    private bool _carregando = true;
+    private bool _podeEditar;
+    private string? _mensagem;
+    private Guid _sessionId;
+
+    private IEnumerable<BedMarkersView> LeitosVisiveis =>
+        _filtro is null
+            ? _leitos
+            : _leitos.Where(l => l.Markers.Any(m => m.MarkerDefinitionId == _filtro && m.IsSelected));
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        _carregando = true;
+
+        try
+        {
+            if (Session.CurrentSectorId is not { } sectorId)
+            {
+                return;
+            }
+
+            var templates = await Store.GetTemplatesAsync(sectorId);
+
+            if (templates.Count == 0)
+            {
+                return;
+            }
+
+            var board = await Store.GetBoardAsync(sectorId, templates[0].Id);
+            _sessionId = board.SessionId;
+            _leitos = await Store.GetAllBedMarkersAsync(_sessionId);
+
+            // A lista de definições é a mesma para todos os leitos; basta olhar o primeiro.
+            _definicoes = _leitos.Count > 0 ? _leitos[0].Markers : [];
+
+            _podeEditar = board.IsSessionOpen && Session.Access.Has(Permissions.ChecklistUpdate);
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private async Task AlternarAsync(BedMarkersView leito, BedMarkerState marcador, bool selecionado)
+    {
+        _mensagem = null;
+
+        var resultado = await Store.ToggleMarkerAsync(_sessionId, leito.BedId, marcador, selecionado);
+
+        if (!resultado.Succeeded)
+        {
+            // Classificação não usa "conclusão vence": em conflito o estado do servidor prevalece
+            // e o usuário é avisado em linguagem simples para refazer se quiser.
+            _mensagem = resultado.Message ?? "Outro dispositivo alterou esta classificação. A tela foi atualizada.";
+        }
+
+        await CarregarAsync();
+    }
+}

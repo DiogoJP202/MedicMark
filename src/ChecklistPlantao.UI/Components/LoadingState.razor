@@ -1,0 +1,8 @@
+<div class="estado-carregando" role="status" aria-live="polite" data-testid="loading-state">
+    <p>@Message</p>
+</div>
+
+@code {
+    [Parameter]
+    public string Message { get; set; } = "Carregando…";
+}
