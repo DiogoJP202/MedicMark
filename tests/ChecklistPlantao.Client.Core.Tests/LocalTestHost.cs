@@ -181,7 +181,18 @@ internal sealed class LocalTestHost : IDisposable
     }
 
     public SyncEngine CreateEngine(LocalDbContext db) =>
-        new(db, new OutboxWriter(db), Api, Clock, NullLogger<SyncEngine>.Instance);
+        new(db, Api, Clock, NullLogger<SyncEngine>.Instance);
+
+    /// <summary>
+    /// Fábrica sobre o mesmo arquivo — para exercitar o caminho de produção, em que cada operação
+    /// abre o seu próprio contexto.
+    /// </summary>
+    public IDbContextFactory<LocalDbContext> CreateFactory() => new FabricaDeTeste(this);
+
+    private sealed class FabricaDeTeste(LocalTestHost host) : IDbContextFactory<LocalDbContext>
+    {
+        public LocalDbContext CreateDbContext() => host.CreateContext();
+    }
 
     /// <summary>Bootstrap equivalente ao que o servidor real devolveria com os dados de seed.</summary>
     public static BootstrapResponse BuildBootstrap(long cursor = 1)

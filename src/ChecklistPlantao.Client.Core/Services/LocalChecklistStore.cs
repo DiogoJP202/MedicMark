@@ -10,6 +10,7 @@ using ChecklistPlantao.Domain.Settings;
 using ChecklistPlantao.Domain.Structure;
 using ChecklistPlantao.UI.Abstractions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace ChecklistPlantao.Client.Core.Services;
@@ -20,18 +21,93 @@ namespace ChecklistPlantao.Client.Core.Services;
 /// A interface nunca espera o servidor: marcar grava localmente e enfileira. É o que garante que
 /// o toque responda igual com ou sem rede.
 /// </summary>
-public sealed class LocalChecklistStore(
-    LocalDbContext db,
-    OutboxWriter outbox,
-    IServerApi api,
-    IClock clock,
-    IInstitutionTimeZone timeZone,
-    IInstitutionSettingsProvider settings,
-    ILogger<LocalChecklistStore> logger) : IChecklistStore
+public sealed class LocalChecklistStore : IChecklistStore
 {
+    private readonly IDbContextFactory<LocalDbContext>? _contextos;
+    private readonly LocalDbContext? _emprestado;
+    private readonly OutboxWriter outbox;
+    private readonly IServerApi api;
+    private readonly IClock clock;
+    private readonly IInstitutionTimeZone timeZone;
+    private readonly IInstitutionSettingsProvider settings;
+    private readonly ILogger<LocalChecklistStore> logger;
+
+    /// <summary>
+    /// Modo normal: um contexto por operação. Abrir o quadro, marcar e listar classificações são
+    /// unidades de trabalho independentes. Ver docs/DECISIONS.md (D-021).
+    /// </summary>
+    [ActivatorUtilitiesConstructor]
+    public LocalChecklistStore(
+        IDbContextFactory<LocalDbContext> contextos,
+        OutboxWriter outbox,
+        IServerApi api,
+        IClock clock,
+        IInstitutionTimeZone timeZone,
+        IInstitutionSettingsProvider settings,
+        ILogger<LocalChecklistStore> logger)
+        : this(outbox, api, clock, timeZone, settings, logger) => _contextos = contextos;
+
+    /// <summary>Modo emprestado: trabalha num contexto já aberto, de quem o criou.</summary>
+    public LocalChecklistStore(
+        LocalDbContext db,
+        OutboxWriter outbox,
+        IServerApi api,
+        IClock clock,
+        IInstitutionTimeZone timeZone,
+        IInstitutionSettingsProvider settings,
+        ILogger<LocalChecklistStore> logger)
+        : this(outbox, api, clock, timeZone, settings, logger) => _emprestado = db;
+
+    private LocalChecklistStore(
+        OutboxWriter outbox,
+        IServerApi api,
+        IClock clock,
+        IInstitutionTimeZone timeZone,
+        IInstitutionSettingsProvider settings,
+        ILogger<LocalChecklistStore> logger)
+    {
+        this.outbox = outbox;
+        this.api = api;
+        this.clock = clock;
+        this.timeZone = timeZone;
+        this.settings = settings;
+        this.logger = logger;
+    }
+
     public event Action? Changed;
 
+    /// <summary>Devolve o contexto a usar e se ele é nosso (e portanto precisa ser descartado).</summary>
+    private async Task<(LocalDbContext Db, bool Meu)> AbrirAsync(CancellationToken cancellationToken)
+    {
+        if (_emprestado is not null)
+        {
+            return (_emprestado, false);
+        }
+
+        return (await _contextos!.CreateDbContextAsync(cancellationToken).ConfigureAwait(false), true);
+    }
+
+    private static ValueTask FecharAsync(LocalDbContext db, bool meu) =>
+        meu ? db.DisposeAsync() : ValueTask.CompletedTask;
+
     public async Task<IReadOnlyList<ChecklistTemplateDto>> GetTemplatesAsync(Guid sectorId, CancellationToken cancellationToken = default)
+    {
+        var (db, meu) = await AbrirAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            return await GetTemplatesAsync(db, sectorId, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            await FecharAsync(db, meu).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task<IReadOnlyList<ChecklistTemplateDto>> GetTemplatesAsync(
+        LocalDbContext db,
+        Guid sectorId,
+        CancellationToken cancellationToken)
     {
         var templates = await db.ChecklistTemplates
             .AsNoTracking()
@@ -47,7 +123,25 @@ public sealed class LocalChecklistStore(
 
     public async Task<ChecklistBoard> GetBoardAsync(Guid sectorId, Guid templateId, CancellationToken cancellationToken = default)
     {
-        var sessao = await EnsureSessionAsync(sectorId, cancellationToken).ConfigureAwait(false);
+        var (db, meu) = await AbrirAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            return await GetBoardAsync(db, sectorId, templateId, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            await FecharAsync(db, meu).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<ChecklistBoard> GetBoardAsync(
+        LocalDbContext db,
+        Guid sectorId,
+        Guid templateId,
+        CancellationToken cancellationToken)
+    {
+        var sessao = await EnsureSessionAsync(db, sectorId, cancellationToken).ConfigureAwait(false);
 
         if (sessao is null)
         {
@@ -81,7 +175,7 @@ public sealed class LocalChecklistStore(
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var marcadoresPorLeito = await LoadMarkerNamesAsync(sessao.Id, cancellationToken).ConfigureAwait(false);
+        var marcadoresPorLeito = await LoadMarkerNamesAsync(db, sessao.Id, cancellationToken).ConfigureAwait(false);
 
         var configuracoes = await settings.GetAsync(cancellationToken).ConfigureAwait(false);
         var janela = ShiftResolver.For(configuracoes, setor);
@@ -140,10 +234,21 @@ public sealed class LocalChecklistStore(
     {
         ArgumentNullException.ThrowIfNull(cell);
 
-        var sessao = await db.OperationalSessions
-            .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Status == SessionStatus.Open, cancellationToken)
-            .ConfigureAwait(false);
+        var (db, meu) = await AbrirAsync(cancellationToken).ConfigureAwait(false);
+
+        OperationalSession? sessao;
+
+        try
+        {
+            sessao = await db.OperationalSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Status == SessionStatus.Open, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            await FecharAsync(db, meu).ConfigureAwait(false);
+        }
 
         if (sessao is null)
         {
@@ -175,6 +280,23 @@ public sealed class LocalChecklistStore(
     }
 
     public async Task<IReadOnlyList<BedMarkersView>> GetAllBedMarkersAsync(Guid sessionId, CancellationToken cancellationToken = default)
+    {
+        var (db, meu) = await AbrirAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            return await GetAllBedMarkersAsync(db, sessionId, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            await FecharAsync(db, meu).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task<IReadOnlyList<BedMarkersView>> GetAllBedMarkersAsync(
+        LocalDbContext db,
+        Guid sessionId,
+        CancellationToken cancellationToken)
     {
         var sessao = await db.OperationalSessions
             .AsNoTracking()
@@ -306,12 +428,21 @@ public sealed class LocalChecklistStore(
 
         if (ok)
         {
-            var sessao = await db.OperationalSessions.FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken).ConfigureAwait(false);
+            var (db, meu) = await AbrirAsync(cancellationToken).ConfigureAwait(false);
 
-            if (sessao is { IsOpen: true })
+            try
             {
-                sessao.Close(clock.UtcNow);
-                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                var sessao = await db.OperationalSessions.FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken).ConfigureAwait(false);
+
+                if (sessao is { IsOpen: true })
+                {
+                    sessao.Close(clock.UtcNow);
+                    await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                await FecharAsync(db, meu).ConfigureAwait(false);
             }
 
             Changed?.Invoke();
@@ -331,14 +462,24 @@ public sealed class LocalChecklistStore(
 
         if (ok)
         {
-            var entradas = await db.ChecklistEntries.Where(e => e.SessionId == sessionId).ToListAsync(cancellationToken).ConfigureAwait(false);
+            var (db, meu) = await AbrirAsync(cancellationToken).ConfigureAwait(false);
 
-            foreach (var entrada in entradas)
+            try
             {
-                entrada.SetCompletion(false, clock.UtcNow);
+                var entradas = await db.ChecklistEntries.Where(e => e.SessionId == sessionId).ToListAsync(cancellationToken).ConfigureAwait(false);
+
+                foreach (var entrada in entradas)
+                {
+                    entrada.SetCompletion(false, clock.UtcNow);
+                }
+
+                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                await FecharAsync(db, meu).ConfigureAwait(false);
             }
 
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             Changed?.Invoke();
         }
 
@@ -349,7 +490,7 @@ public sealed class LocalChecklistStore(
     /// Garante uma sessão local para o setor. Se o servidor estiver acessível, adota a dele;
     /// caso contrário cria uma local para o plantão poder começar mesmo sem rede.
     /// </summary>
-    private async Task<OperationalSession?> EnsureSessionAsync(Guid sectorId, CancellationToken cancellationToken)
+    private async Task<OperationalSession?> EnsureSessionAsync(LocalDbContext db, Guid sectorId, CancellationToken cancellationToken)
     {
         var local = await db.OperationalSessions
             .Include(s => s.Beds)
@@ -362,7 +503,7 @@ public sealed class LocalChecklistStore(
 
             if (doServidor is not null)
             {
-                local = await AdoptServerSessionAsync(doServidor, local, cancellationToken).ConfigureAwait(false);
+                local = await AdoptServerSessionAsync(db, doServidor, local, cancellationToken).ConfigureAwait(false);
                 return local;
             }
         }
@@ -415,7 +556,8 @@ public sealed class LocalChecklistStore(
         return sessao;
     }
 
-    private async Task<OperationalSession> AdoptServerSessionAsync(
+    private static async Task<OperationalSession> AdoptServerSessionAsync(
+        LocalDbContext db,
         SessionStateDto estado,
         OperationalSession? local,
         CancellationToken cancellationToken)
@@ -486,7 +628,8 @@ public sealed class LocalChecklistStore(
     }
 
     /// <summary>Marcadores ativos de cada leito na sessão, com Id e nome.</summary>
-    private async Task<Dictionary<Guid, List<(Guid Id, string Nome)>>> LoadMarkerNamesAsync(
+    private static async Task<Dictionary<Guid, List<(Guid Id, string Nome)>>> LoadMarkerNamesAsync(
+        LocalDbContext db,
         Guid sessionId,
         CancellationToken cancellationToken)
     {
@@ -512,6 +655,23 @@ public sealed class LocalChecklistStore(
     }
 
     private async Task<SessionSummaryDto> BuildLocalSummaryAsync(Guid sessionId, CancellationToken cancellationToken)
+    {
+        var (db, meu) = await AbrirAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            return await BuildLocalSummaryAsync(db, sessionId, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            await FecharAsync(db, meu).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task<SessionSummaryDto> BuildLocalSummaryAsync(
+        LocalDbContext db,
+        Guid sessionId,
+        CancellationToken cancellationToken)
     {
         var sessao = await db.OperationalSessions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken).ConfigureAwait(false);
 

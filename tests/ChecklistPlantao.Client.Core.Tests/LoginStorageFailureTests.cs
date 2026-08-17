@@ -128,13 +128,16 @@ public sealed class LoginStorageFailureTests
     }
 
     /// <summary>
-    /// A espiral observada no aparelho: uma gravação falha, as entidades ficam presas no
-    /// rastreador, e como o contexto do MAUI Blazor Hybrid vive enquanto o aplicativo viver,
-    /// TODA gravação seguinte falha — inclusive marcar um leito, que nada tem a ver com a
+    /// A espiral observada no aparelho: uma gravação falhava, as entidades ficavam presas no
+    /// rastreador, e como o contexto do MAUI Blazor Hybrid vivia enquanto o aplicativo vivesse,
+    /// TODA gravação seguinte falhava — inclusive marcar um leito, que nada tem a ver com a
     /// primeira. O aparelho só voltava a funcionar sendo reinstalado.
+    ///
+    /// Este teste usa a FÁBRICA, que é o caminho de produção: cada operação abre o seu contexto,
+    /// então uma falha morre junto com o contexto dela.
     /// </summary>
     [Fact]
-    public async Task Gravacao_que_falha_nao_deixa_o_contexto_inutilizado()
+    public async Task Gravacao_que_falha_nao_contamina_as_operacoes_seguintes()
     {
         using var host = await LocalTestHost.CreateAsync();
 
@@ -148,16 +151,22 @@ public sealed class LoginStorageFailureTests
 
         host.Api.LoginResult = LoginComOutroIdentificador("admin");
 
-        await using var db = host.CreateContext();
-        var sessao = CreateSession(host, db);
+        var fabrica = host.CreateFactory();
+
+        var sessao = new ClientSession(
+            fabrica,
+            host.Api,
+            new FakeTokenStore(),
+            host.Clock,
+            new FakeSettings(),
+            new AuthenticatedSessionState(),
+            Options.Create(new OfflineAuthOptions { Iterations = 1_000 }),
+            NullLogger<ClientSession>.Instance);
 
         Assert.False(await sessao.SignInAsync("admin", "Senha12345"));
 
-        // O rastreador precisa estar limpo: o que estava nele não chegou ao disco.
-        Assert.Empty(db.ChangeTracker.Entries());
-
-        // E o MESMO contexto precisa continuar servindo. Aqui está o que o plantão perdia.
-        var escritor = new OutboxWriter(db);
+        // O aplicativo precisa continuar servindo. Aqui está o que o plantão perdia.
+        var escritor = new OutboxWriter(fabrica);
 
         var marcacao = await escritor.ToggleEntryAsync(
             Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(),
@@ -165,6 +174,10 @@ public sealed class LoginStorageFailureTests
 
         Assert.True(marcacao.IsCompleted);
         Assert.Equal(1, await escritor.PendingCountAsync());
+
+        // E entrar de novo continua possível — a falha não deixou resíduo.
+        Assert.False(await sessao.SignInAsync("admin", "Senha12345"));
+        Assert.NotNull(sessao.LastSignInError);
     }
 
     /// <summary>

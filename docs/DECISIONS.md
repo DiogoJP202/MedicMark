@@ -361,24 +361,33 @@ A causa comum tem duas metades:
    repetir em toda operação seguinte, mesmo nas que nada têm a ver com a primeira. No aparelho isso
    apareceu como o arquivo `-wal` parado no mesmo tamanho por horas: nenhuma escrita concluía.
 
-**Decisão.** Duas regras:
+**Decisão.** Duas regras, uma para cada metade:
 
-- Toda busca que antecede um `Add` consulta `DbSet.Local` **antes** do banco. Vale em
-  `OutboxWriter`, `SyncEngine` e `LocalChecklistStore`.
-- `LocalDbContext.SaveChangesAsync` limpa o rastreador quando a gravação falha, e **relança**. A
-  transação já foi desfeita, então nada do que estava rastreado chegou ao disco; descartar devolve
-  o contexto a um estado utilizável sem esconder o erro de quem chamou.
+- **`IDbContextFactory<LocalDbContext>` no lugar de `AddDbContext`.** Cada unidade de trabalho abre
+  e descarta o seu próprio contexto: marcar um leito, entrar, abrir o quadro, um ciclo de
+  sincronização. É o padrão que a documentação do Blazor recomenda, exatamente por causa deste
+  tempo de vida de escopo. `OutboxWriter`, `SyncEngine`, `ClientSession`, `LocalChecklistStore`,
+  `ServerConfigurationService`, `NotificationStatusService` e `DeviceDiagnosticsService` passaram a
+  recebê-la.
+- **`DbSet.Local` antes do banco** em toda busca que antecede um `Add`. Um contexto novo não
+  resolve isto sozinho: dentro de uma mesma unidade de trabalho, uma entidade adicionada momentos
+  antes continua invisível para um `SELECT`.
 
-**Consequências.** Uma falha isolada deixa de contaminar o aplicativo inteiro. O preço é que, se
-duas operações estiverem em andamento no mesmo contexto e uma falhar, a outra perde as alterações
-pendentes — aceitável perto da alternativa, que era o aparelho parar de gravar até ser reinstalado.
+Essas classes ganharam um segundo construtor que recebe um contexto **emprestado**, para quem já
+abriu uma unidade de trabalho (o motor de sincronização, e os testes). O contêiner não sabe escolher
+entre construtores de mesma aridade, então o registro em `DependencyInjection` é explícito — e é bom
+que a escolha fique visível ali, e não escondida numa regra de resolução.
 
-**O que isto NÃO resolve.** O contexto continua vivendo enquanto o aplicativo viver, com todos os
-efeitos colaterais de um rastreador de longa vida (memória, dados velhos em cache). A correção
-estrutural é `IDbContextFactory<LocalDbContext>` com um contexto por unidade de trabalho — pendente,
-registrada em `KNOWN_LIMITATIONS.md`.
+**Consequências.** Uma falha morre junto com o contexto dela: deixou de contaminar as operações
+seguintes. O rastreador não acumula mais o plantão inteiro, e duas operações simultâneas não
+compartilham mais a mesma instância — que nunca foi segura para isso, e era a origem do
+`Unexpected entry.EntityState: Detached`.
 
-**Status.** Aceita, com continuação pendente.
+Um cuidado que veio junto: entidades **não podem ser guardadas em campo** entre operações, porque
+pertencem ao contexto que as leu. `ClientSession` deixou de cachear o `DeviceState`, e
+`ServerConfigurationService` passou a cachear um registro de valores em vez da entidade.
+
+**Status.** Aceita.
 
 ---
 

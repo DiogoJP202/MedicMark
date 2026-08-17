@@ -102,9 +102,18 @@ public sealed class SecureTokenStore(ISecureStore secure, IServiceProvider servi
 }
 
 /// <summary>Endereço do servidor e nome do aparelho, guardados no banco local.</summary>
-public sealed class ServerConfigurationService(LocalDbContext db, IServiceProvider services) : IServerConfigurationService, IServerAddressProvider
+public sealed class ServerConfigurationService(
+    IDbContextFactory<LocalDbContext> contextos,
+    IServiceProvider services) : IServerConfigurationService, IServerAddressProvider
 {
-    private DeviceState? _cache;
+    /// <summary>
+    /// Cache de VALORES, não da entidade. Guardar o <see cref="DeviceState"/> rastreado manteria
+    /// vivo o contexto que o leu — exatamente o que a fábrica de contextos veio evitar. Estas três
+    /// propriedades são síncronas porque quem monta a requisição HTTP precisa do endereço na hora.
+    /// </summary>
+    private Configuracao? _cache;
+
+    private sealed record Configuracao(string? ServerUrl, string DeviceName, Guid DeviceId);
 
     public string? ServerUrl => Load().ServerUrl;
 
@@ -125,21 +134,42 @@ public sealed class ServerConfigurationService(LocalDbContext db, IServiceProvid
 
     public async Task SaveAsync(string url, string deviceName, CancellationToken cancellationToken = default)
     {
-        var estado = await EnsureAsync(cancellationToken).ConfigureAwait(false);
+        await using var db = await contextos.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+
+        var estado = await EnsureAsync(db, cancellationToken).ConfigureAwait(false);
         estado.Configure(HttpServerApi.NormalizeUrl(url), deviceName);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        _cache = Instantanea(estado);
     }
 
     public async Task ResetAsync(CancellationToken cancellationToken = default)
     {
-        var estado = await EnsureAsync(cancellationToken).ConfigureAwait(false);
+        await using var db = await contextos.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+
+        var estado = await EnsureAsync(db, cancellationToken).ConfigureAwait(false);
         estado.ClearServer();
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        _cache = Instantanea(estado);
     }
 
-    private DeviceState Load() => _cache ??= db.DeviceState.FirstOrDefault() ?? new DeviceState();
+    private Configuracao Load()
+    {
+        if (_cache is not null)
+        {
+            return _cache;
+        }
 
-    private async Task<DeviceState> EnsureAsync(CancellationToken cancellationToken)
+        using var db = contextos.CreateDbContext();
+
+        return _cache = Instantanea(db.DeviceState.AsNoTracking().FirstOrDefault() ?? new DeviceState());
+    }
+
+    private static Configuracao Instantanea(DeviceState estado) =>
+        new(estado.ServerUrl, estado.DeviceName, estado.DeviceId);
+
+    private static async Task<DeviceState> EnsureAsync(LocalDbContext db, CancellationToken cancellationToken)
     {
         var estado = await db.DeviceState.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
@@ -150,7 +180,6 @@ public sealed class ServerConfigurationService(LocalDbContext db, IServiceProvid
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        _cache = estado;
         return estado;
     }
 }
@@ -183,11 +212,16 @@ public sealed class SyncStatusService(
             using var escopo = services.CreateScope();
             var motor = escopo.ServiceProvider.GetRequiredService<SyncEngine>();
             var fila = escopo.ServiceProvider.GetRequiredService<OutboxWriter>();
-            var db = escopo.ServiceProvider.GetRequiredService<LocalDbContext>();
             var api = escopo.ServiceProvider.GetRequiredService<IServerApi>();
 
             var resultado = await motor.SynchronizeAsync(cancellationToken).ConfigureAwait(false);
             var pendentes = await fila.PendingCountAsync(cancellationToken).ConfigureAwait(false);
+
+            await using var db = await escopo.ServiceProvider
+                .GetRequiredService<IDbContextFactory<LocalDbContext>>()
+                .CreateDbContextAsync(cancellationToken)
+                .ConfigureAwait(false);
+
             var estado = await db.SyncState.AsNoTracking().FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
             Publish(new SyncStatus(Resolve(api), pendentes, estado?.LastSyncAtUtc, false, resultado.Error));
@@ -263,10 +297,15 @@ public sealed class SyncStatusService(
     {
         using var escopo = services.CreateScope();
         var fila = escopo.ServiceProvider.GetRequiredService<OutboxWriter>();
-        var db = escopo.ServiceProvider.GetRequiredService<LocalDbContext>();
         var api = escopo.ServiceProvider.GetRequiredService<IServerApi>();
 
         var pendentes = await fila.PendingCountAsync(cancellationToken).ConfigureAwait(false);
+
+        await using var db = await escopo.ServiceProvider
+            .GetRequiredService<IDbContextFactory<LocalDbContext>>()
+            .CreateDbContextAsync(cancellationToken)
+            .ConfigureAwait(false);
+
         var estado = await db.SyncState.AsNoTracking().FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
         Publish(new SyncStatus(Resolve(api), pendentes, estado?.LastSyncAtUtc, false, Current.LastError));
@@ -307,7 +346,7 @@ public sealed class NotificationStatusService(
     INotificationPermissionService permissions,
     ILocalNotificationScheduler scheduler,
     INotificationHealthService health,
-    LocalDbContext db,
+    IDbContextFactory<LocalDbContext> contextos,
     IClock clock) : INotificationStatusService
 {
     public NotificationStatus Current { get; private set; } = NotificationStatus.Unknown;
@@ -318,7 +357,11 @@ public sealed class NotificationStatusService(
     {
         var estado = await permissions.GetAsync(cancellationToken).ConfigureAwait(false);
         var problemas = await health.DiagnoseAsync(cancellationToken).ConfigureAwait(false);
+
+        await using var db = await contextos.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+
         var config = await db.NotificationConfigurations.AsNoTracking().FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        // Rastreado de propósito: logo abaixo o estado das permissões é gravado nele.
         var dispositivo = await db.DeviceState.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
         var agendados = await scheduler.GetScheduledIdsAsync(cancellationToken).ConfigureAwait(false);
@@ -363,18 +406,21 @@ public sealed class NotificationStatusService(
                 .ShowNowAsync("Teste do Checklist de Plantão", "Se você está vendo isto, as notificações funcionam neste aparelho.", cancellationToken)
                 .ConfigureAwait(false);
 
-            var dispositivo = await db.DeviceState.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-
-            if (dispositivo is not null)
+            await using (var db = await contextos.CreateDbContextAsync(cancellationToken).ConfigureAwait(false))
             {
-                dispositivo.UpdateNotificationState(
-                    dispositivo.NotificationsPermissionGranted,
-                    dispositivo.ExactAlarmPermissionGranted,
-                    dispositivo.BatteryOptimizationIgnored,
-                    dispositivo.NotificationHealth,
-                    clock.UtcNow);
+                var dispositivo = await db.DeviceState.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
-                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                if (dispositivo is not null)
+                {
+                    dispositivo.UpdateNotificationState(
+                        dispositivo.NotificationsPermissionGranted,
+                        dispositivo.ExactAlarmPermissionGranted,
+                        dispositivo.BatteryOptimizationIgnored,
+                        dispositivo.NotificationHealth,
+                        clock.UtcNow);
+
+                    await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                }
             }
 
             await RefreshAsync(cancellationToken).ConfigureAwait(false);
@@ -406,7 +452,7 @@ public sealed class NotificationStatusService(
 
 /// <summary>Reúne o diagnóstico exibido na tela "Estado do dispositivo".</summary>
 public sealed class DeviceDiagnosticsService(
-    LocalDbContext db,
+    IDbContextFactory<LocalDbContext> contextos,
     IPlatformInfo platform,
     IServerConfigurationService configuration,
     IServerApi api,
@@ -417,8 +463,10 @@ public sealed class DeviceDiagnosticsService(
 {
     public async Task<DeviceDiagnostics> GetAsync(CancellationToken cancellationToken = default)
     {
+        await using var db = await contextos.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+
         var estado = await db.SyncState.AsNoTracking().FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-        var pendentes = await db.Outbox.CountAsync(o => o.Status != Domain.Sync.OutboxItemStatus.Done, cancellationToken).ConfigureAwait(false);
+        var pendentes = await db.Outbox.AsNoTracking().CountAsync(o => o.Status != Domain.Sync.OutboxItemStatus.Done, cancellationToken).ConfigureAwait(false);
 
         return new DeviceDiagnostics(
             platform.PlatformName,

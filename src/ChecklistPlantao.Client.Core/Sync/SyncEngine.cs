@@ -9,6 +9,7 @@ using ChecklistPlantao.Domain.Settings;
 using ChecklistPlantao.Domain.Structure;
 using ChecklistPlantao.Domain.Sync;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace ChecklistPlantao.Client.Core.Sync;
@@ -30,13 +31,41 @@ public sealed record SyncOutcome(bool ServerReached, int Sent, int Applied, int 
 ///   • falha de envio vira nova tentativa com espera crescente, nunca laço apertado;
 ///   • se o servidor disser que o cursor é velho demais, refaz-se o bootstrap.
 /// </summary>
-public sealed class SyncEngine(
-    LocalDbContext db,
-    OutboxWriter outbox,
-    IServerApi api,
-    IClock clock,
-    ILogger<SyncEngine> logger)
+public sealed class SyncEngine
 {
+    private readonly IDbContextFactory<LocalDbContext>? _contextos;
+    private readonly LocalDbContext? _emprestado;
+    private readonly IServerApi api;
+    private readonly IClock clock;
+    private readonly ILogger<SyncEngine> logger;
+
+    /// <summary>
+    /// Modo normal: um contexto por CICLO de sincronização. O ciclo inteiro — enviar a fila,
+    /// receber as mudanças, avançar o cursor — é uma unidade de trabalho só, e precisa de um
+    /// contexto que viva exatamente isso. Ver docs/DECISIONS.md (D-021).
+    /// </summary>
+    [ActivatorUtilitiesConstructor]
+    public SyncEngine(
+        IDbContextFactory<LocalDbContext> contextos,
+        IServerApi api,
+        IClock clock,
+        ILogger<SyncEngine> logger)
+    {
+        _contextos = contextos;
+        this.api = api;
+        this.clock = clock;
+        this.logger = logger;
+    }
+
+    /// <summary>Modo emprestado: trabalha num contexto já aberto, de quem o criou.</summary>
+    public SyncEngine(LocalDbContext db, IServerApi api, IClock clock, ILogger<SyncEngine> logger)
+    {
+        _emprestado = db;
+        this.api = api;
+        this.clock = clock;
+        this.logger = logger;
+    }
+
     /// <summary>Operações por lote. Suficiente para um plantão inteiro sem estourar a rede.</summary>
     public const int BatchSize = 100;
 
@@ -47,26 +76,63 @@ public sealed class SyncEngine(
             return SyncOutcome.Unreachable();
         }
 
-        var state = await GetStateAsync(cancellationToken).ConfigureAwait(false);
+        var (db, meu) = await AbrirAsync(cancellationToken).ConfigureAwait(false);
 
-        if (!state.BootstrapCompleted)
+        try
         {
-            var bootstrapped = await BootstrapAsync(cancellationToken).ConfigureAwait(false);
+            var state = await GetStateAsync(db, cancellationToken).ConfigureAwait(false);
 
-            if (!bootstrapped)
+            if (!state.BootstrapCompleted)
             {
-                return SyncOutcome.Unreachable("Não foi possível carregar a configuração do servidor.");
+                var bootstrapped = await BootstrapAsync(db, cancellationToken).ConfigureAwait(false);
+
+                if (!bootstrapped)
+                {
+                    return SyncOutcome.Unreachable("Não foi possível carregar a configuração do servidor.");
+                }
             }
+
+            var push = await PushAsync(db, cancellationToken).ConfigureAwait(false);
+            var received = await PullAsync(db, cancellationToken).ConfigureAwait(false);
+
+            return push with { Received = received };
         }
-
-        var push = await PushAsync(cancellationToken).ConfigureAwait(false);
-        var received = await PullAsync(cancellationToken).ConfigureAwait(false);
-
-        return push with { Received = received };
+        finally
+        {
+            await FecharAsync(db, meu).ConfigureAwait(false);
+        }
     }
 
     /// <summary>Baixa a configuração completa e a grava localmente. Usado no primeiro uso e na recuperação.</summary>
     public async Task<bool> BootstrapAsync(CancellationToken cancellationToken = default)
+    {
+        var (db, meu) = await AbrirAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            return await BootstrapAsync(db, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            await FecharAsync(db, meu).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Devolve o contexto a usar e se ele é nosso (e portanto precisa ser descartado).</summary>
+    private async Task<(LocalDbContext Db, bool Meu)> AbrirAsync(CancellationToken cancellationToken)
+    {
+        if (_emprestado is not null)
+        {
+            return (_emprestado, false);
+        }
+
+        return (await _contextos!.CreateDbContextAsync(cancellationToken).ConfigureAwait(false), true);
+    }
+
+    private static ValueTask FecharAsync(LocalDbContext db, bool meu) =>
+        meu ? db.DisposeAsync() : ValueTask.CompletedTask;
+
+    private async Task<bool> BootstrapAsync(LocalDbContext db, CancellationToken cancellationToken)
     {
         var bootstrap = await api.BootstrapAsync(cancellationToken).ConfigureAwait(false);
 
@@ -77,9 +143,9 @@ public sealed class SyncEngine(
 
         var now = clock.UtcNow;
 
-        await ApplyConfigurationAsync(bootstrap, now, cancellationToken).ConfigureAwait(false);
+        await ApplyConfigurationAsync(db, bootstrap, now, cancellationToken).ConfigureAwait(false);
 
-        var state = await GetStateAsync(cancellationToken).ConfigureAwait(false);
+        var state = await GetStateAsync(db, cancellationToken).ConfigureAwait(false);
         state.MarkBootstrapped(bootstrap.SyncCursor, now);
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -94,18 +160,18 @@ public sealed class SyncEngine(
         return true;
     }
 
-    private async Task<SyncOutcome> PushAsync(CancellationToken cancellationToken)
+    private async Task<SyncOutcome> PushAsync(LocalDbContext db, CancellationToken cancellationToken)
     {
         var now = clock.UtcNow;
-        var itens = await outbox.TakeReadyAsync(now, BatchSize, cancellationToken).ConfigureAwait(false);
+        var itens = await new OutboxWriter(db).TakeReadyAsync(now, BatchSize, cancellationToken).ConfigureAwait(false);
 
         if (itens.Count == 0)
         {
             return new SyncOutcome(true, 0, 0, 0, 0, 0, null);
         }
 
-        var state = await GetStateAsync(cancellationToken).ConfigureAwait(false);
-        var device = await GetDeviceAsync(cancellationToken).ConfigureAwait(false);
+        var state = await GetStateAsync(db, cancellationToken).ConfigureAwait(false);
+        var device = await GetDeviceAsync(db, cancellationToken).ConfigureAwait(false);
 
         var operacoes = itens
             .Select(i => new SyncOperationDto(
@@ -135,13 +201,13 @@ public sealed class SyncEngine(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            await FailAllAsync(itens, ex.Message, now, cancellationToken).ConfigureAwait(false);
+            await FailAllAsync(db, itens,ex.Message, now, cancellationToken).ConfigureAwait(false);
             return SyncOutcome.Unreachable(ex.Message);
         }
 
         if (resposta is null)
         {
-            await FailAllAsync(itens, "O servidor não respondeu.", now, cancellationToken).ConfigureAwait(false);
+            await FailAllAsync(db, itens,"O servidor não respondeu.", now, cancellationToken).ConfigureAwait(false);
             return SyncOutcome.Unreachable();
         }
 
@@ -172,7 +238,7 @@ public sealed class SyncEngine(
                     // só reenviaria a mesma perda.
                     item.MarkDone();
                     conflitos++;
-                    await AdoptServerStateAsync(item.EntityType, resultado.CurrentState, cancellationToken).ConfigureAwait(false);
+                    await AdoptServerStateAsync(db, item.EntityType, resultado.CurrentState, cancellationToken).ConfigureAwait(false);
                     break;
 
                 default:
@@ -183,7 +249,7 @@ public sealed class SyncEngine(
             }
         }
 
-        await ApplyChangesAsync(resposta.Changes, cancellationToken).ConfigureAwait(false);
+        await ApplyChangesAsync(db, resposta.Changes, cancellationToken).ConfigureAwait(false);
 
         state.AdvanceCursor(resposta.Cursor, clock.UtcNow);
 
@@ -196,9 +262,9 @@ public sealed class SyncEngine(
         return new SyncOutcome(true, itens.Count, aplicadas, conflitos, rejeitadas, resposta.Changes.Count, null);
     }
 
-    private async Task<int> PullAsync(CancellationToken cancellationToken)
+    private async Task<int> PullAsync(LocalDbContext db, CancellationToken cancellationToken)
     {
-        var state = await GetStateAsync(cancellationToken).ConfigureAwait(false);
+        var state = await GetStateAsync(db, cancellationToken).ConfigureAwait(false);
 
         SyncPullResponse? resposta;
 
@@ -222,11 +288,11 @@ public sealed class SyncEngine(
             logger.LogInformation("O cursor local ficou para trás do log do servidor. Refazendo o bootstrap.");
             state.RequireBootstrap();
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            await BootstrapAsync(cancellationToken).ConfigureAwait(false);
+            await BootstrapAsync(db, cancellationToken).ConfigureAwait(false);
             return 0;
         }
 
-        await ApplyChangesAsync(resposta.Changes, cancellationToken).ConfigureAwait(false);
+        await ApplyChangesAsync(db, resposta.Changes, cancellationToken).ConfigureAwait(false);
 
         state.AdvanceCursor(resposta.Cursor, clock.UtcNow);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -235,7 +301,7 @@ public sealed class SyncEngine(
     }
 
     /// <summary>Aplica as alterações vindas do servidor sobre o estado local.</summary>
-    private async Task ApplyChangesAsync(IReadOnlyList<ServerChangeDto> changes, CancellationToken cancellationToken)
+    private async Task ApplyChangesAsync(LocalDbContext db, IReadOnlyList<ServerChangeDto> changes, CancellationToken cancellationToken)
     {
         foreach (var change in changes)
         {
@@ -247,15 +313,15 @@ public sealed class SyncEngine(
             switch (change.EntityType)
             {
                 case SyncEntityTypes.ChecklistEntry:
-                    await ApplyEntryAsync(change.Payload, cancellationToken).ConfigureAwait(false);
+                    await ApplyEntryAsync(db, change.Payload, cancellationToken).ConfigureAwait(false);
                     break;
 
                 case SyncEntityTypes.SessionBedMarker:
-                    await ApplyMarkerAsync(change.Payload, cancellationToken).ConfigureAwait(false);
+                    await ApplyMarkerAsync(db, change.Payload, cancellationToken).ConfigureAwait(false);
                     break;
 
                 case SyncEntityTypes.OperationalSession:
-                    await ApplySessionAsync(change.Payload, cancellationToken).ConfigureAwait(false);
+                    await ApplySessionAsync(db, change.Payload, cancellationToken).ConfigureAwait(false);
                     break;
 
                 case SyncEntityTypes.Sector:
@@ -267,7 +333,7 @@ public sealed class SyncEngine(
                     // Alterações de configuração são raras e interdependentes (uma coluna nova
                     // muda o template). Recarregar o bootstrap inteiro é mais simples e seguro
                     // do que aplicar mudanças parciais e arriscar um estado incoerente.
-                    await BootstrapAsync(cancellationToken).ConfigureAwait(false);
+                    await BootstrapAsync(db, cancellationToken).ConfigureAwait(false);
                     return;
 
                 default:
@@ -278,7 +344,7 @@ public sealed class SyncEngine(
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private Task AdoptServerStateAsync(string entityType, string? payload, CancellationToken cancellationToken)
+    private Task AdoptServerStateAsync(LocalDbContext db, string entityType, string? payload, CancellationToken cancellationToken)
     {
         if (payload is null)
         {
@@ -287,13 +353,13 @@ public sealed class SyncEngine(
 
         return entityType switch
         {
-            SyncEntityTypes.ChecklistEntry => ApplyEntryAsync(payload, cancellationToken),
-            SyncEntityTypes.SessionBedMarker => ApplyMarkerAsync(payload, cancellationToken),
+            SyncEntityTypes.ChecklistEntry => ApplyEntryAsync(db, payload, cancellationToken),
+            SyncEntityTypes.SessionBedMarker => ApplyMarkerAsync(db, payload, cancellationToken),
             _ => Task.CompletedTask,
         };
     }
 
-    private async Task ApplyEntryAsync(string payload, CancellationToken cancellationToken)
+    private async Task ApplyEntryAsync(LocalDbContext db, string payload, CancellationToken cancellationToken)
     {
         var dto = SyncJson.Deserialize<ChecklistEntryDto>(payload);
 
@@ -332,7 +398,7 @@ public sealed class SyncEngine(
         }
     }
 
-    private async Task ApplyMarkerAsync(string payload, CancellationToken cancellationToken)
+    private async Task ApplyMarkerAsync(LocalDbContext db, string payload, CancellationToken cancellationToken)
     {
         var dto = SyncJson.Deserialize<SessionBedMarkerDto>(payload);
 
@@ -361,7 +427,7 @@ public sealed class SyncEngine(
         }
     }
 
-    private async Task ApplySessionAsync(string payload, CancellationToken cancellationToken)
+    private async Task ApplySessionAsync(LocalDbContext db, string payload, CancellationToken cancellationToken)
     {
         var dto = SyncJson.Deserialize<OperationalSessionDto>(payload);
 
@@ -392,9 +458,9 @@ public sealed class SyncEngine(
     }
 
     /// <summary>Substitui a configuração local pela do servidor. Dados operacionais não são tocados.</summary>
-    private async Task ApplyConfigurationAsync(BootstrapResponse bootstrap, DateTime nowUtc, CancellationToken cancellationToken)
+    private async Task ApplyConfigurationAsync(LocalDbContext db, BootstrapResponse bootstrap, DateTime nowUtc, CancellationToken cancellationToken)
     {
-        await ReplaceAsync(db.Sectors, bootstrap.Sectors.Select(s =>
+        await ReplaceAsync(db, db.Sectors, bootstrap.Sectors.Select(s =>
         {
             var setor = new Sector(s.Id, s.Name, s.Description, s.SortOrder, nowUtc);
             setor.SetShiftOverride(s.ShiftStart, s.ShiftEnd, nowUtc);
@@ -402,7 +468,7 @@ public sealed class SyncEngine(
             return setor;
         }), cancellationToken).ConfigureAwait(false);
 
-        await ReplaceAsync(db.Beds, bootstrap.Beds.Select(b =>
+        await ReplaceAsync(db, db.Beds, bootstrap.Beds.Select(b =>
         {
             var leito = new Bed(b.Id, b.SectorId, b.Code, b.Description, b.SortOrder, nowUtc);
             leito.SetActive(b.IsActive, nowUtc);
@@ -441,18 +507,18 @@ public sealed class SyncEngine(
             db.ChecklistTemplates.Add(template);
         }
 
-        await ReplaceAsync(db.BedMarkerDefinitions, bootstrap.Markers.Select(m =>
+        await ReplaceAsync(db, db.BedMarkerDefinitions, bootstrap.Markers.Select(m =>
         {
             var marcador = new BedMarkerDefinition(m.Id, m.Name, m.Code, m.SortOrder, nowUtc);
             marcador.SetActive(m.IsActive, nowUtc);
             return marcador;
         }), cancellationToken).ConfigureAwait(false);
 
-        await ReplaceSettingsAsync(bootstrap.Settings, nowUtc, cancellationToken).ConfigureAwait(false);
-        await ReplaceNotificationConfigurationAsync(bootstrap.Notifications, nowUtc, cancellationToken).ConfigureAwait(false);
+        await ReplaceSettingsAsync(db, bootstrap.Settings, nowUtc, cancellationToken).ConfigureAwait(false);
+        await ReplaceNotificationConfigurationAsync(db, bootstrap.Notifications, nowUtc, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task ReplaceAsync<T>(DbSet<T> set, IEnumerable<T> novos, CancellationToken cancellationToken)
+    private static async Task ReplaceAsync<T>(LocalDbContext db, DbSet<T> set, IEnumerable<T> novos, CancellationToken cancellationToken)
         where T : class
     {
         set.RemoveRange(await set.ToListAsync(cancellationToken).ConfigureAwait(false));
@@ -461,7 +527,7 @@ public sealed class SyncEngine(
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task ReplaceSettingsAsync(InstitutionSettingsDto dto, DateTime nowUtc, CancellationToken cancellationToken)
+    private static async Task ReplaceSettingsAsync(LocalDbContext db, InstitutionSettingsDto dto, DateTime nowUtc, CancellationToken cancellationToken)
     {
         var settings = new InstitutionSettings
         {
@@ -489,7 +555,7 @@ public sealed class SyncEngine(
         }
     }
 
-    private async Task ReplaceNotificationConfigurationAsync(NotificationConfigurationDto dto, DateTime nowUtc, CancellationToken cancellationToken)
+    private static async Task ReplaceNotificationConfigurationAsync(LocalDbContext db, NotificationConfigurationDto dto, DateTime nowUtc, CancellationToken cancellationToken)
     {
         var atual = await db.NotificationConfigurations.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
@@ -516,7 +582,7 @@ public sealed class SyncEngine(
             nowUtc);
     }
 
-    private async Task FailAllAsync(IReadOnlyList<SyncOutboxItem> itens, string erro, DateTime nowUtc, CancellationToken cancellationToken)
+    private static async Task FailAllAsync(LocalDbContext db, IReadOnlyList<SyncOutboxItem> itens, string erro, DateTime nowUtc, CancellationToken cancellationToken)
     {
         foreach (var item in itens)
         {
@@ -526,7 +592,7 @@ public sealed class SyncEngine(
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<SyncState> GetStateAsync(CancellationToken cancellationToken)
+    private static async Task<SyncState> GetStateAsync(LocalDbContext db, CancellationToken cancellationToken)
     {
         var state = await db.SyncState.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
@@ -540,7 +606,7 @@ public sealed class SyncEngine(
         return state;
     }
 
-    private async Task<DeviceState> GetDeviceAsync(CancellationToken cancellationToken)
+    private static async Task<DeviceState> GetDeviceAsync(LocalDbContext db, CancellationToken cancellationToken)
     {
         var device = await db.DeviceState.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 

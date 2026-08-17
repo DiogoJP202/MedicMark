@@ -152,31 +152,7 @@ diferentes.
 
 ---
 
-## 11. O contexto do banco local vive enquanto o aplicativo viver
-
-No MAUI Blazor Hybrid, o escopo de injeção do `BlazorWebView` dura toda a vida do aplicativo. Como
-`LocalDbContext` é registrado como *scoped*, existe **uma única instância** dele do início ao fim —
-não um contexto por operação, como seria numa aplicação web.
-
-Consequências que permanecem:
-
-- o rastreador acumula entidades enquanto o aplicativo estiver aberto, consumindo memória;
-- uma entidade lida no começo do plantão continua em memória e pode ficar velha em relação ao disco;
-- duas operações simultâneas compartilham o mesmo contexto, que não é seguro para uso concorrente.
-
-O que **já** foi contornado (ver `DECISIONS.md`, D-021): consultas ao `DbSet.Local` antes do banco,
-e limpeza do rastreador quando uma gravação falha — sem isso, uma única falha travava o aparelho
-até a reinstalação.
-
-**Correção estrutural pendente:** trocar o registro por `IDbContextFactory<LocalDbContext>` e abrir
-um contexto por unidade de trabalho em `ClientSession`, `LocalChecklistStore`, `OutboxWriter`,
-`SyncEngine` e nos serviços de apoio. É o padrão recomendado para Blazor exatamente por este motivo.
-Não foi feito junto com a correção emergencial para não misturar um refatoramento amplo com um
-conserto que precisava chegar ao aparelho no mesmo dia.
-
----
-
-## 12. Limitações do ambiente de desenvolvimento atual
+## 11. Limitações do ambiente de desenvolvimento atual
 
 Registradas em [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md):
 

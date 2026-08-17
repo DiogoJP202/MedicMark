@@ -7,6 +7,7 @@ using ChecklistPlantao.Contracts.Auth;
 using ChecklistPlantao.Domain.Access;
 using ChecklistPlantao.UI.Abstractions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -25,19 +26,78 @@ internal sealed record PermissionsSnapshot(
 /// offline funciona por um prazo configurável, validada contra o verificador local — nunca
 /// contra o hash do servidor, que jamais chega aqui.
 /// </summary>
-public sealed class ClientSession(
-    LocalDbContext db,
-    IServerApi api,
-    ITokenStore tokens,
-    IClock clock,
-    IInstitutionSettingsProvider settings,
-    AuthenticatedSessionState estado,
-    IOptions<OfflineAuthOptions> offlineOptions,
-    ILogger<ClientSession> logger) : IAppSession
+public sealed class ClientSession : IAppSession
 {
-    private readonly OfflineAuthOptions _offline = offlineOptions.Value;
+    private readonly IDbContextFactory<LocalDbContext>? _contextos;
+    private readonly LocalDbContext? _emprestado;
+    private readonly IServerApi api;
+    private readonly ITokenStore tokens;
+    private readonly IClock clock;
+    private readonly IInstitutionSettingsProvider settings;
+    private readonly AuthenticatedSessionState estado;
+    private readonly ILogger<ClientSession> logger;
+    private readonly OfflineAuthOptions _offline;
 
-    private DeviceState? _dispositivo;
+    /// <summary>
+    /// Modo normal: um contexto por operação. Entrar, escolher o setor e restaurar a sessão são
+    /// unidades de trabalho independentes, separadas por minutos ou horas de uso.
+    /// Ver docs/DECISIONS.md (D-021).
+    /// </summary>
+    [ActivatorUtilitiesConstructor]
+    public ClientSession(
+        IDbContextFactory<LocalDbContext> contextos,
+        IServerApi api,
+        ITokenStore tokens,
+        IClock clock,
+        IInstitutionSettingsProvider settings,
+        AuthenticatedSessionState estado,
+        IOptions<OfflineAuthOptions> offlineOptions,
+        ILogger<ClientSession> logger)
+        : this(api, tokens, clock, settings, estado, offlineOptions, logger) => _contextos = contextos;
+
+    /// <summary>Modo emprestado: trabalha num contexto já aberto, de quem o criou.</summary>
+    public ClientSession(
+        LocalDbContext db,
+        IServerApi api,
+        ITokenStore tokens,
+        IClock clock,
+        IInstitutionSettingsProvider settings,
+        AuthenticatedSessionState estado,
+        IOptions<OfflineAuthOptions> offlineOptions,
+        ILogger<ClientSession> logger)
+        : this(api, tokens, clock, settings, estado, offlineOptions, logger) => _emprestado = db;
+
+    private ClientSession(
+        IServerApi api,
+        ITokenStore tokens,
+        IClock clock,
+        IInstitutionSettingsProvider settings,
+        AuthenticatedSessionState estado,
+        IOptions<OfflineAuthOptions> offlineOptions,
+        ILogger<ClientSession> logger)
+    {
+        this.api = api;
+        this.tokens = tokens;
+        this.clock = clock;
+        this.settings = settings;
+        this.estado = estado;
+        this.logger = logger;
+        _offline = offlineOptions.Value;
+    }
+
+    /// <summary>Devolve o contexto a usar e se ele é nosso (e portanto precisa ser descartado).</summary>
+    private async Task<(LocalDbContext Db, bool Meu)> AbrirAsync(CancellationToken cancellationToken)
+    {
+        if (_emprestado is not null)
+        {
+            return (_emprestado, false);
+        }
+
+        return (await _contextos!.CreateDbContextAsync(cancellationToken).ConfigureAwait(false), true);
+    }
+
+    private static ValueTask FecharAsync(LocalDbContext db, bool meu) =>
+        meu ? db.DisposeAsync() : ValueTask.CompletedTask;
 
     /// <summary>
     /// O evento pertence ao estado compartilhado, não a esta instância: quem assina é a interface,
@@ -160,7 +220,25 @@ public sealed class ClientSession(
         string password,
         CancellationToken cancellationToken)
     {
-        var device = await GetDeviceAsync(cancellationToken).ConfigureAwait(false);
+        var (db, meu) = await AbrirAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            return await SignInOnlineAsync(db, userName, password, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            await FecharAsync(db, meu).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<(bool Entrou, bool Recusado, string? Motivo)> SignInOnlineAsync(
+        LocalDbContext db,
+        string userName,
+        string password,
+        CancellationToken cancellationToken)
+    {
+        var device = await GetDeviceAsync(db, cancellationToken).ConfigureAwait(false);
 
         var resultado = await api
             .LoginAsync(new LoginRequest(userName, password, device.DeviceId.ToString(), device.DeviceName), cancellationToken)
@@ -217,6 +295,20 @@ public sealed class ClientSession(
 
     private async Task<bool> SignInOfflineAsync(string userName, string password, CancellationToken cancellationToken)
     {
+        var (db, meu) = await AbrirAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            return await SignInOfflineAsync(db, userName, password, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            await FecharAsync(db, meu).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<bool> SignInOfflineAsync(LocalDbContext db, string userName, string password, CancellationToken cancellationToken)
+    {
         var credencial = await db.Credentials.FirstOrDefaultAsync(c => c.UserName == userName, cancellationToken).ConfigureAwait(false);
 
         if (credencial is null)
@@ -268,23 +360,47 @@ public sealed class ClientSession(
     /// <summary>Restaura a sessão ao abrir o aplicativo, sem pedir senha de novo.</summary>
     public async Task<bool> TryRestoreAsync(CancellationToken cancellationToken = default)
     {
-        var credencial = await db.Credentials
-            .OrderByDescending(c => c.LastServerValidationUtc)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
+        var (db, meu) = await AbrirAsync(cancellationToken).ConfigureAwait(false);
 
-        if (credencial is null || !credencial.IsOfflineAccessValid(clock.UtcNow, settings.Current.OfflineLoginValidity))
+        try
         {
-            return false;
+            var credencial = await db.Credentials
+                .AsNoTracking()
+                .OrderByDescending(c => c.LastServerValidationUtc)
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (credencial is null || !credencial.IsOfflineAccessValid(clock.UtcNow, settings.Current.OfflineLoginValidity))
+            {
+                return false;
+            }
+
+            Activate(credencial);
+            await LoadSectorNameAsync(db, cancellationToken).ConfigureAwait(false);
+
+            return true;
         }
-
-        Activate(credencial);
-        await LoadSectorNameAsync(cancellationToken).ConfigureAwait(false);
-
-        return true;
+        finally
+        {
+            await FecharAsync(db, meu).ConfigureAwait(false);
+        }
     }
 
     public async Task<IReadOnlyList<SectorSummary>> GetAvailableSectorsAsync(CancellationToken cancellationToken = default)
+    {
+        var (db, meu) = await AbrirAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            return await GetAvailableSectorsAsync(db, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            await FecharAsync(db, meu).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<IReadOnlyList<SectorSummary>> GetAvailableSectorsAsync(LocalDbContext db, CancellationToken cancellationToken)
     {
         var setores = await db.Sectors
             .AsNoTracking()
@@ -323,18 +439,27 @@ public sealed class ClientSession(
             return;
         }
 
-        var device = await GetDeviceAsync(cancellationToken).ConfigureAwait(false);
-        device.SelectSector(sectorId);
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var (db, meu) = await AbrirAsync(cancellationToken).ConfigureAwait(false);
 
-        var nome = await db.Sectors
-            .AsNoTracking()
-            .Where(s => s.Id == sectorId)
-            .Select(s => s.Name)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
+        try
+        {
+            var device = await GetDeviceAsync(db, cancellationToken).ConfigureAwait(false);
+            device.SelectSector(sectorId);
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        estado.SelectSector(sectorId, nome);
+            var nome = await db.Sectors
+                .AsNoTracking()
+                .Where(s => s.Id == sectorId)
+                .Select(s => s.Name)
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            estado.SelectSector(sectorId, nome);
+        }
+        finally
+        {
+            await FecharAsync(db, meu).ConfigureAwait(false);
+        }
     }
 
     private void Activate(LocalCredential credencial) =>
@@ -378,9 +503,9 @@ public sealed class ClientSession(
     /// Recupera o setor escolhido a partir do banco local e o publica no estado compartilhado.
     /// Chamado ao restaurar a sessão, quando o estado em memória ainda está vazio.
     /// </summary>
-    private async Task LoadSectorNameAsync(CancellationToken cancellationToken)
+    private async Task LoadSectorNameAsync(LocalDbContext db, CancellationToken cancellationToken)
     {
-        var device = await GetDeviceAsync(cancellationToken).ConfigureAwait(false);
+        var device = await GetDeviceAsync(db, cancellationToken).ConfigureAwait(false);
 
         if (device.CurrentSectorId is not { } id)
         {
@@ -398,22 +523,22 @@ public sealed class ClientSession(
         estado.SelectSector(id, nome);
     }
 
-    private async Task<DeviceState> GetDeviceAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Sem cache em campo: a entidade pertence ao contexto que a leu, e esse contexto morre no fim
+    /// da operação. Guardá-la entre operações era exatamente o tipo de estado velho que a fábrica
+    /// de contextos veio eliminar.
+    /// </summary>
+    private static async Task<DeviceState> GetDeviceAsync(LocalDbContext db, CancellationToken cancellationToken)
     {
-        if (_dispositivo is not null)
-        {
-            return _dispositivo;
-        }
+        var dispositivo = await db.DeviceState.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
-        _dispositivo = await db.DeviceState.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-
-        if (_dispositivo is null)
+        if (dispositivo is null)
         {
-            _dispositivo = new DeviceState();
-            db.DeviceState.Add(_dispositivo);
+            dispositivo = new DeviceState();
+            db.DeviceState.Add(dispositivo);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        return _dispositivo;
+        return dispositivo;
     }
 }
