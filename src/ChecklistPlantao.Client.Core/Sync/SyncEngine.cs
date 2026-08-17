@@ -302,7 +302,15 @@ public sealed class SyncEngine(
             return;
         }
 
-        var local = await db.ChecklistEntries.FirstOrDefaultAsync(e => e.Id == dto.Id, cancellationToken).ConfigureAwait(false)
+        // O rastreador vem antes do banco: um lote de mudanças do servidor pode tocar a mesma
+        // célula mais de uma vez, e a primeira ainda não está em disco quando a segunda chega.
+        var local = db.ChecklistEntries.Local.FirstOrDefault(e => e.Id == dto.Id)
+            ?? db.ChecklistEntries.Local.FirstOrDefault(
+                e => e.SessionId == dto.SessionId
+                    && e.BedId == dto.BedId
+                    && e.ChecklistTemplateId == dto.ChecklistTemplateId
+                    && e.ChecklistColumnId == dto.ChecklistColumnId)
+            ?? await db.ChecklistEntries.FirstOrDefaultAsync(e => e.Id == dto.Id, cancellationToken).ConfigureAwait(false)
             ?? await db.ChecklistEntries.FirstOrDefaultAsync(
                 e => e.SessionId == dto.SessionId
                     && e.BedId == dto.BedId
@@ -333,7 +341,10 @@ public sealed class SyncEngine(
             return;
         }
 
-        var local = await db.SessionBedMarkers.FirstOrDefaultAsync(m => m.Id == dto.Id, cancellationToken).ConfigureAwait(false)
+        var local = db.SessionBedMarkers.Local.FirstOrDefault(m => m.Id == dto.Id)
+            ?? db.SessionBedMarkers.Local.FirstOrDefault(
+                m => m.SessionId == dto.SessionId && m.BedId == dto.BedId && m.MarkerDefinitionId == dto.MarkerDefinitionId)
+            ?? await db.SessionBedMarkers.FirstOrDefaultAsync(m => m.Id == dto.Id, cancellationToken).ConfigureAwait(false)
             ?? await db.SessionBedMarkers.FirstOrDefaultAsync(
                 m => m.SessionId == dto.SessionId && m.BedId == dto.BedId && m.MarkerDefinitionId == dto.MarkerDefinitionId,
                 cancellationToken).ConfigureAwait(false);

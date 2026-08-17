@@ -422,10 +422,11 @@ public sealed class LocalChecklistStore(
     {
         if (local is null || local.Id != estado.Session.Id)
         {
-            local = await db.OperationalSessions
-                .Include(s => s.Beds)
-                .FirstOrDefaultAsync(s => s.Id == estado.Session.Id, cancellationToken)
-                .ConfigureAwait(false);
+            local = db.OperationalSessions.Local.FirstOrDefault(s => s.Id == estado.Session.Id)
+                ?? await db.OperationalSessions
+                    .Include(s => s.Beds)
+                    .FirstOrDefaultAsync(s => s.Id == estado.Session.Id, cancellationToken)
+                    .ConfigureAwait(false);
 
             if (local is null)
             {
@@ -443,7 +444,12 @@ public sealed class LocalChecklistStore(
 
         foreach (var dto in estado.Entries)
         {
-            var entrada = await db.ChecklistEntries.FirstOrDefaultAsync(e => e.Id == dto.Id, cancellationToken).ConfigureAwait(false);
+            // O rastreador ANTES do banco. Uma entidade adicionada momentos atrás nesta mesma
+            // unidade de trabalho ainda não existe em disco: a consulta não a encontra, o código
+            // adiciona outra com a mesma chave, e o EF recusa com "cannot be tracked because
+            // another instance with the same key value is already being tracked".
+            var entrada = db.ChecklistEntries.Local.FirstOrDefault(e => e.Id == dto.Id)
+                ?? await db.ChecklistEntries.FirstOrDefaultAsync(e => e.Id == dto.Id, cancellationToken).ConfigureAwait(false);
 
             if (entrada is null)
             {
@@ -459,7 +465,8 @@ public sealed class LocalChecklistStore(
 
         foreach (var dto in estado.Markers)
         {
-            var marcador = await db.SessionBedMarkers.FirstOrDefaultAsync(m => m.Id == dto.Id, cancellationToken).ConfigureAwait(false);
+            var marcador = db.SessionBedMarkers.Local.FirstOrDefault(m => m.Id == dto.Id)
+                ?? await db.SessionBedMarkers.FirstOrDefaultAsync(m => m.Id == dto.Id, cancellationToken).ConfigureAwait(false);
 
             if (marcador is null)
             {

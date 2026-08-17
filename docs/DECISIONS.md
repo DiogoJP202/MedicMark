@@ -341,6 +341,47 @@ a causa em vez do sintoma, e o cache permanece disponível como recurso caso a f
 
 ---
 
+## D-021 — O rastreador do EF antes do banco, e limpo quando a gravação falha
+
+**Contexto.** Duas falhas no aparelho tinham a mesma origem. A primeira: *"The instance of entity
+type 'ChecklistEntry' cannot be tracked because another instance with the same key value is already
+being tracked"* ao abrir o setor. A segunda: `DbUpdateException` ao entrar, em **toda** tentativa,
+até reinstalar o aplicativo.
+
+A causa comum tem duas metades:
+
+1. **A consulta ao banco não enxerga o que só existe no rastreador.** Uma entidade adicionada
+   momentos antes, ainda não gravada, não aparece num `SELECT`; o código conclui que ela não existe
+   e adiciona outra com a mesma chave. É o mesmo defeito que derrubava a sincronização em lote no
+   servidor, corrigido em `ChecklistMutationService`.
+
+2. **No MAUI Blazor Hybrid o escopo do `BlazorWebView` dura a vida inteira do aplicativo.** Serviços
+   registrados como *scoped* — incluindo o `LocalDbContext` — nunca são descartados. Então uma
+   gravação que falha deixa as entidades presas no rastreador **para sempre**, e a falha passa a se
+   repetir em toda operação seguinte, mesmo nas que nada têm a ver com a primeira. No aparelho isso
+   apareceu como o arquivo `-wal` parado no mesmo tamanho por horas: nenhuma escrita concluía.
+
+**Decisão.** Duas regras:
+
+- Toda busca que antecede um `Add` consulta `DbSet.Local` **antes** do banco. Vale em
+  `OutboxWriter`, `SyncEngine` e `LocalChecklistStore`.
+- `LocalDbContext.SaveChangesAsync` limpa o rastreador quando a gravação falha, e **relança**. A
+  transação já foi desfeita, então nada do que estava rastreado chegou ao disco; descartar devolve
+  o contexto a um estado utilizável sem esconder o erro de quem chamou.
+
+**Consequências.** Uma falha isolada deixa de contaminar o aplicativo inteiro. O preço é que, se
+duas operações estiverem em andamento no mesmo contexto e uma falhar, a outra perde as alterações
+pendentes — aceitável perto da alternativa, que era o aparelho parar de gravar até ser reinstalado.
+
+**O que isto NÃO resolve.** O contexto continua vivendo enquanto o aplicativo viver, com todos os
+efeitos colaterais de um rastreador de longa vida (memória, dados velhos em cache). A correção
+estrutural é `IDbContextFactory<LocalDbContext>` com um contexto por unidade de trabalho — pendente,
+registrada em `KNOWN_LIMITATIONS.md`.
+
+**Status.** Aceita, com continuação pendente.
+
+---
+
 ## D-012 — Administrador inicial sem senha no repositório
 
 **Contexto.** O enunciado proíbe senha padrão no código.

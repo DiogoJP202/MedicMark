@@ -48,6 +48,32 @@ public sealed class LocalDbContext(DbContextOptions<LocalDbContext> options) : D
 
     public DbSet<DeviceState> DeviceState => Set<DeviceState>();
 
+    /// <summary>
+    /// Uma gravação que falha não pode deixar o aplicativo quebrado até a reinstalação.
+    ///
+    /// A transação já foi desfeita quando o EF lança — nada do que está rastreado chegou ao
+    /// disco. Só que as entidades continuam no rastreador, e no MAUI Blazor Hybrid o escopo do
+    /// <c>BlazorWebView</c> dura a vida inteira do aplicativo: este contexto nunca é descartado.
+    /// Sem limpar, toda gravação seguinte repete a falha e todo <c>Add</c> da mesma chave é
+    /// recusado com "another instance with the same key value is already being tracked" — foi
+    /// exatamente o que travou o aparelho, com o login e o checklist caindo em toda tentativa.
+    ///
+    /// Descartar devolve o contexto a um estado utilizável. A exceção continua subindo: quem
+    /// chamou precisa saber que não gravou. Ver docs/DECISIONS.md (D-021).
+    /// </summary>
+    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateException)
+        {
+            ChangeTracker.Clear();
+            throw;
+        }
+    }
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

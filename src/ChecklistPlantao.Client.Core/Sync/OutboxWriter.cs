@@ -27,12 +27,20 @@ public sealed class OutboxWriter(LocalDbContext db)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
-        var entry = await db.ChecklistEntries.FirstOrDefaultAsync(
+        // O rastreador antes do banco: tocar duas vezes na mesma célula antes de a primeira
+        // gravação concluir encontraria o disco vazio e criaria uma segunda entidade com a
+        // mesma chave. Mesma regra aplicada no servidor, em ChecklistMutationService.
+        var entry = db.ChecklistEntries.Local.FirstOrDefault(
             e => e.SessionId == sessionId
                 && e.BedId == bedId
                 && e.ChecklistTemplateId == templateId
-                && e.ChecklistColumnId == columnId,
-            cancellationToken).ConfigureAwait(false);
+                && e.ChecklistColumnId == columnId)
+            ?? await db.ChecklistEntries.FirstOrDefaultAsync(
+                e => e.SessionId == sessionId
+                    && e.BedId == bedId
+                    && e.ChecklistTemplateId == templateId
+                    && e.ChecklistColumnId == columnId,
+                cancellationToken).ConfigureAwait(false);
 
         if (entry is null)
         {
@@ -72,9 +80,11 @@ public sealed class OutboxWriter(LocalDbContext db)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
-        var marker = await db.SessionBedMarkers.FirstOrDefaultAsync(
-            m => m.SessionId == sessionId && m.BedId == bedId && m.MarkerDefinitionId == markerDefinitionId,
-            cancellationToken).ConfigureAwait(false);
+        var marker = db.SessionBedMarkers.Local.FirstOrDefault(
+            m => m.SessionId == sessionId && m.BedId == bedId && m.MarkerDefinitionId == markerDefinitionId)
+            ?? await db.SessionBedMarkers.FirstOrDefaultAsync(
+                m => m.SessionId == sessionId && m.BedId == bedId && m.MarkerDefinitionId == markerDefinitionId,
+                cancellationToken).ConfigureAwait(false);
 
         if (marker is null)
         {

@@ -127,6 +127,72 @@ public sealed class LoginStorageFailureTests
         Assert.Null(sessao.LastSignInErrorDetail);
     }
 
+    /// <summary>
+    /// A espiral observada no aparelho: uma gravação falha, as entidades ficam presas no
+    /// rastreador, e como o contexto do MAUI Blazor Hybrid vive enquanto o aplicativo viver,
+    /// TODA gravação seguinte falha — inclusive marcar um leito, que nada tem a ver com a
+    /// primeira. O aparelho só voltava a funcionar sendo reinstalado.
+    /// </summary>
+    [Fact]
+    public async Task Gravacao_que_falha_nao_deixa_o_contexto_inutilizado()
+    {
+        using var host = await LocalTestHost.CreateAsync();
+
+        await using (var preparo = host.CreateContext())
+        {
+            preparo.Credentials.Add(new LocalCredential(
+                Guid.CreateVersion7(), "admin", "Administrador", [1], [2], 1_000, "{}", host.Clock.UtcNow));
+
+            await preparo.SaveChangesAsync();
+        }
+
+        host.Api.LoginResult = LoginComOutroIdentificador("admin");
+
+        await using var db = host.CreateContext();
+        var sessao = CreateSession(host, db);
+
+        Assert.False(await sessao.SignInAsync("admin", "Senha12345"));
+
+        // O rastreador precisa estar limpo: o que estava nele não chegou ao disco.
+        Assert.Empty(db.ChangeTracker.Entries());
+
+        // E o MESMO contexto precisa continuar servindo. Aqui está o que o plantão perdia.
+        var escritor = new OutboxWriter(db);
+
+        var marcacao = await escritor.ToggleEntryAsync(
+            Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(),
+            isCompleted: true, host.Clock.UtcNow);
+
+        Assert.True(marcacao.IsCompleted);
+        Assert.Equal(1, await escritor.PendingCountAsync());
+    }
+
+    /// <summary>
+    /// Duas marcações na mesma célula antes de a primeira chegar ao disco. A consulta ao banco
+    /// não enxerga o que só existe no rastreador — o mesmo defeito que derrubava a sincronização
+    /// em lote no servidor, e que aqui aparecia como "cannot be tracked".
+    /// </summary>
+    [Fact]
+    public async Task Duas_marcacoes_na_mesma_celula_nao_criam_duas_entidades()
+    {
+        using var host = await LocalTestHost.CreateAsync();
+
+        await using var db = host.CreateContext();
+        var escritor = new OutboxWriter(db);
+
+        var sessao = Guid.CreateVersion7();
+        var leito = Guid.CreateVersion7();
+        var tipo = Guid.CreateVersion7();
+        var coluna = Guid.CreateVersion7();
+
+        var primeira = await escritor.ToggleEntryAsync(sessao, leito, tipo, coluna, true, host.Clock.UtcNow);
+        var segunda = await escritor.ToggleEntryAsync(sessao, leito, tipo, coluna, false, host.Clock.UtcNow);
+
+        Assert.Equal(primeira.Id, segunda.Id);
+        Assert.False(segunda.IsCompleted);
+        Assert.Equal(1, await db.ChecklistEntries.CountAsync());
+    }
+
     private sealed class FakeTokenStore : ITokenStore
     {
         public Task<string?> GetAccessTokenAsync(CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
