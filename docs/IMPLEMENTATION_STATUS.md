@@ -37,6 +37,44 @@
 | Server.IntegrationTests | 30 | API de ponta a ponta com servidor e SQLite reais |
 | Application.Tests | 28 | Casos de uso, sessão, retenção, administração |
 
+### Validado em aparelho real — Xiaomi 23122PCD1G, Android 13 (API 33)
+
+Primeira execução em dispositivo físico, com o servidor alcançado por túnel USB (`adb reverse`).
+
+| Verificação | Resultado |
+|---|---|
+| Instalação e abertura do aplicativo | ✅ sem erro de inicialização |
+| Composição de dependências no aparelho | ✅ **nenhum erro de dependência circular** |
+| Configuração do servidor e "Testar conexão" | ✅ |
+| Login online contra o servidor | ✅ |
+| Bloqueio por tentativas (5 falhas → 423) | ✅ observado no servidor |
+| HTTP em rede local a partir do Android 13 | ✅ após `network_security_config` |
+
+**Cinco defeitos encontrados em campo** — nenhum deles aparecia nos testes automatizados, porque
+todos dependiam do ambiente real (WebView, teclado do Android, barra de status, políticas do
+fabricante):
+
+| Defeito | Sintoma no aparelho | Correção |
+|---|---|---|
+| HTTP em texto claro bloqueado | App não alcançava o servidor local | `network_security_config.xml` permitindo texto claro na rede local |
+| Conteúdo desenhado sob a barra de status | Título escondido e **o ✕ do aviso de notificações intocável** | `SetDecorFitsSystemWindows(true)` + área segura sem o gate exclusivo do iOS |
+| Sem saída para a configuração | Endereço salvo, e nenhum caminho de volta a partir do login | Endereço e botão "Alterar" sempre visíveis na entrada |
+| Motivo da recusa descartado | Servidor dizia "conta bloqueada" e o app dizia "você nunca entrou neste aparelho" | `ServerLoginResult` distingue "servidor recusou" de "servidor não respondeu" |
+| Teclado alterando credenciais | "Usuário ou senha inválidos" sem causa aparente | `autocapitalize`/`autocorrect`/`spellcheck` desligados + botão "Mostrar senha" |
+
+Também corrigido o texto do diagnóstico de bateria, que afirmava *"a economia de bateria está
+ativa para este aplicativo"* quando a API apenas informa que o app **não está na lista de isenção**
+— o estado padrão de qualquer instalação. O botão "Corrigir agora" passou a escolher a tela do
+sistema pela pendência mais grave, incluindo o diálogo de isenção de bateria.
+
+#### Pendente de validação manual
+
+| Item | Como validar | Por que não foi feito |
+|---|---|---|
+| Mensagem de conta bloqueada na tela | Errar a senha 5 vezes | Bloqueia a conta por 15 min; adiado a pedido |
+| Notificação agendada com o app fechado | Roteiro de teste, etapa 6 | Depende de tempo de espera real |
+| Isenção de bateria concedida | "Corrigir agora" → confirmar → "Verificar novamente" | Aguardando execução |
+
 ### Defeitos encontrados depois da entrega inicial
 
 Três falhas que os testes originais não pegavam, porque todos registravam os serviços à mão e

@@ -125,6 +125,7 @@ deploy/                            Dockerfile, compose, backup e restore
 | [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Docker, serviço no Windows, rede local, HTTPS, backup |
 | [ANDROID_SETUP.md](docs/ANDROID_SETUP.md) | Requisitos, permissões e como validar no aparelho |
 | [WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md) | Requisitos e a limitação de notificação |
+| [ROTEIRO_DE_TESTE.md](docs/ROTEIRO_DE_TESTE.md) | **Caminho curto para ver o sistema funcionando**, passo a passo |
 | [MANUAL_TEST_PLAN.md](docs/MANUAL_TEST_PLAN.md) | Cenários que só um dispositivo real valida |
 | [USER_GUIDE.md](docs/USER_GUIDE.md) | Guia do plantão |
 | [ADMIN_GUIDE.md](docs/ADMIN_GUIDE.md) | Guia do administrador |

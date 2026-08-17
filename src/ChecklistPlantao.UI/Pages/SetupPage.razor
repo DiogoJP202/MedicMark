@@ -51,6 +51,14 @@
             <button type="button" class="botao botao--texto" @onclick="@(() => _confirmarRedefinicao = true)">
                 Redefinir
             </button>
+
+            @* Saída sem salvar: quem só veio conferir o endereço não pode ficar preso aqui. *@
+            <button type="button"
+                    class="botao botao--texto"
+                    data-testid="setup-back"
+                    @onclick="@(() => Navigation.NavigateTo("/entrar"))">
+                Voltar
+            </button>
         }
     </div>
 

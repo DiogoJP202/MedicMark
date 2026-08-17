@@ -7,6 +7,30 @@ using ChecklistPlantao.Contracts.Sync;
 namespace ChecklistPlantao.Client.Core.Sync;
 
 /// <summary>
+/// Resultado de uma tentativa de entrada no servidor.
+///
+/// Distinguir "o servidor não respondeu" de "o servidor recusou" é essencial: no primeiro caso
+/// cabe tentar o acesso offline; no segundo, NÃO — o servidor já deu a resposta, e mascará-la com
+/// uma mensagem genérica de offline confunde o usuário. Foi exatamente o que acontecia com uma
+/// conta bloqueada: o servidor dizia "bloqueada" e o aplicativo dizia "você nunca entrou aqui".
+/// </summary>
+public sealed record ServerLoginResult(
+    bool ServerReached,
+    LoginResponse? Response,
+    string? ErrorCode = null,
+    string? ErrorMessage = null)
+{
+    public static ServerLoginResult Unreachable() => new(false, null);
+
+    public static ServerLoginResult Success(LoginResponse response) => new(true, response);
+
+    public static ServerLoginResult Refused(string? code, string? message) => new(true, null, code, message);
+
+    /// <summary>O servidor respondeu e recusou. Não há por que tentar o caminho offline.</summary>
+    public bool WasRefused => ServerReached && Response is null;
+}
+
+/// <summary>
 /// Fachada do servidor vista pelo cliente.
 ///
 /// Existe como interface para que o motor de sincronização — onde estão as regras que realmente
@@ -19,7 +43,7 @@ public interface IServerApi
 
     Task<ServerProbeResponse?> ProbeAsync(string url, CancellationToken cancellationToken = default);
 
-    Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default);
+    Task<ServerLoginResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default);
 
     Task<BootstrapResponse?> BootstrapAsync(CancellationToken cancellationToken = default);
 

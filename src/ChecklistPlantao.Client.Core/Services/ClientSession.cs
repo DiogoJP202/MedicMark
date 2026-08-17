@@ -84,25 +84,48 @@ public sealed class ClientSession(
             return false;
         }
 
-        if (api.IsReachable && await SignInOnlineAsync(normalizado, password, cancellationToken).ConfigureAwait(false))
+        var online = await SignInOnlineAsync(normalizado, password, cancellationToken).ConfigureAwait(false);
+
+        if (online.Entrou)
         {
             return true;
+        }
+
+        // O servidor respondeu e recusou: a resposta dele é a verdade. Tentar o caminho offline
+        // aqui trocaria "sua conta está bloqueada" por "você nunca entrou neste aparelho" — uma
+        // mensagem errada, que esconde do usuário exatamente o que ele precisa saber para agir.
+        if (online.Recusado)
+        {
+            LastSignInError = online.Motivo;
+            return false;
         }
 
         return await SignInOfflineAsync(normalizado, password, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<bool> SignInOnlineAsync(string userName, string password, CancellationToken cancellationToken)
+    private async Task<(bool Entrou, bool Recusado, string? Motivo)> SignInOnlineAsync(
+        string userName,
+        string password,
+        CancellationToken cancellationToken)
     {
         var device = await GetDeviceAsync(cancellationToken).ConfigureAwait(false);
 
-        var resposta = await api
+        var resultado = await api
             .LoginAsync(new LoginRequest(userName, password, device.DeviceId.ToString(), device.DeviceName), cancellationToken)
             .ConfigureAwait(false);
 
+        if (resultado.WasRefused)
+        {
+            logger.LogInformation("Servidor recusou a entrada de {UserName}: {Codigo}.", userName, resultado.ErrorCode ?? "sem código");
+
+            return (false, true, resultado.ErrorMessage ?? "Não foi possível entrar. Verifique o usuário e a senha.");
+        }
+
+        var resposta = resultado.Response;
+
         if (resposta is null)
         {
-            return false;
+            return (false, false, null);
         }
 
         await tokens
@@ -137,7 +160,7 @@ public sealed class ClientSession(
         Activate(credencial);
         logger.LogInformation("Entrada online concluída para {UserId}.", resposta.User.UserId);
 
-        return true;
+        return (true, false, null);
     }
 
     private async Task<bool> SignInOfflineAsync(string userName, string password, CancellationToken cancellationToken)

@@ -11,6 +11,12 @@
 <div class="app-conteudo" style="max-width:440px;margin:0 auto">
     <h1>Checklist de Plantão</h1>
 
+    @*
+        O caminho para a configuração precisa existir SEMPRE, e não apenas quando falta
+        configurar. Quem digitou o endereço errado só descobre o engano aqui, na tela de login —
+        e sem esta saída fica preso: a configuração é alcançável de dentro do aplicativo, que
+        exige entrar, que exige o servidor certo.
+    *@
     @if (!ServerConfiguration.IsConfigured)
     {
         <div class="faixa faixa--alerta">
@@ -18,22 +24,72 @@
             <div class="faixa__conteudo">
                 <p class="faixa__titulo">Servidor não configurado</p>
                 <p class="faixa__texto">Configure o endereço do servidor antes do primeiro acesso.</p>
-                <button type="button" class="botao botao--primario" @onclick="@(() => Navigation.NavigateTo("/configuracao"))">
+                <button type="button"
+                        class="botao botao--primario"
+                        data-testid="login-configure-server"
+                        @onclick="@(() => Navigation.NavigateTo("/configuracao"))">
                     Configurar servidor
                 </button>
             </div>
         </div>
     }
+    else
+    {
+        <p class="campo__ajuda" data-testid="login-server-line">
+            Servidor: <strong>@ServerConfiguration.ServerUrl</strong>
+            <button type="button"
+                    class="botao botao--texto"
+                    data-testid="login-configure-server"
+                    @onclick="@(() => Navigation.NavigateTo("/configuracao"))">
+                Alterar
+            </button>
+        </p>
+    }
 
     <EditForm Model="_modelo" OnValidSubmit="EntrarAsync">
+        @*
+            autocapitalize/autocorrect/spellcheck desligados: o teclado do Android capitaliza a
+            primeira letra e "corrige" o que digita por padrão. Num campo de usuário ou senha isso
+            produz uma credencial diferente da que a pessoa acha que digitou — e o erro só aparece
+            como "usuário ou senha inválidos", sem pista nenhuma do que aconteceu.
+        *@
         <div class="campo">
             <label class="campo__rotulo" for="usuario">Usuário</label>
-            <InputText id="usuario" class="campo__controle" @bind-Value="_modelo.UserName" autocomplete="username" data-testid="login-user" />
+            <InputText id="usuario"
+                       class="campo__controle"
+                       @bind-Value="_modelo.UserName"
+                       autocomplete="username"
+                       autocapitalize="none"
+                       autocorrect="off"
+                       spellcheck="false"
+                       data-testid="login-user" />
         </div>
 
         <div class="campo">
             <label class="campo__rotulo" for="senha">Senha</label>
-            <InputText id="senha" type="password" class="campo__controle" @bind-Value="_modelo.Password" autocomplete="current-password" data-testid="login-password" />
+            <div class="linha" style="flex-wrap:nowrap;gap:var(--esp-2)">
+                <InputText id="senha"
+                           type="@(_mostrarSenha ? "text" : "password")"
+                           class="campo__controle"
+                           @bind-Value="_modelo.Password"
+                           autocomplete="current-password"
+                           autocapitalize="none"
+                           autocorrect="off"
+                           spellcheck="false"
+                           data-testid="login-password" />
+                @*
+                    Conferir a senha digitada é o que evita a espiral de tentativas que termina em
+                    conta bloqueada — especialmente em teclado de celular, de madrugada.
+                *@
+                <button type="button"
+                        class="botao botao--contorno"
+                        data-testid="login-toggle-password"
+                        aria-pressed="@_mostrarSenha.ToString().ToLowerInvariant()"
+                        title="@(_mostrarSenha ? "Ocultar a senha" : "Mostrar a senha")"
+                        @onclick="() => _mostrarSenha = !_mostrarSenha">
+                    @(_mostrarSenha ? "Ocultar" : "Mostrar")
+                </button>
+            </div>
         </div>
 
         @if (_erro is not null)
@@ -84,6 +140,8 @@
     // Começa verdadeiro: o estado inicial de SyncStatus não foi medido, e exibi-lo como "Offline"
     // seria afirmar algo que ninguém verificou.
     private bool _verificando = true;
+
+    private bool _mostrarSenha;
 
     protected override async Task OnInitializedAsync()
     {

@@ -59,8 +59,49 @@ public sealed class HttpServerApi(
         }
     }
 
-    public Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default) =>
-        SendAsync<LoginResponse>(HttpMethod.Post, "api/auth/login", request, authenticated: false, cancellationToken);
+    /// <summary>
+    /// Entra no servidor preservando o MOTIVO da recusa.
+    ///
+    /// Não usa <see cref="SendAsync{T}"/> de propósito: aquele método devolve nulo tanto para
+    /// "não falei com o servidor" quanto para "o servidor disse não", e aqui a diferença decide
+    /// se o aplicativo pode tentar o acesso offline.
+    /// </summary>
+    public async Task<ServerLoginResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
+    {
+        var resposta = await SendRawAsync(HttpMethod.Post, "api/auth/login", request, authenticated: false, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (resposta is null)
+        {
+            return ServerLoginResult.Unreachable();
+        }
+
+        if (resposta.IsSuccessStatusCode)
+        {
+            var conteudo = await resposta.Content.ReadFromJsonAsync<LoginResponse>(cancellationToken).ConfigureAwait(false);
+
+            return conteudo is null
+                ? ServerLoginResult.Refused(null, "O servidor respondeu de forma inesperada.")
+                : ServerLoginResult.Success(conteudo);
+        }
+
+        try
+        {
+            var problema = await resposta.Content
+                .ReadFromJsonAsync<System.Text.Json.JsonElement>(cancellationToken)
+                .ConfigureAwait(false);
+
+            var mensagem = problema.TryGetProperty("detail", out var detalhe) ? detalhe.GetString() : null;
+            var codigo = problema.TryGetProperty("codigo", out var chave) ? chave.GetString() : null;
+
+            return ServerLoginResult.Refused(codigo, mensagem);
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or NotSupportedException)
+        {
+            logger.LogDebug(ex, "Resposta de erro do login sem ProblemDetails.");
+            return ServerLoginResult.Refused(null, null);
+        }
+    }
 
     public Task<BootstrapResponse?> BootstrapAsync(CancellationToken cancellationToken = default) =>
         SendAsync<BootstrapResponse>(HttpMethod.Get, "api/bootstrap", null, authenticated: true, cancellationToken);

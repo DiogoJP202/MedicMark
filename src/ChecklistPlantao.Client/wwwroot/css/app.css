@@ -3,21 +3,28 @@
   (_content/ChecklistPlantao.UI/css/design-system.css).
 */
 
-/* Área segura do notch/barra de status no Android. */
+/*
+    Área segura da barra de status e do recorte da câmera.
+
+    O template do MAUI trazia isto dentro de @supports (-webkit-touch-callout: none), que é uma
+    consulta de recurso EXCLUSIVA do iOS — no Android ela nunca casa, e a reserva simplesmente não
+    acontecia. Resultado: o topo da página ficava sob a barra do sistema, escondendo o título e
+    deixando o botão de recolher o aviso fora de alcance.
+
+    Sem gate: env() devolve zero onde não há área segura, então isto é inofensivo no Windows.
+*/
 .status-bar-safe-area {
-    display: none;
+    display: block;
+    height: env(safe-area-inset-top, 0px);
+    background-color: var(--cor-primaria);
+    width: 100%;
 }
 
-@supports (-webkit-touch-callout: none) {
-    .status-bar-safe-area {
-        display: flex;
-        position: sticky;
-        top: 0;
-        height: env(safe-area-inset-top);
-        background-color: var(--cor-primaria);
-        width: 100%;
-        z-index: 60;
-    }
+/* A barra do topo e as faixas fixas também respeitam o recorte lateral em telas com curvatura. */
+.app-topo,
+.faixa--fixa {
+    padding-left: max(var(--esp-4), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--esp-4), env(safe-area-inset-right, 0px));
 }
 
 /* Impede seleção acidental de texto ao tocar rápido nas células. */

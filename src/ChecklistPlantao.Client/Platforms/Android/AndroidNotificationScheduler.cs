@@ -319,16 +319,41 @@ public sealed class AndroidNotificationPermissionService : INotificationPermissi
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Escolhe a tela do sistema pela pendência MAIS grave que ainda existe.
+    ///
+    /// A ordem é a do impacto: sem permissão de notificação nenhum alerta aparece; sem alarme
+    /// exato o alerta chega atrasado; sem isenção de bateria pode atrasar mais ainda. Levar o
+    /// usuário à tela errada faz o botão "Corrigir agora" parecer quebrado.
+    /// </summary>
     private static Intent BuildSettingsIntent(Context contexto)
     {
-        // Falta o alarme exato: vai direto para a tela dele (Android 12+).
+        // 1. Notificações desligadas: é o que impede tudo.
+        if (!(NotificationManagerCompat.From(contexto)?.AreNotificationsEnabled() ?? false)
+            && OperatingSystem.IsAndroidVersionAtLeast(26))
+        {
+            return new Intent(global::Android.Provider.Settings.ActionAppNotificationSettings)
+                .PutExtra(global::Android.Provider.Settings.ExtraAppPackage, contexto.PackageName);
+        }
+
+        // 2. Alarme exato (Android 12+).
         if (OperatingSystem.IsAndroidVersionAtLeast(31)
             && !(((AlarmManager?)contexto.GetSystemService(Context.AlarmService))?.CanScheduleExactAlarms() ?? true))
         {
             return new Intent(global::Android.Provider.Settings.ActionRequestScheduleExactAlarm);
         }
 
-        // A tela de notificações por aplicativo só existe a partir do Android 8.
+        // 3. Isenção da otimização de bateria. Abre o diálogo do sistema que concede na hora,
+        //    em vez de mandar o usuário procurar a opção nas configurações.
+        if (OperatingSystem.IsAndroidVersionAtLeast(23)
+            && !(((PowerManager?)contexto.GetSystemService(Context.PowerService))?.IsIgnoringBatteryOptimizations(contexto.PackageName!) ?? true))
+        {
+            return new Intent(
+                global::Android.Provider.Settings.ActionRequestIgnoreBatteryOptimizations,
+                global::Android.Net.Uri.Parse($"package:{contexto.PackageName}"));
+        }
+
+        // Nada pendente que o sistema resolva: mostra a tela de notificações do aplicativo.
         if (OperatingSystem.IsAndroidVersionAtLeast(26))
         {
             return new Intent(global::Android.Provider.Settings.ActionAppNotificationSettings)

@@ -56,6 +56,14 @@ suprimi-la por:
 - ausência de permissão de alarme exato (Android 12+);
 - economia de bateria / modo Soneca;
 - restrições agressivas do fabricante (Xiaomi, Huawei, Samsung e outros mantêm listas próprias);
+
+> **Camadas separadas.** A isenção de otimização de bateria do **Android** (`deviceidle whitelist`)
+> e a configuração de bateria do **fabricante** são independentes. No Xiaomi/MIUI, marcar
+> "Sem restrições" na tela do aplicativo **não** o coloca na lista do Android — e o diagnóstico do
+> aplicativo continuará, corretamente, apontando a pendência. Use "Corrigir agora", que abre o
+> diálogo de isenção do próprio Android. Para cobertura completa em aparelhos Xiaomi, faça **as
+> duas** coisas, e ative também o "Início automático".
+
 - Assistente de Foco / Não Perturbe.
 
 **Por isso existe o alerta dentro do aplicativo.** A faixa de tarefas atrasadas e a tela de

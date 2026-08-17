@@ -55,8 +55,11 @@ internal sealed class FakeServerApi : IServerApi
             ? new ServerProbeResponse("ChecklistPlantao", "0.1.0", "Testing", DateTime.UtcNow, "America/Sao_Paulo")
             : null);
 
-    public Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default) =>
-        Task.FromResult<LoginResponse?>(null);
+    /// <summary>Resposta a ser devolvida no login. Nulo = servidor inalcançável.</summary>
+    public ServerLoginResult? LoginResult { get; set; }
+
+    public Task<ServerLoginResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default) =>
+        Task.FromResult(LoginResult ?? ServerLoginResult.Unreachable());
 
     public Task<BootstrapResponse?> BootstrapAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(IsReachable ? Bootstrap : null);

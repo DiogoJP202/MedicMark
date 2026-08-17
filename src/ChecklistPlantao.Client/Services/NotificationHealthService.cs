@@ -33,7 +33,18 @@ public sealed class NotificationHealthService(
 
         if (!estado.BatteryOptimizationIgnored)
         {
-            problemas.Add("A economia de bateria está ativa para este aplicativo e pode adiar os alertas.");
+            // Texto anterior — "A economia de bateria está ativa para este aplicativo" — era
+            // enganoso: lia como se o usuário tivesse ligado alguma coisa. O que a API informa é
+            // apenas que o aplicativo NÃO está na lista de isenção do Android, que é o estado
+            // padrão de qualquer app recém-instalado.
+            //
+            // A ressalva sobre o fabricante importa: no Xiaomi/MIUI, marcar "Sem restrições" na
+            // tela de bateria do app NÃO coloca o aplicativo nessa lista. São camadas separadas,
+            // e sem essa frase o usuário conclui que o aviso está errado.
+            problemas.Add(
+                "Este aplicativo não está na lista de isenção da otimização de bateria do Android, " +
+                "e os alertas podem atrasar. Use \"Corrigir agora\" para pedir a isenção — a " +
+                "configuração do fabricante é separada desta.");
         }
 
         if (scheduler.RequiresAppRunning)
