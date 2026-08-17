@@ -22,7 +22,7 @@
 |---|---|
 | `dotnet build ChecklistPlantao.sln -c Release` | ✅ 0 erros, **0 avisos** — inclui os dois heads MAUI |
 | `dotnet build ChecklistPlantao.NoMaui.slnf -c Release` | ✅ 0 erros, 0 avisos |
-| `dotnet test ChecklistPlantao.NoMaui.slnf -c Release` | ✅ **241 testes, 0 falhas** |
+| `dotnet test ChecklistPlantao.NoMaui.slnf -c Release` | ✅ **267 testes, 0 falhas** |
 | `dotnet build -f net10.0-android` | ✅ compila |
 | `dotnet build -f net10.0-windows10.0.19041.0` | ✅ compila |
 | `dotnet restore` | ✅ sem avisos de vulnerabilidade |
@@ -32,10 +32,28 @@
 | Projeto | Testes | O que cobre |
 |---|---|---|
 | Domain.Tests | 106 | Turno, permissões, retenção, conflito, agendamento, seeds |
-| Client.Core.Tests | 40 | Persistência offline, fila, idempotência, conflito, auth offline |
-| UI.Tests (bUnit) | 37 | Componentes, filtros, faixas, permissões na interface |
+| UI.Tests (bUnit) | 52 | Componentes, filtros, faixas, desvio da primeira execução, estado da conexão no login |
+| Client.Core.Tests | 51 | Persistência offline, fila, idempotência, conflito, auth offline, **grafo de dependências real** |
 | Server.IntegrationTests | 30 | API de ponta a ponta com servidor e SQLite reais |
 | Application.Tests | 28 | Casos de uso, sessão, retenção, administração |
+
+### Defeitos encontrados depois da entrega inicial
+
+Três falhas que os testes originais não pegavam, porque todos registravam os serviços à mão e
+substituíam `IServerApi` por um duplo — a composição real do aplicativo nunca era exercitada:
+
+| Defeito | Sintoma | Correção |
+|---|---|---|
+| Ciclo de dependência `IServerApi → ITokenStore → IServerApi` | Tela branca no aparelho: *"A circular dependency was detected"* | `IServerApi` resolvido sob demanda, não no construtor |
+| `SyncStatusService` (singleton) segurando `IServerApi` (com escopo) | Dependência cativa | Resolvido por escopo em cada uso |
+| Painel sem desvio na primeira execução | "Verificando o acesso…" para sempre, sem caminho para configurar o servidor | Desvio para `/configuracao` ou `/entrar` |
+
+Também corrigido: a tela de login afirmava "Offline" a partir do estado inicial, **sem ter medido
+nada** — exatamente o tipo de afirmação não verificada que o resto do sistema evita. Agora mede
+antes de rotular.
+
+`ServiceGraphTests` fecha a lacuna: constrói o contêiner **real** com `ValidateOnBuild` e
+`ValidateScopes`, e resolve cada serviço que a interface injeta.
 
 ### Validado manualmente neste ambiente
 
@@ -87,7 +105,7 @@ Servidor executado de verdade, com estas verificações feitas:
 | 27 | Não existe histórico de usuário por marcação | Implementado · Validado por teste automatizado (inspeciona o modelo do EF) |
 | 28 | Não existem dados de paciente | Implementado · Verificável por inspeção do modelo |
 | 29 | Build dos projetos compatíveis passa | ✅ **Toda a solução, 0 avisos** |
-| 30 | Testes compatíveis passam | ✅ **241 testes** |
+| 30 | Testes compatíveis passam | ✅ **267 testes** |
 
 ---
 
