@@ -98,6 +98,13 @@
                 <span class="faixa__icone" aria-hidden="true">✕</span>
                 <div class="faixa__conteudo">
                     <p class="faixa__texto">@_erro</p>
+                    @if (_detalhe is not null)
+                    {
+                        <details class="faixa__detalhe">
+                            <summary>Detalhes técnicos</summary>
+                            <p class="faixa__tecnico">@_detalhe</p>
+                        </details>
+                    }
                 </div>
             </div>
         }
@@ -137,6 +144,9 @@
     private bool _entrando;
     private string? _erro;
 
+    /// <summary>Causa técnica, quando o motivo da recusa não basta para resolver.</summary>
+    private string? _detalhe;
+
     // Começa verdadeiro: o estado inicial de SyncStatus não foi medido, e exibi-lo como "Offline"
     // seria afirmar algo que ninguém verificou.
     private bool _verificando = true;
@@ -175,6 +185,7 @@
     {
         _entrando = true;
         _erro = null;
+        _detalhe = null;
 
         try
         {
@@ -185,6 +196,15 @@
             }
 
             _erro = Session.LastSignInError ?? "Usuário ou senha inválidos.";
+            _detalhe = Session.LastSignInErrorDetail;
+        }
+        catch (Exception excecao)
+        {
+            // Rede, serialização, armazenamento seguro: entrar é a única porta do aplicativo, e
+            // deixar qualquer exceção escapar daqui tranca o usuário do lado de fora, com a tela
+            // de "o aplicativo precisa ser reiniciado" e nenhuma pista do motivo.
+            _erro = "Não foi possível entrar por uma falha inesperada neste aparelho.";
+            _detalhe = $"{excecao.GetType().Name}: {excecao.Message}";
         }
         finally
         {

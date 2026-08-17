@@ -359,6 +359,28 @@ p { margin: 0 0 var(--esp-3); }
     font-size: var(--texto-sm);
 }
 
+/* Causa técnica dentro de uma faixa: recolhida por padrão, legível quando aberta. */
+.faixa__detalhe {
+    margin-top: var(--esp-2);
+    font-size: var(--texto-sm);
+}
+
+.faixa__detalhe > summary {
+    cursor: pointer;
+    padding: var(--esp-1) 0;
+    min-height: 2.75rem;
+    display: flex;
+    align-items: center;
+}
+
+.faixa__tecnico {
+    margin: var(--esp-1) 0 0;
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: var(--texto-xs);
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
 .faixa--info { background: var(--cor-primaria-suave); border-color: var(--cor-primaria-clara); }
 .faixa--sucesso { background: var(--cor-sucesso-suave); border-color: var(--cor-sucesso); }
 .faixa--alerta { background: var(--cor-alerta-suave); border-color: var(--cor-alerta); }

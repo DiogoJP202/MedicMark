@@ -79,9 +79,16 @@ public sealed class ClientSession(
 
     public string? LastSignInError { get; private set; }
 
+    /// <summary>
+    /// Detalhe técnico da última falha, quando existir. A tela mostra recolhido: quem está no
+    /// plantão não precisa dele, e quem vai resolver o problema não consegue sem ele.
+    /// </summary>
+    public string? LastSignInErrorDetail { get; private set; }
+
     public async Task<bool> SignInAsync(string userName, string password, CancellationToken cancellationToken = default)
     {
         LastSignInError = null;
+        LastSignInErrorDetail = null;
 
         var normalizado = AppUser.NormalizeUserName(userName ?? string.Empty);
 
@@ -91,23 +98,61 @@ public sealed class ClientSession(
             return false;
         }
 
-        var online = await SignInOnlineAsync(normalizado, password, cancellationToken).ConfigureAwait(false);
-
-        if (online.Entrou)
+        try
         {
-            return true;
+            var online = await SignInOnlineAsync(normalizado, password, cancellationToken).ConfigureAwait(false);
+
+            if (online.Entrou)
+            {
+                return true;
+            }
+
+            // O servidor respondeu e recusou: a resposta dele é a verdade. Tentar o caminho offline
+            // aqui trocaria "sua conta está bloqueada" por "você nunca entrou neste aparelho" — uma
+            // mensagem errada, que esconde do usuário exatamente o que ele precisa saber para agir.
+            if (online.Recusado)
+            {
+                LastSignInError = online.Motivo;
+                return false;
+            }
+
+            return await SignInOfflineAsync(normalizado, password, cancellationToken).ConfigureAwait(false);
         }
-
-        // O servidor respondeu e recusou: a resposta dele é a verdade. Tentar o caminho offline
-        // aqui trocaria "sua conta está bloqueada" por "você nunca entrou neste aparelho" — uma
-        // mensagem errada, que esconde do usuário exatamente o que ele precisa saber para agir.
-        if (online.Recusado)
+        catch (DbUpdateException excecao)
         {
-            LastSignInError = online.Motivo;
+            // Falha ao GRAVAR no banco do aparelho. Antes esta exceção subia até o topo e derrubava
+            // a aplicação inteira ("o aplicativo precisa ser reiniciado"), levando junto a única
+            // informação útil: a mensagem do EF é genérica e a causa está na exceção interna.
+            RegisterStorageFailure(excecao, normalizado);
             return false;
         }
+    }
 
-        return await SignInOfflineAsync(normalizado, password, cancellationToken).ConfigureAwait(false);
+    /// <summary>
+    /// Registra uma falha de gravação local de forma que ela seja diagnosticável sem depurador.
+    /// A senha e o verificador nunca entram no log — só o que identifica a causa.
+    /// </summary>
+    private void RegisterStorageFailure(DbUpdateException excecao, string userName)
+    {
+        var causa = excecao.InnerException?.Message ?? excecao.Message;
+
+        var entidades = excecao.Entries.Count == 0
+            ? "nenhuma entidade identificada"
+            : string.Join(", ", excecao.Entries
+                .Select(e => $"{e.Metadata.ClrType.Name}/{e.State}")
+                .Distinct());
+
+        logger.LogError(
+            excecao,
+            "Falha ao gravar dados de acesso de {UserName} no banco local. Entidades: {Entidades}. Causa: {Causa}",
+            userName,
+            entidades,
+            causa);
+
+        LastSignInError = "Não foi possível gravar os dados de acesso neste aparelho. "
+            + "Suas marcações continuam salvas. Feche e abra o aplicativo e tente de novo.";
+
+        LastSignInErrorDetail = $"{causa} [{entidades}]";
     }
 
     private async Task<(bool Entrou, bool Recusado, string? Motivo)> SignInOnlineAsync(

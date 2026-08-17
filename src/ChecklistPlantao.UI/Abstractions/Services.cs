@@ -40,6 +40,12 @@ public interface IAppSession
 
     /// <summary>Motivo da última falha de entrada, já em linguagem para o usuário final.</summary>
     string? LastSignInError { get; }
+
+    /// <summary>
+    /// Detalhe técnico da última falha, quando houver. Exibido recolhido: quem está no plantão não
+    /// precisa dele, e quem vai resolver o problema não consegue trabalhar sem ele.
+    /// </summary>
+    string? LastSignInErrorDetail => null;
 }
 
 /// <summary>Leitura e escrita do checklist. Escrever é sempre local primeiro.</summary>
