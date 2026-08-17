@@ -126,19 +126,40 @@ else
         }
     }
 
+    /// <summary>
+    /// Atualiza APENAS o marcador alterado, em memória.
+    ///
+    /// Recarregar a lista inteira remonta o DOM e joga a rolagem de volta ao topo — insuportável
+    /// com 16 leitos, porque cada toque fazia o usuário procurar de novo onde estava. O
+    /// recarregamento completo fica reservado ao caso de conflito, quando a tela precisa mesmo
+    /// mostrar o estado do servidor.
+    /// </summary>
     private async Task AlternarAsync(BedMarkersView leito, BedMarkerState marcador, bool selecionado)
     {
         _mensagem = null;
 
+        AplicarLocal(leito.BedId, marcador.MarkerDefinitionId, selecionado);
+
         var resultado = await Store.ToggleMarkerAsync(_sessionId, leito.BedId, marcador, selecionado);
 
-        if (!resultado.Succeeded)
+        if (resultado.Succeeded)
         {
-            // Classificação não usa "conclusão vence": em conflito o estado do servidor prevalece
-            // e o usuário é avisado em linguagem simples para refazer se quiser.
-            _mensagem = resultado.Message ?? "Outro dispositivo alterou esta classificação. A tela foi atualizada.";
+            return;
         }
 
+        // Classificação não usa "conclusão vence": em conflito o estado do servidor prevalece
+        // e o usuário é avisado em linguagem simples para refazer se quiser.
+        _mensagem = resultado.Message ?? "Outro dispositivo alterou esta classificação. A tela foi atualizada.";
         await CarregarAsync();
     }
+
+    private void AplicarLocal(Guid bedId, Guid markerId, bool selecionado) =>
+        _leitos = [.. _leitos.Select(l => l.BedId != bedId
+            ? l
+            : l with
+            {
+                Markers = [.. l.Markers.Select(m => m.MarkerDefinitionId == markerId
+                    ? m with { IsSelected = selecionado }
+                    : m)],
+            })];
 }

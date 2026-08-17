@@ -11,7 +11,7 @@
         aria-pressed="@Cell.IsCompleted.ToString().ToLowerInvariant()"
         aria-label="@RotuloAcessivel"
         data-testid="@($"cell-{Cell.BedId}-{Cell.ColumnId}")"
-        disabled="@Disabled"
+        disabled="@(Disabled || _bloqueada)"
         @onclick="AlternarAsync">
     @if (Cell.IsCompleted)
     {
@@ -40,8 +40,40 @@
     [Parameter]
     public EventCallback<ChecklistCell> OnToggle { get; set; }
 
+    /// <summary>Segundos que a célula fica travada após um toque. Só ESTA célula.</summary>
+    [Parameter]
+    public int CooldownMilliseconds { get; set; } = 1000;
+
+    private bool _bloqueada;
+
     private string RotuloAcessivel =>
         $"Leito {BedCode}, {ColumnName}: {(Cell.IsCompleted ? "realizado" : "não realizado")}{(Cell.IsOverdue && !Cell.IsCompleted ? ", atrasado" : string.Empty)}";
 
-    private Task AlternarAsync() => Disabled ? Task.CompletedTask : OnToggle.InvokeAsync(Cell);
+    /// <summary>
+    /// Trava a célula por um instante depois do toque, para o toque repetido em rajada não virar
+    /// uma sequência de marca/desmarca que ninguém pediu.
+    ///
+    /// O bloqueio é DESTA célula apenas: travar a grade inteira atrapalharia quem marca vários
+    /// leitos em sequência, que é justamente o uso normal do plantão.
+    /// </summary>
+    private async Task AlternarAsync()
+    {
+        if (Disabled || _bloqueada)
+        {
+            return;
+        }
+
+        _bloqueada = true;
+
+        try
+        {
+            await OnToggle.InvokeAsync(Cell);
+            await Task.Delay(CooldownMilliseconds);
+        }
+        finally
+        {
+            _bloqueada = false;
+            StateHasChanged();
+        }
+    }
 }

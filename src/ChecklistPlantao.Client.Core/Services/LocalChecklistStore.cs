@@ -103,11 +103,18 @@ public sealed class LocalChecklistStore(
                     : new ChecklistCell(leito.Id, templateId, coluna.Id, false, 0, atrasada);
             }).ToList();
 
+            var doLeito = marcadoresPorLeito.TryGetValue(leito.Id, out var marcados) ? marcados : [];
+
             linhas.Add(new ChecklistRow(
                 leito.Id,
                 leito.Code,
                 celulas,
-                marcadoresPorLeito.TryGetValue(leito.Id, out var nomes) ? nomes : []));
+                [.. doLeito.Select(m => m.Nome)])
+            {
+                // Os Ids acompanham os nomes para o filtro do checklist funcionar por
+                // identificador — renomear "Sondas" no painel não pode quebrar o filtro.
+                MarkerIds = [.. doLeito.Select(m => m.Id)],
+            });
         }
 
         var visaoColunas = colunas.Select(coluna => new ChecklistColumnView(
@@ -471,11 +478,15 @@ public sealed class LocalChecklistStore(
         return local;
     }
 
-    private async Task<Dictionary<Guid, List<string>>> LoadMarkerNamesAsync(Guid sessionId, CancellationToken cancellationToken)
+    /// <summary>Marcadores ativos de cada leito na sessão, com Id e nome.</summary>
+    private async Task<Dictionary<Guid, List<(Guid Id, string Nome)>>> LoadMarkerNamesAsync(
+        Guid sessionId,
+        CancellationToken cancellationToken)
     {
         var definicoes = await db.BedMarkerDefinitions
             .AsNoTracking()
             .Where(m => m.IsActive)
+            .OrderBy(m => m.SortOrder)
             .ToDictionaryAsync(m => m.Id, m => m.Name, cancellationToken)
             .ConfigureAwait(false);
 
@@ -488,7 +499,9 @@ public sealed class LocalChecklistStore(
         return selecionados
             .Where(m => definicoes.ContainsKey(m.MarkerDefinitionId))
             .GroupBy(m => m.BedId)
-            .ToDictionary(g => g.Key, g => g.Select(m => definicoes[m.MarkerDefinitionId]).ToList());
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(m => (Id: m.MarkerDefinitionId, Nome: definicoes[m.MarkerDefinitionId])).ToList());
     }
 
     private async Task<SessionSummaryDto> BuildLocalSummaryAsync(Guid sessionId, CancellationToken cancellationToken)

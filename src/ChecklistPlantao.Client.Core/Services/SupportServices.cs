@@ -332,7 +332,11 @@ public sealed class NotificationStatusService(
             scheduler.RequiresAppRunning,
             dispositivo?.LastNotificationTestAtUtc,
             NextScheduled(agendados),
-            problemas);
+            problemas)
+        {
+            // A partir daqui o estado é medido, não presumido.
+            HasBeenChecked = true,
+        };
 
         if (dispositivo is not null)
         {

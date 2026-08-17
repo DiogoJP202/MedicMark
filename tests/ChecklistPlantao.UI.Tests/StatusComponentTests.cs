@@ -75,9 +75,24 @@ public sealed class StatusComponentTests : BunitContext
     public void Faixa_de_notificacao_nao_aparece_quando_esta_tudo_certo()
     {
         var cut = Render<NotificationHealthBanner>(p => p
-            .Add(b => b.Status, new NotificationStatus(true, true, true, true, true, false, DateTime.UtcNow, DateTime.Now, [])));
+            .Add(b => b.Status, new NotificationStatus(true, true, true, true, true, false, DateTime.UtcNow, DateTime.Now, [])
+            {
+                HasBeenChecked = true,
+            }));
 
         Assert.Empty(cut.FindAll("[data-testid=notification-health-banner]"));
+    }
+
+    [Fact]
+    public void Faixa_de_notificacao_nao_aparece_antes_de_qualquer_verificacao()
+    {
+        // Estado inicial: nada foi medido. Ausência de verificação não é defeito, e alarmar por
+        // isso em toda abertura de tela ensina o plantão a ignorar a faixa.
+        var cut = Render<NotificationHealthBanner>(p => p.Add(b => b.Status, NotificationStatus.Unknown));
+
+        Assert.Empty(cut.FindAll("[data-testid=notification-health-banner]"));
+        Assert.False(NotificationStatus.Unknown.HasProblems);
+        Assert.False(NotificationStatus.Unknown.IsHealthy);
     }
 
     [Fact]
@@ -85,7 +100,10 @@ public sealed class StatusComponentTests : BunitContext
     {
         var cut = Render<NotificationHealthBanner>(p => p
             .Add(b => b.Status, new NotificationStatus(false, false, true, true, false, false, null, null,
-                ["Permissão de notificações negada.", "Alarmes exatos não permitidos."])));
+                ["Permissão de notificações negada.", "Alarmes exatos não permitidos."])
+            {
+                HasBeenChecked = true,
+            }));
 
         var faixa = cut.Find("[data-testid=notification-health-banner]");
 
@@ -97,8 +115,8 @@ public sealed class StatusComponentTests : BunitContext
     [Fact]
     public void Notificacao_degradada_e_diferente_de_permissao_negada()
     {
-        var degradada = new NotificationStatus(true, false, true, true, true, false, null, null, ["O horário pode não ser exato."]);
-        var negada = new NotificationStatus(false, null, false, false, false, false, null, null, ["Permissão negada."]);
+        var degradada = new NotificationStatus(true, false, true, true, true, false, null, null, ["O horário pode não ser exato."]) { HasBeenChecked = true };
+        var negada = new NotificationStatus(false, null, false, false, false, false, null, null, ["Permissão negada."]) { HasBeenChecked = true };
 
         Assert.True(degradada.IsDegraded);
         Assert.False(degradada.IsHealthy);

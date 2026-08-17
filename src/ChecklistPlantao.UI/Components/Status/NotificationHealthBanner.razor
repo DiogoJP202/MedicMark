@@ -11,7 +11,8 @@
     completa, mesmo que ele já tenha recolhido a anterior.
 *@
 
-@if (!Status.IsHealthy)
+@* HasProblems, e não !IsHealthy: enquanto nada foi medido não há o que alertar. *@
+@if (Status.HasProblems)
 {
     @if (_recolhido)
     {

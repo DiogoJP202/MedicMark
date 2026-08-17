@@ -297,6 +297,50 @@ aparelho adota a do servidor na primeira sincronização — ele é a autoridade
 
 ---
 
+## D-019 — Quem está usando o aplicativo é estado de aplicativo, não de escopo
+
+**Contexto.** `ClientSession` depende do `LocalDbContext`, que tem tempo de vida por escopo — logo a
+sessão também precisa ser por escopo. Só que ela guardava o estado de autenticação nos próprios
+campos. Como os serviços singleton (sincronização, reagendamento de notificações) abrem escopos
+próprios, cada escopo passou a ter a sua verdade: resolver `IAppSession` fora do escopo do WebView
+devolvia uma instância **nova, não autenticada**. No aparelho isso aparecia como "tocar em Painel
+volta para a tela de entrada", com o usuário logado o tempo todo, e a navegação sumindo junto.
+
+**Decisão.** O estado — identidade, permissões, setor escolhido, momento da última validação pelo
+servidor — vive em `AuthenticatedSessionState`, registrado como **singleton**. `ClientSession`
+continua por escopo, faz o trabalho que depende do banco e delega todo o estado. O evento `Changed`
+também mora no singleton: quem assina é a interface, cujo escopo pode não ser o de quem fez a
+entrada — assinar na instância errada seria assinar o silêncio.
+
+**Consequências.** O escopo deixa de importar para a pergunta "quem está usando o aplicativo".
+`ServiceGraphTests` fixa a regra com dois casos: a sessão vista por dois escopos é a mesma, e o
+aviso de mudança atravessa escopos. O singleton guarda apenas o que já estava em memória — nenhum
+segredo novo, e nada de token, que continua no armazenamento seguro da plataforma.
+
+**Status.** Aceita.
+
+---
+
+## D-020 — "Não verificado" não é "com problema"
+
+**Contexto.** A faixa de saúde das notificações aparecia com o texto *"O estado das notificações
+ainda não foi verificado"* a cada abertura de tela, porque a ausência de medição era tratada como
+defeito. Alarme constante e sem ação possível ensina o plantão a ignorar a faixa — inclusive quando
+ela estiver certa.
+
+**Decisão.** `NotificationStatus` passou a carregar `HasBeenChecked`. `IsHealthy` exige medição e
+ausência de problemas; `HasProblems` exige medição e problema real. A faixa aparece só em
+`HasProblems`. O estado inicial (`Unknown`) não é nem saudável nem problemático — é silêncio.
+
+**Consequências.** Coerente com a regra que o sistema segue em toda parte: não afirmar o que não foi
+medido (a mesma correção feita no rótulo "Offline" da tela de entrada e no texto da economia de
+bateria). O usuário pediu originalmente um cache de 1 h para o aviso; distinguir os estados resolve
+a causa em vez do sintoma, e o cache permanece disponível como recurso caso a faixa ainda incomode.
+
+**Status.** Aceita.
+
+---
+
 ## D-012 — Administrador inicial sem senha no repositório
 
 **Contexto.** O enunciado proíbe senha padrão no código.

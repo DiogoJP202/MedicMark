@@ -37,6 +37,10 @@ public static class DependencyInjection
         services.AddSingleton<IClock, SystemClock>();
         services.AddOptions<OfflineAuthOptions>();
 
+        // Estado da sessão como SINGLETON: a sessão em si precisa ser por escopo (depende do
+        // banco local), mas quem está usando o aplicativo é um só. Ver AuthenticatedSessionState.
+        services.AddSingleton<AuthenticatedSessionState>();
+
         services.AddScoped<OutboxWriter>();
         services.AddScoped<SyncEngine>();
         services.AddScoped<ClientSession>();

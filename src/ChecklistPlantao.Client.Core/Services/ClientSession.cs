@@ -31,28 +31,35 @@ public sealed class ClientSession(
     ITokenStore tokens,
     IClock clock,
     IInstitutionSettingsProvider settings,
+    AuthenticatedSessionState estado,
     IOptions<OfflineAuthOptions> offlineOptions,
     ILogger<ClientSession> logger) : IAppSession
 {
     private readonly OfflineAuthOptions _offline = offlineOptions.Value;
 
-    private LocalCredential? _credencial;
-    private EffectiveAccess _acesso = EffectiveAccess.None;
     private DeviceState? _dispositivo;
 
-    public event Action? Changed;
+    /// <summary>
+    /// O evento pertence ao estado compartilhado, não a esta instância: quem assina é a interface,
+    /// que pode estar em outro escopo. Ver <see cref="AuthenticatedSessionState"/>.
+    /// </summary>
+    public event Action? Changed
+    {
+        add => estado.Changed += value;
+        remove => estado.Changed -= value;
+    }
 
-    public bool IsAuthenticated { get; private set; }
+    public bool IsAuthenticated => estado.IsAuthenticated;
 
-    public string DisplayName => _credencial?.DisplayName ?? string.Empty;
+    public string DisplayName => estado.DisplayName;
 
-    public EffectiveAccess Access => _acesso;
+    public EffectiveAccess Access => estado.Access;
 
     public bool PermissionsAreStale
     {
         get
         {
-            if (_credencial is null)
+            if (estado.LastServerValidationUtc is not { } validado)
             {
                 return false;
             }
@@ -60,15 +67,15 @@ public sealed class ClientSession(
             // "Desatualizado" começa na metade da validade offline: avisa antes de expirar,
             // dando tempo de reconectar sem perder o acesso no meio do plantão.
             var validade = settings.Current.OfflineLoginValidity;
-            return clock.UtcNow - _credencial.LastServerValidationUtc > validade / 2;
+            return clock.UtcNow - validado > validade / 2;
         }
     }
 
-    public DateTime? LastServerValidationUtc => _credencial?.LastServerValidationUtc;
+    public DateTime? LastServerValidationUtc => estado.LastServerValidationUtc;
 
-    public Guid? CurrentSectorId => _dispositivo?.CurrentSectorId;
+    public Guid? CurrentSectorId => estado.CurrentSectorId;
 
-    public string? CurrentSectorName { get; private set; }
+    public string? CurrentSectorName => estado.CurrentSectorName;
 
     public string? LastSignInError { get; private set; }
 
@@ -210,12 +217,7 @@ public sealed class ClientSession(
     {
         await tokens.ClearAsync(cancellationToken).ConfigureAwait(false);
 
-        IsAuthenticated = false;
-        _credencial = null;
-        _acesso = EffectiveAccess.None;
-        CurrentSectorName = null;
-
-        Changed?.Invoke();
+        estado.SignOut();
     }
 
     /// <summary>Restaura a sessão ao abrir o aplicativo, sem pedir senha de novo.</summary>
@@ -246,7 +248,7 @@ public sealed class ClientSession(
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var visiveis = _acesso.FilterSectors(setores, s => s.Id).ToList();
+        var visiveis = estado.Access.FilterSectors(setores, s => s.Id).ToList();
         var resultado = new List<SectorSummary>(visiveis.Count);
 
         foreach (var setor in visiveis)
@@ -271,7 +273,7 @@ public sealed class ClientSession(
 
     public async Task SelectSectorAsync(Guid sectorId, CancellationToken cancellationToken = default)
     {
-        if (!_acesso.CanAccessSector(sectorId))
+        if (!estado.Access.CanAccessSector(sectorId))
         {
             return;
         }
@@ -280,17 +282,23 @@ public sealed class ClientSession(
         device.SelectSector(sectorId);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        await LoadSectorNameAsync(cancellationToken).ConfigureAwait(false);
-        Changed?.Invoke();
+        var nome = await db.Sectors
+            .AsNoTracking()
+            .Where(s => s.Id == sectorId)
+            .Select(s => s.Name)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        estado.SelectSector(sectorId, nome);
     }
 
-    private void Activate(LocalCredential credencial)
-    {
-        _credencial = credencial;
-        _acesso = BuildAccess(credencial.PermissionsSnapshot);
-        IsAuthenticated = true;
-        Changed?.Invoke();
-    }
+    private void Activate(LocalCredential credencial) =>
+        estado.SignIn(
+            credencial.UserId,
+            credencial.UserName,
+            credencial.DisplayName,
+            BuildAccess(credencial.PermissionsSnapshot),
+            credencial.LastServerValidationUtc);
 
     /// <summary>
     /// Reconstrói o acesso efetivo a partir do snapshot. Usa um grupo sintético porque
@@ -321,13 +329,28 @@ public sealed class ClientSession(
         return EffectiveAccess.FromGroups([grupo]);
     }
 
+    /// <summary>
+    /// Recupera o setor escolhido a partir do banco local e o publica no estado compartilhado.
+    /// Chamado ao restaurar a sessão, quando o estado em memória ainda está vazio.
+    /// </summary>
     private async Task LoadSectorNameAsync(CancellationToken cancellationToken)
     {
         var device = await GetDeviceAsync(cancellationToken).ConfigureAwait(false);
 
-        CurrentSectorName = device.CurrentSectorId is { } id
-            ? await db.Sectors.AsNoTracking().Where(s => s.Id == id).Select(s => s.Name).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false)
-            : null;
+        if (device.CurrentSectorId is not { } id)
+        {
+            estado.SelectSector(null, null);
+            return;
+        }
+
+        var nome = await db.Sectors
+            .AsNoTracking()
+            .Where(s => s.Id == id)
+            .Select(s => s.Name)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        estado.SelectSector(id, nome);
     }
 
     private async Task<DeviceState> GetDeviceAsync(CancellationToken cancellationToken)

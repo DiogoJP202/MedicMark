@@ -75,6 +75,10 @@
     [Parameter]
     public bool OnlyPending { get; set; }
 
+    /// <summary>Mostra só os leitos com este marcador. Nulo mostra todos.</summary>
+    [Parameter]
+    public Guid? MarkerId { get; set; }
+
     [Parameter]
     public bool ReadOnly { get; set; }
 
@@ -83,7 +87,8 @@
 
     private IReadOnlyList<ChecklistRow> LinhasVisiveis { get; set; } = [];
 
-    protected override void OnParametersSet() => LinhasVisiveis = ChecklistFilter.Apply(Board.Rows, Search, OnlyPending);
+    protected override void OnParametersSet() =>
+        LinhasVisiveis = ChecklistFilter.Apply(Board.Rows, Search, OnlyPending, MarkerId);
 
     private string NomeDaColuna(Guid columnId) =>
         Board.Columns.FirstOrDefault(c => c.ColumnId == columnId)?.DisplayName ?? string.Empty;

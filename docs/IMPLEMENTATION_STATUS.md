@@ -22,7 +22,7 @@
 |---|---|
 | `dotnet build ChecklistPlantao.sln -c Release` | ✅ 0 erros, **0 avisos** — inclui os dois heads MAUI |
 | `dotnet build ChecklistPlantao.NoMaui.slnf -c Release` | ✅ 0 erros, 0 avisos |
-| `dotnet test ChecklistPlantao.NoMaui.slnf -c Release` | ✅ **267 testes, 0 falhas** |
+| `dotnet test ChecklistPlantao.NoMaui.slnf -c Release` | ✅ **287 testes, 0 falhas** |
 | `dotnet build -f net10.0-android` | ✅ compila |
 | `dotnet build -f net10.0-windows10.0.19041.0` | ✅ compila |
 | `dotnet restore` | ✅ sem avisos de vulnerabilidade |
@@ -32,9 +32,9 @@
 | Projeto | Testes | O que cobre |
 |---|---|---|
 | Domain.Tests | 106 | Turno, permissões, retenção, conflito, agendamento, seeds |
-| UI.Tests (bUnit) | 52 | Componentes, filtros, faixas, desvio da primeira execução, estado da conexão no login |
-| Client.Core.Tests | 51 | Persistência offline, fila, idempotência, conflito, auth offline, **grafo de dependências real** |
-| Server.IntegrationTests | 30 | API de ponta a ponta com servidor e SQLite reais |
+| UI.Tests (bUnit) | 63 | Componentes, filtros, faixas, desvio da primeira execução, estado da conexão no login, **contenção de falha de tela** |
+| Client.Core.Tests | 57 | Persistência offline, fila, idempotência, conflito, auth offline, recusa do servidor, **grafo de dependências real e sessão entre escopos** |
+| Server.IntegrationTests | 33 | API de ponta a ponta com servidor e SQLite reais, **lote com repetição na mesma célula** |
 | Application.Tests | 28 | Casos de uso, sessão, retenção, administração |
 
 ### Validado em aparelho real — Xiaomi 23122PCD1G, Android 13 (API 33)
@@ -67,10 +67,34 @@ ativa para este aplicativo"* quando a API apenas informa que o app **não está 
 — o estado padrão de qualquer instalação. O botão "Corrigir agora" passou a escolher a tela do
 sistema pela pendência mais grave, incluindo o diálogo de isenção de bateria.
 
+#### Segunda rodada em campo — defeitos de uso
+
+Encontrados percorrendo o roteiro de teste no aparelho. Os dois primeiros são de conforto; os três
+últimos impediam trabalho.
+
+| Defeito | Sintoma no aparelho | Correção |
+|---|---|---|
+| Falha de tela derrubava a navegação | *"Ocorreu um erro inesperado"* com link simples, "Carregando…" infinito, e o menu sumia — sem saída a não ser reiniciar | `<ErrorBoundary>` no layout, **fora** da região que falha: a navegação permanece, com "Tentar de novo" e "Voltar ao início" |
+| Toque repetido na mesma caixa | Marcava e desmarcava em sequência ao clicar rápido | Bloqueio de 1 s **apenas na célula tocada** — percorrer os leitos em sequência continua fluido |
+| Sem filtro por marcador no checklist | C.I., Sondas e Drenos só existiam na tela de classificações | Linha de filtros no checklist, com a contagem de cada marcador |
+| Classificações voltavam ao topo | Marcar um leito recarregava a lista inteira e perdia a rolagem | Atualização local da linha; recarga completa só em caso de conflito |
+| Aviso de notificações a cada abertura | *"O estado das notificações ainda não foi verificado"* aparecia sempre | O estado passou a distinguir **não medido** de **com problema**; a faixa só aparece com problema real |
+| Sessão perdida entre telas | Tocar em "Painel" às vezes voltava para a entrada, com o usuário logado | Estado de autenticação movido para `AuthenticatedSessionState` (singleton); a sessão por escopo deixou de ter verdade própria |
+
+Um sexto defeito, no servidor, bloqueava a sincronização por completo:
+
+| Defeito | Sintoma | Correção |
+|---|---|---|
+| `UNIQUE constraint failed` → **500** em `/api/sync/push` | Lote com várias operações para a **mesma célula**: a consulta ao banco não enxergava a entidade criada momentos antes na mesma unidade de trabalho, e o segundo `INSERT` colidia | Consulta a `.Local` antes do banco, em `ChecklistEntry` e `SessionBedMarker` |
+
+Cobertos por `BatchSameCellTests`, `ErrorBoundaryTests`, `ServerConfigurationReachableTests`,
+`LoginRefusalTests` e os dois casos de sessão entre escopos em `ServiceGraphTests`.
+
 #### Pendente de validação manual
 
 | Item | Como validar | Por que não foi feito |
 |---|---|---|
+| As seis correções da segunda rodada, no aparelho | Roteiro de teste, etapas 1–6 | Aparelho desconectado no momento da correção; compila e passa nos testes, **não reexecutado em campo** |
 | Mensagem de conta bloqueada na tela | Errar a senha 5 vezes | Bloqueia a conta por 15 min; adiado a pedido |
 | Notificação agendada com o app fechado | Roteiro de teste, etapa 6 | Depende de tempo de espera real |
 | Isenção de bateria concedida | "Corrigir agora" → confirmar → "Verificar novamente" | Aguardando execução |
@@ -143,7 +167,7 @@ Servidor executado de verdade, com estas verificações feitas:
 | 27 | Não existe histórico de usuário por marcação | Implementado · Validado por teste automatizado (inspeciona o modelo do EF) |
 | 28 | Não existem dados de paciente | Implementado · Verificável por inspeção do modelo |
 | 29 | Build dos projetos compatíveis passa | ✅ **Toda a solução, 0 avisos** |
-| 30 | Testes compatíveis passam | ✅ **267 testes** |
+| 30 | Testes compatíveis passam | ✅ **287 testes** |
 
 ---
 

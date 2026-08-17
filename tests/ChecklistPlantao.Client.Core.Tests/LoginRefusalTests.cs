@@ -23,6 +23,7 @@ public sealed class LoginRefusalTests
             new FakeTokenStore(),
             host.Clock,
             new FakeSettings(),
+            new AuthenticatedSessionState(),
             Options.Create(new OfflineAuthOptions { Iterations = 1_000 }),
             NullLogger<ClientSession>.Instance);
 

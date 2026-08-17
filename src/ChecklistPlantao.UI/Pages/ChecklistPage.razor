@@ -87,6 +87,32 @@ else
             </label>
         </div>
 
+        @*
+            Filtro por classificação dentro do próprio checklist: permite percorrer só os leitos
+            com Sondas sem sair para a tela de Classificações e voltar.
+        *@
+        @if (_marcadores.Count > 0)
+        {
+            <div class="linha" role="group" aria-label="Filtrar por classificação">
+                <button type="button"
+                        class="botao @(_marcadorFiltrado is null ? "botao--primario" : "botao--contorno")"
+                        data-testid="marker-filter-all"
+                        @onclick="() => _marcadorFiltrado = null">
+                    Todos
+                </button>
+
+                @foreach (var marcador in _marcadores)
+                {
+                    <button type="button"
+                            class="botao @(_marcadorFiltrado == marcador.Id ? "botao--primario" : "botao--contorno")"
+                            data-testid="@($"marker-filter-{marcador.Id}")"
+                            @onclick="() => _marcadorFiltrado = marcador.Id">
+                        @marcador.Nome (@marcador.Quantidade)
+                    </button>
+                }
+            </div>
+        }
+
         @* --------------------------------------------------------- celular *@
         <div class="somente-mobile">
             <ChecklistColumnSelector Columns="_board.Columns"
@@ -104,6 +130,7 @@ else
                                  ColumnId="_colunaAtual"
                                  Search="@_busca"
                                  OnlyPending="_somentePendentes"
+                                 MarkerId="_marcadorFiltrado"
                                  ReadOnly="@(!_podeMarcar)"
                                  OnToggle="AlternarAsync" />
         </div>
@@ -113,6 +140,7 @@ else
             <ChecklistDesktopGrid Board="_board"
                                   Search="@_busca"
                                   OnlyPending="_somentePendentes"
+                                 MarkerId="_marcadorFiltrado"
                                   ReadOnly="@(!_podeMarcar)"
                                   OnToggle="AlternarAsync" />
         </div>
@@ -137,6 +165,11 @@ else
     private Guid _colunaAtual;
     private string _busca = string.Empty;
     private bool _somentePendentes;
+
+    private Guid? _marcadorFiltrado;
+
+    /// <summary>Marcadores presentes nesta sessão, com a contagem de leitos de cada um.</summary>
+    private IReadOnlyList<(Guid Id, string Nome, int Quantidade)> _marcadores = [];
     private bool _carregando = true;
     private string? _erro;
 
@@ -188,6 +221,8 @@ else
             _podeMarcar = _board.IsSessionOpen
                 && Session.Access.Has(Permissions.ChecklistUpdate)
                 && Session.Access.CanAccessSector(sectorId.Value);
+
+            CarregarMarcadores();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -196,6 +231,30 @@ else
         finally
         {
             _carregando = false;
+        }
+    }
+
+    /// <summary>
+    /// Monta a lista de filtros a partir do que EXISTE na sessão.
+    ///
+    /// Só aparecem marcadores que algum leito realmente tem: oferecer um filtro que devolve lista
+    /// vazia é ruído. Se o filtro ativo deixou de existir, ele é descartado — senão a tela ficaria
+    /// vazia sem explicação.
+    /// </summary>
+    private void CarregarMarcadores()
+    {
+        var nomePorId = _board.Rows
+            .SelectMany(l => l.MarkerIds.Zip(l.MarkerNames, (id, nome) => (id, nome)))
+            .GroupBy(x => x.id)
+            .ToDictionary(g => g.Key, g => (Nome: g.First().nome, Quantidade: g.Count()));
+
+        _marcadores = [.. nomePorId
+            .Select(p => (Id: p.Key, p.Value.Nome, p.Value.Quantidade))
+            .OrderBy(m => m.Nome, StringComparer.Ordinal)];
+
+        if (_marcadorFiltrado is { } atual && !nomePorId.ContainsKey(atual))
+        {
+            _marcadorFiltrado = null;
         }
     }
 

@@ -16,8 +16,9 @@ namespace ChecklistPlantao.UI.Tests;
 /// </summary>
 public sealed class NotificationHealthCollapseTests : BunitContext
 {
+    /// <summary>Estado já verificado, com problemas reais — é quando a faixa deve aparecer.</summary>
     private static NotificationStatus ComProblemas(params string[] problemas) =>
-        new(false, false, true, true, false, false, null, null, problemas);
+        new(false, false, true, true, false, false, null, null, problemas) { HasBeenChecked = true };
 
     [Fact]
     public void Recolher_mantem_a_faixa_visivel()
@@ -114,7 +115,10 @@ public sealed class NotificationHealthCollapseTests : BunitContext
         cut.Find("[data-testid=notification-health-collapse]").Click();
 
         cut.Render(p => p
-            .Add(b => b.Status, new NotificationStatus(true, true, true, true, true, false, DateTime.UtcNow, DateTime.Now, [])));
+            .Add(b => b.Status, new NotificationStatus(true, true, true, true, true, false, DateTime.UtcNow, DateTime.Now, [])
+            {
+                HasBeenChecked = true,
+            }));
 
         Assert.Empty(cut.FindAll("[data-testid=notification-health-banner]"));
     }

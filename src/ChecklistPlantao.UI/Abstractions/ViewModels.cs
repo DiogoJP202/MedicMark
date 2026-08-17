@@ -64,17 +64,34 @@ public sealed record NotificationStatus(
     DateTime? NextScheduledLocal,
     IReadOnlyList<string> Problems)
 {
+    /// <summary>
+    /// Verdadeiro só depois que o dispositivo foi realmente consultado.
+    ///
+    /// Antes disso o aplicativo não sabe nada — e não pode afirmar nada. O estado inicial trazia
+    /// "ainda não foi verificado" dentro de <see cref="Problems"/>, então a faixa de alerta subia
+    /// em toda abertura de tela dizendo que havia um problema quando o que havia era ausência de
+    /// medição. É o mesmo erro que o sistema evita em todo o resto: nunca afirmar o que não foi
+    /// verificado.
+    /// </summary>
+    public bool HasBeenChecked { get; init; }
+
     public static NotificationStatus Unknown { get; } =
-        new(false, null, false, false, false, false, null, null, ["O estado das notificações ainda não foi verificado."]);
+        new(false, null, false, false, false, false, null, null, []) { HasBeenChecked = false };
 
     /// <summary>
-    /// Saudável só quando não há nenhum problema. Nunca dizemos "notificações ativas" com uma
-    /// permissão essencial faltando — é o ponto do item 17 do enunciado.
+    /// Saudável só quando foi verificado E não há nenhum problema. Nunca dizemos "notificações
+    /// ativas" com uma permissão essencial faltando — é o ponto do item 17 do enunciado.
     /// </summary>
-    public bool IsHealthy => Problems.Count == 0;
+    public bool IsHealthy => HasBeenChecked && Problems.Count == 0;
+
+    /// <summary>
+    /// Há um problema REAL a mostrar ao usuário. Falso enquanto nada foi medido: ausência de
+    /// verificação não é defeito, e alarmar por isso ensina o plantão a ignorar a faixa.
+    /// </summary>
+    public bool HasProblems => HasBeenChecked && Problems.Count > 0;
 
     /// <summary>Funciona, mas com ressalva: por exemplo alarme inexato ou app precisa estar aberto.</summary>
-    public bool IsDegraded => PermissionGranted && Problems.Count > 0;
+    public bool IsDegraded => HasBeenChecked && PermissionGranted && Problems.Count > 0;
 }
 
 public sealed record SectorSummary(Guid Id, string Name, int PendingTasks, bool HasOpenSession);
@@ -90,6 +107,13 @@ public sealed record ChecklistCell(
 
 public sealed record ChecklistRow(Guid BedId, string BedCode, IReadOnlyList<ChecklistCell> Cells, IReadOnlyList<string> MarkerNames)
 {
+    /// <summary>
+    /// Identificadores dos marcadores ativos deste leito, para o filtro do checklist.
+    /// Os nomes servem para exibir; filtrar por nome quebraria assim que o administrador
+    /// renomeasse "Sondas".
+    /// </summary>
+    public IReadOnlyList<Guid> MarkerIds { get; init; } = [];
+
     public int Pending => Cells.Count(c => !c.IsCompleted);
 
     public bool IsComplete => Pending == 0;

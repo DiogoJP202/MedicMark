@@ -27,6 +27,12 @@ Repare que nada de "salvo com sucesso" aparece: mensagem repetitiva a cada marca
 
 **Esperado:** volta ao estado anterior.
 
+5. Toque **várias vezes seguidas, rápido**, na mesma caixa.
+
+**Esperado:** a primeira marcação vale; a caixa fica travada por 1 segundo e os toques extras são
+ignorados. **Só aquela caixa** trava — tocar no leito seguinte funciona imediatamente, porque
+percorrer os leitos em sequência é o uso normal desta tela.
+
 ---
 
 ## 2. Filtros e progresso
@@ -44,6 +50,16 @@ Repare que nada de "salvo com sucesso" aparece: mensagem repetitiva a cada marca
 **Esperado:** cada aba mostra quantos faltam ("8 pendentes"), e as concluídas mudam de aparência.
 A barra de progresso mostra número explícito — "10 de 16 · 6 pendentes" —, não só a barra.
 
+4. Na linha de filtros por classificação, toque em **Sondas** (o botão só aparece se houver leitos
+   com aquela classificação no plantão — faça a etapa 3 antes, se necessário).
+
+**Esperado:** o checklist mostra só os leitos com Sondas, e a contagem ao lado do nome confere.
+Tocar de novo no mesmo botão desliga o filtro. O filtro combina com **Somente pendentes** e com a
+busca.
+
+**Por que importa:** era preciso sair do checklist para saber quem tem sonda ou dreno. Agora as
+classificações filtram a própria tela de marcação.
+
 ---
 
 ## 3. Classificações (C.I., Sondas, Drenos)
@@ -55,7 +71,11 @@ A barra de progresso mostra número explícito — "10 de 16 · 6 pendentes" —
 **Esperado:** um leito aceita mais de uma classificação ao mesmo tempo; o filtro mostra só os
 leitos com aquela marcação; a contagem ao lado do nome confere.
 
-4. Volte ao checklist.
+4. Role a lista até o fim e marque um leito de baixo.
+
+**Esperado:** a lista **não volta ao topo**. A rolagem fica onde estava, e só a linha tocada muda.
+
+5. Volte ao checklist.
 
 **Esperado:** o leito classificado mostra as etiquetas ("Sondas", "Drenos") ao lado do número.
 
@@ -135,11 +155,22 @@ volte e toque em **Verificar novamente**: o item some da lista.
 
 Este é o cenário crítico do plantão noturno.
 
-1. No app, entre em **Administração → Tipos de checklist**.
-2. Edite uma coluna do Gelo e ponha o horário **3 minutos à frente** do relógio atual.
-3. Salve, volte ao checklist e confirme que **há leitos pendentes** naquela coluna.
-4. **Feche o aplicativo por completo.**
-5. Espere.
+O caminho, tela por tela — o item "Administração" no menu **só aparece para quem tem a permissão
+`admin.settings`**; se você não o vê, entrou com um usuário de plantão, não com o administrador:
+
+1. Menu → **Administração** → cartão **Tipos de checklist** (endereço `/admin/templates`).
+2. Na tabela do **Gelo**, escolha uma linha de coluna (20H, 22H, …) e toque em **Editar** — o botão
+   fica na última célula da linha, não no cabeçalho.
+3. No campo **Horário real**, ponha **3 minutos à frente** do relógio do celular. Toque em
+   **Salvar coluna**.
+
+> A coluna **Notifica** da tabela precisa estar ligada, e a ajuda do campo explica o resto: *"Sem
+> horário, a coluna não gera notificação."*
+
+4. Volte ao checklist, abra aquela coluna e confirme que **há leitos pendentes** nela — coluna sem
+   pendência não notifica, de propósito.
+5. **Feche o aplicativo por completo** (não só minimize: deslize para fora da lista de recentes).
+6. Espere os 3 minutos.
 
 **Esperado:** a notificação chega com o app fechado, dizendo o tipo, o horário e quantos leitos
 faltam. Tocar nela abre o checklist **naquela coluna**.
@@ -148,9 +179,11 @@ faltam. Tocar nela abre o checklist **naquela coluna**.
 Ajustes → Apps → Checklist de Plantão → **Início automático**, e bateria em **Sem restrições**.
 Ver [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md), item 4.
 
-6. Marque **todos** os leitos daquela coluna e espere o horário da repetição.
+7. Marque **todos** os leitos daquela coluna e espere o horário da repetição.
 
 **Esperado:** **nenhuma** repetição chega. Coluna concluída não incomoda mais.
+
+> Ao terminar, **devolva o horário original** da coluna (Gelo: 20H, 22H, 00H, 02H, 04H, 06H).
 
 ---
 
@@ -232,9 +265,37 @@ uma operação antiga vinda de um aparelho que estava sem rede.
 
 ---
 
+## 11. Navegação e recuperação de falha
+
+Esta seção existe por causa dos defeitos da segunda rodada em campo. Vale percorrer inteira.
+
+1. Circule pelas telas: Painel → Gelo → Classificações → Estado do dispositivo → Painel. Repita
+   algumas vezes, incluindo o **botão voltar do Android**.
+
+**Esperado:** o menu de navegação **nunca some**. "Painel" nunca leva de volta à tela de entrada
+com você logado. Nenhuma tela de "O aplicativo precisa ser reiniciado".
+
+2. Abra e feche telas por alguns minutos, observando o topo.
+
+**Esperado:** o aviso *"O estado das notificações ainda não foi verificado"* **não aparece**. A
+faixa de notificações só surge quando existe um problema real e verificado — permissão negada,
+alarme exato indisponível. Quando aparecer, ela traz "Corrigir agora" e pode ser recolhida.
+
+3. Se alguma tela falhar mesmo assim:
+
+**Esperado:** aparece "Esta tela não pôde ser aberta", com **"Tentar de novo"**, **"Voltar ao
+início"** e um detalhe técnico recolhido. O **menu continua ali** — dá para ir para outra tela sem
+reiniciar o aplicativo. As marcações continuam salvas.
+
+> Se isso acontecer, abra o detalhe técnico e me passe o texto: ele indica exatamente a tela e a
+> causa.
+
+---
+
 ## O que observar em tudo
 
-- Nenhuma tela deve **afirmar** algo que não verificou ("Offline", "notificações ativas").
+- Nenhuma tela deve **afirmar** algo que não verificou ("Offline", "notificações ativas",
+  "estado não verificado" como se fosse defeito).
 - Nenhuma confirmação para marcar; confirmação **apenas** para ações destrutivas.
 - Nenhum estado transmitido só por cor — sempre há `X`, texto ou ícone junto.
 - Nada deve travar esperando a rede.

@@ -2,6 +2,7 @@ using ChecklistPlantao.Application.Abstractions;
 using ChecklistPlantao.Client.Core.Notifications;
 using ChecklistPlantao.Client.Core.Services;
 using ChecklistPlantao.Client.Core.Sync;
+using ChecklistPlantao.Domain.Access;
 using ChecklistPlantao.Domain.Settings;
 using ChecklistPlantao.UI.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
@@ -116,6 +117,78 @@ public sealed class ServiceGraphTests
             Assert.IsType<HttpServerApi>(api);
             Assert.IsType<SecureTokenStore>(tokens);
             Assert.NotNull(estado);
+        }
+        finally
+        {
+            Delete(arquivo);
+        }
+    }
+
+    /// <summary>
+    /// O defeito no aparelho: com o usuário logado, tocar em "Painel" às vezes voltava para a tela de
+    /// entrada e a navegação sumia. A sessão é por escopo (depende do banco local) e guardava o estado
+    /// de autenticação nela mesma, então cada escopo tinha a sua verdade — qualquer resolução fora do
+    /// escopo corrente devolvia uma sessão nova, não autenticada.
+    ///
+    /// Este teste fixa a regra: escopos diferentes enxergam a MESMA sessão.
+    /// </summary>
+    [Fact]
+    public void Sessao_e_a_mesma_em_escopos_diferentes()
+    {
+        var arquivo = Path.Combine(Path.GetTempPath(), $"checklist-di-{Guid.CreateVersion7():N}.db");
+
+        try
+        {
+            using var provider = BuildRealContainer(arquivo);
+
+            // Quem entra é um escopo — na prática, o do WebView que atendeu a tela de entrada.
+            using (var escopoDaEntrada = provider.CreateScope())
+            {
+                Assert.False(escopoDaEntrada.ServiceProvider.GetRequiredService<IAppSession>().IsAuthenticated);
+
+                escopoDaEntrada.ServiceProvider.GetRequiredService<AuthenticatedSessionState>()
+                    .SignIn(Guid.CreateVersion7(), "maria", "Maria", EffectiveAccess.None, DateTime.UtcNow);
+            }
+
+            // Quem pergunta é outro — o painel, o motor de sincronização, o reagendador.
+            using var outroEscopo = provider.CreateScope();
+            var sessao = outroEscopo.ServiceProvider.GetRequiredService<IAppSession>();
+
+            Assert.True(sessao.IsAuthenticated);
+            Assert.Equal("Maria", sessao.DisplayName);
+        }
+        finally
+        {
+            Delete(arquivo);
+        }
+    }
+
+    /// <summary>
+    /// O aviso de mudança precisa atravessar escopos também: quem assina é o layout, e quem dispara
+    /// pode ser um serviço singleton. Assinar na instância errada seria assinar o silêncio.
+    /// </summary>
+    [Fact]
+    public void Aviso_de_mudanca_de_sessao_atravessa_escopos()
+    {
+        var arquivo = Path.Combine(Path.GetTempPath(), $"checklist-di-{Guid.CreateVersion7():N}.db");
+
+        try
+        {
+            using var provider = BuildRealContainer(arquivo);
+            using var escopoQueOuve = provider.CreateScope();
+
+            var avisos = 0;
+            var ouvinte = escopoQueOuve.ServiceProvider.GetRequiredService<IAppSession>();
+            ouvinte.Changed += () => avisos++;
+
+            using (var escopoQueAge = provider.CreateScope())
+            {
+                escopoQueAge.ServiceProvider.GetRequiredService<AuthenticatedSessionState>()
+                    .SelectSector(Guid.CreateVersion7(), "Oeste");
+            }
+
+            Assert.Equal(1, avisos);
+            Assert.Equal("Oeste", ouvinte.CurrentSectorName);
         }
         finally
         {

@@ -19,8 +19,8 @@
                     aria-pressed="@celula.IsCompleted.ToString().ToLowerInvariant()"
                     aria-label="@($"Leito {linha.BedCode}: {(celula.IsCompleted ? "realizado" : "não realizado")}")"
                     data-testid="@($"bed-{linha.BedId}")"
-                    disabled="@ReadOnly"
-                    @onclick="() => OnToggle.InvokeAsync(celula)">
+                    disabled="@(ReadOnly || _bloqueadas.Contains(linha.BedId))"
+                    @onclick="() => AlternarAsync(linha.BedId, celula)">
                 <span class="leito-botao__caixa" aria-hidden="true">@(celula.IsCompleted ? "✕" : "")</span>
                 <span class="leito-botao__codigo">@linha.BedCode</span>
                 @if (linha.MarkerNames.Count > 0)
@@ -57,14 +57,47 @@
     [Parameter]
     public bool OnlyPending { get; set; }
 
+    /// <summary>Mostra só os leitos com este marcador. Nulo mostra todos.</summary>
+    [Parameter]
+    public Guid? MarkerId { get; set; }
+
     [Parameter]
     public bool ReadOnly { get; set; }
 
     [Parameter]
     public EventCallback<ChecklistCell> OnToggle { get; set; }
 
+    /// <summary>Milissegundos que o leito tocado fica travado. Só ele.</summary>
+    [Parameter]
+    public int CooldownMilliseconds { get; set; } = 1000;
+
     private IReadOnlyList<ChecklistRow> LinhasVisiveis { get; set; } = [];
 
+    private readonly HashSet<Guid> _bloqueadas = [];
+
     protected override void OnParametersSet() =>
-        LinhasVisiveis = ChecklistFilter.ApplyForColumn(Rows, ColumnId, Search, OnlyPending);
+        LinhasVisiveis = ChecklistFilter.ApplyForColumn(Rows, ColumnId, Search, OnlyPending, MarkerId);
+
+    /// <summary>
+    /// Trava apenas o leito tocado, pelo tempo do intervalo. Travar a lista inteira atrapalharia
+    /// quem percorre os leitos em sequência — o uso normal desta tela.
+    /// </summary>
+    private async Task AlternarAsync(Guid bedId, ChecklistCell celula)
+    {
+        if (ReadOnly || !_bloqueadas.Add(bedId))
+        {
+            return;
+        }
+
+        try
+        {
+            await OnToggle.InvokeAsync(celula);
+            await Task.Delay(CooldownMilliseconds);
+        }
+        finally
+        {
+            _bloqueadas.Remove(bedId);
+            StateHasChanged();
+        }
+    }
 }
