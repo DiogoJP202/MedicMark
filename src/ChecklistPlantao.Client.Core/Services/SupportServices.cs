@@ -21,7 +21,7 @@ namespace ChecklistPlantao.Client.Core.Services;
 /// Tokens no armazenamento seguro da plataforma.
 /// O banco local nunca guarda token em texto puro — nem mesmo o de atualização.
 /// </summary>
-public sealed class SecureTokenStore(ISecureStore secure, IServerApi api, IClock clock, ILogger<SecureTokenStore> logger) : ITokenStore
+public sealed class SecureTokenStore(ISecureStore secure, IServiceProvider services, IClock clock, ILogger<SecureTokenStore> logger) : ITokenStore
 {
     private const string AccessKey = "checklistplantao.access";
     private const string ExpiryKey = "checklistplantao.access.expiry";
@@ -61,7 +61,11 @@ public sealed class SecureTokenStore(ISecureStore secure, IServerApi api, IClock
     {
         var refresh = await secure.GetAsync(RefreshKey, cancellationToken).ConfigureAwait(false);
 
-        if (refresh is null || api is not HttpServerApi http)
+        // IServerApi é resolvido aqui, e não no construtor, porque HttpServerApi depende de
+        // ITokenStore para anexar o bearer — pedi-lo no construtor fecharia um ciclo que o
+        // contêiner recusa a construir. A renovação em si é uma chamada NÃO autenticada, então
+        // esta dependência só existe para reaproveitar o encanamento HTTP.
+        if (refresh is null || services.GetRequiredService<IServerApi>() is not HttpServerApi http)
         {
             return false;
         }
@@ -98,7 +102,7 @@ public sealed class SecureTokenStore(ISecureStore secure, IServerApi api, IClock
 }
 
 /// <summary>Endereço do servidor e nome do aparelho, guardados no banco local.</summary>
-public sealed class ServerConfigurationService(LocalDbContext db, IServerApi api) : IServerConfigurationService, IServerAddressProvider
+public sealed class ServerConfigurationService(LocalDbContext db, IServiceProvider services) : IServerConfigurationService, IServerAddressProvider
 {
     private DeviceState? _cache;
 
@@ -110,8 +114,14 @@ public sealed class ServerConfigurationService(LocalDbContext db, IServerApi api
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(ServerUrl);
 
+    /// <summary>
+    /// <see cref="IServerApi"/> resolvido sob demanda: esta classe atende
+    /// <see cref="IServerAddressProvider"/>, de quem o <see cref="HttpServerApi"/> depende no
+    /// construtor. Pedi-lo aqui fecharia o ciclo — e como o registro passa por uma fábrica,
+    /// <c>ValidateOnBuild</c> não o enxergaria: a falha só apareceria na resolução.
+    /// </summary>
     public Task<ServerProbeResponse?> TestConnectionAsync(string url, CancellationToken cancellationToken = default) =>
-        api.ProbeAsync(url, cancellationToken);
+        services.GetRequiredService<IServerApi>().ProbeAsync(url, cancellationToken);
 
     public async Task SaveAsync(string url, string deviceName, CancellationToken cancellationToken = default)
     {
@@ -149,7 +159,6 @@ public sealed class ServerConfigurationService(LocalDbContext db, IServerApi api
 public sealed class SyncStatusService(
     IServiceProvider services,
     IConnectivityProbe connectivity,
-    IServerApi api,
     ILogger<SyncStatusService> logger) : ISyncStatusService
 {
     private readonly SemaphoreSlim _porta = new(1, 1);
@@ -175,12 +184,13 @@ public sealed class SyncStatusService(
             var motor = escopo.ServiceProvider.GetRequiredService<SyncEngine>();
             var fila = escopo.ServiceProvider.GetRequiredService<OutboxWriter>();
             var db = escopo.ServiceProvider.GetRequiredService<LocalDbContext>();
+            var api = escopo.ServiceProvider.GetRequiredService<IServerApi>();
 
             var resultado = await motor.SynchronizeAsync(cancellationToken).ConfigureAwait(false);
             var pendentes = await fila.PendingCountAsync(cancellationToken).ConfigureAwait(false);
             var estado = await db.SyncState.AsNoTracking().FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
-            Publish(new SyncStatus(Resolve(), pendentes, estado?.LastSyncAtUtc, false, resultado.Error));
+            Publish(new SyncStatus(Resolve(api), pendentes, estado?.LastSyncAtUtc, false, resultado.Error));
 
             var reagendador = escopo.ServiceProvider.GetService<IDeviceStartupRescheduler>();
 
@@ -201,21 +211,76 @@ public sealed class SyncStatusService(
         }
     }
 
+    /// <summary>
+    /// Mede o alcance do servidor e publica o resultado, sem sincronizar.
+    ///
+    /// A tela de entrada precisa disto: antes do primeiro login nenhuma sincronização acontece,
+    /// e o estado inicial (<see cref="SyncStatus.Unknown"/>) era exibido como "Offline" sem que
+    /// nada tivesse sido verificado. Aqui o rótulo passa a ser resultado de uma medida.
+    ///
+    /// Usa <c>ProbeAsync</c> em vez de <c>IsReachable</c> de propósito: uma instância recém-criada
+    /// de <c>HttpServerApi</c> é otimista por padrão e responderia "alcançável" sem ter falado
+    /// com ninguém.
+    /// </summary>
+    public async Task RefreshConnectivityAsync(CancellationToken cancellationToken = default)
+    {
+        if (!connectivity.HasNetwork)
+        {
+            Publish(Current with { Connectivity = ConnectivityState.Offline });
+            return;
+        }
+
+        using var escopo = services.CreateScope();
+        var endereco = escopo.ServiceProvider.GetRequiredService<IServerAddressProvider>();
+
+        if (!endereco.IsConfigured)
+        {
+            Publish(Current with { Connectivity = ConnectivityState.ServerUnreachable });
+            return;
+        }
+
+        try
+        {
+            var api = escopo.ServiceProvider.GetRequiredService<IServerApi>();
+            var resposta = await api.ProbeAsync(endereco.ServerUrl!, cancellationToken).ConfigureAwait(false);
+
+            Publish(Current with
+            {
+                Connectivity = resposta is null
+                    ? ConnectivityState.ServerUnreachable
+                    : connectivity.HasInternet ? ConnectivityState.Online : ConnectivityState.LocalNetwork,
+            });
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogDebug(ex, "Verificação de alcance do servidor falhou.");
+            Publish(Current with { Connectivity = ConnectivityState.ServerUnreachable });
+        }
+    }
+
     /// <summary>Atualiza apenas os contadores, sem chamar o servidor.</summary>
     public async Task RefreshCountersAsync(CancellationToken cancellationToken = default)
     {
         using var escopo = services.CreateScope();
         var fila = escopo.ServiceProvider.GetRequiredService<OutboxWriter>();
         var db = escopo.ServiceProvider.GetRequiredService<LocalDbContext>();
+        var api = escopo.ServiceProvider.GetRequiredService<IServerApi>();
 
         var pendentes = await fila.PendingCountAsync(cancellationToken).ConfigureAwait(false);
         var estado = await db.SyncState.AsNoTracking().FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
-        Publish(new SyncStatus(Resolve(), pendentes, estado?.LastSyncAtUtc, false, Current.LastError));
+        Publish(new SyncStatus(Resolve(api), pendentes, estado?.LastSyncAtUtc, false, Current.LastError));
     }
 
-    /// <summary>Traduz rede + servidor nos três estados que a interface distingue.</summary>
-    private ConnectivityState Resolve()
+    /// <summary>
+    /// Traduz rede + servidor nos três estados que a interface distingue.
+    ///
+    /// Recebe o <see cref="IServerApi"/> do escopo que acabou de sincronizar, e não um guardado no
+    /// construtor. Além de este serviço ser singleton e não poder segurar um serviço com escopo,
+    /// a memória de alcance (<c>IsReachable</c>) vive na instância: só a instância que participou
+    /// da sincronização sabe se o servidor respondeu.
+    /// </summary>
+    private ConnectivityState Resolve(IServerApi api)
     {
         if (!connectivity.HasNetwork)
         {

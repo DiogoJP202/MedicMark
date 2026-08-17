@@ -80,6 +80,14 @@ public interface ISyncStatusService
 
     /// <summary>Sincronização manual, disparada pelo usuário.</summary>
     Task SyncNowAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Verifica de fato se o servidor responde e publica o resultado, sem sincronizar nada.
+    ///
+    /// Existe para a tela de entrada: antes do primeiro login nada dispara sincronização, e o
+    /// estado inicial acabava sendo exibido como "Offline" sem que nada tivesse sido medido.
+    /// </summary>
+    Task RefreshConnectivityAsync(CancellationToken cancellationToken = default);
 }
 
 public interface INotificationStatusService

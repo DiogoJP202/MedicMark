@@ -1,42 +1,80 @@
 @*
     Faixa de saúde das notificações.
 
-    Regra do enunciado (item 19): enquanto a configuração estiver inadequada, este aviso NÃO
-    pode ser dispensado permanentemente. Por isso não existe botão de fechar — some sozinho
-    quando o problema for resolvido, e não antes.
+    Regra do enunciado (item 19): enquanto a configuração estiver inadequada, este aviso NÃO pode
+    ser dispensado PERMANENTEMENTE. Ele pode ser recolhido — e é o que o ✕ faz.
+
+    Recolhido, vira uma linha compacta que continua no topo e continua levando à correção. O
+    aviso nunca some enquanto o problema existe; só para de ocupar um terço da tela.
+
+    Um problema NOVO reabre a faixa: informação que o usuário ainda não viu merece a forma
+    completa, mesmo que ele já tenha recolhido a anterior.
 *@
 
 @if (!Status.IsHealthy)
 {
-    <div class="faixa @CssFaixa faixa--fixa" role="alert" data-testid="notification-health-banner">
-        <span class="faixa__icone" aria-hidden="true">@(Status.PermissionGranted ? "▲" : "✕")</span>
-        <div class="faixa__conteudo">
-            <p class="faixa__titulo">ATENÇÃO</p>
-            <p class="faixa__texto">
-                As notificações deste dispositivo não estão completamente configuradas.
-                Você pode perder alertas importantes.
-            </p>
-            <ul class="faixa__texto">
-                @foreach (var problema in Status.Problems)
-                {
-                    <li>@problema</li>
-                }
-            </ul>
-            <div class="linha">
-                @if (OnFix.HasDelegate)
-                {
-                    <button type="button" class="botao botao--primario" @onclick="OnFix">Corrigir agora</button>
-                }
-                @if (OnTest.HasDelegate)
-                {
-                    <button type="button" class="botao botao--contorno" @onclick="OnTest">Testar alerta</button>
-                }
-            </div>
+    @if (_recolhido)
+    {
+        <div class="faixa @CssFaixa faixa--fixa faixa--compacta" role="alert" data-testid="notification-health-banner">
+            <span class="faixa__icone" aria-hidden="true">▲</span>
+            <button type="button"
+                    class="faixa__resumo"
+                    data-testid="notification-health-expand"
+                    aria-expanded="false"
+                    @onclick="Expandir">
+                @ResumoCurto
+            </button>
+            @if (OnFix.HasDelegate)
+            {
+                <button type="button" class="botao botao--texto" @onclick="OnFix">Corrigir</button>
+            }
         </div>
-    </div>
+    }
+    else
+    {
+        <div class="faixa @CssFaixa faixa--fixa" role="alert" data-testid="notification-health-banner">
+            <span class="faixa__icone" aria-hidden="true">▲</span>
+            <div class="faixa__conteudo">
+                <p class="faixa__titulo">ATENÇÃO</p>
+                <p class="faixa__texto">
+                    As notificações deste dispositivo não estão completamente configuradas.
+                    Você pode perder alertas importantes.
+                </p>
+                <ul class="faixa__texto">
+                    @foreach (var problema in Status.Problems)
+                    {
+                        <li>@problema</li>
+                    }
+                </ul>
+                <div class="linha">
+                    @if (OnFix.HasDelegate)
+                    {
+                        <button type="button" class="botao botao--primario" @onclick="OnFix">Corrigir agora</button>
+                    }
+                    @if (OnTest.HasDelegate)
+                    {
+                        <button type="button" class="botao botao--contorno" @onclick="OnTest">Testar alerta</button>
+                    }
+                </div>
+            </div>
+            <button type="button"
+                    class="faixa__fechar"
+                    data-testid="notification-health-collapse"
+                    aria-label="Recolher o aviso de notificações"
+                    title="Recolher"
+                    @onclick="Recolher">
+                ✕
+            </button>
+        </div>
+    }
 }
 
 @code {
+    private bool _recolhido;
+
+    /// <summary>Assinatura dos problemas vistos quando o usuário recolheu.</summary>
+    private string? _problemasVistos;
+
     [Parameter, EditorRequired]
     public NotificationStatus Status { get; set; } = NotificationStatus.Unknown;
 
@@ -48,4 +86,31 @@
     public EventCallback OnTest { get; set; }
 
     private string CssFaixa => Status.PermissionGranted ? "faixa--alerta" : "faixa--erro";
+
+    /// <summary>Uma linha só: o primeiro problema, ou a contagem quando há mais de um.</summary>
+    private string ResumoCurto => Status.Problems.Count switch
+    {
+        0 => "Notificações com pendências",
+        1 => Status.Problems[0],
+        var n => $"{n} pendências nas notificações",
+    };
+
+    private string Assinatura => string.Join('|', Status.Problems);
+
+    protected override void OnParametersSet()
+    {
+        // Problema novo desfaz o recolhimento: o usuário dispensou o aviso anterior, não este.
+        if (_recolhido && _problemasVistos != Assinatura)
+        {
+            _recolhido = false;
+        }
+    }
+
+    private void Recolher()
+    {
+        _recolhido = true;
+        _problemasVistos = Assinatura;
+    }
+
+    private void Expandir() => _recolhido = false;
 }

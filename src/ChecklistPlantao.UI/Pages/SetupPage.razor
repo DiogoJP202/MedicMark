@@ -2,6 +2,7 @@
 @layout EmptyLayout
 
 @inject IServerConfigurationService ServerConfiguration
+@inject ISyncStatusService SyncStatus
 @inject NavigationManager Navigation
 
 @*
@@ -128,6 +129,11 @@
     private async Task SalvarAsync()
     {
         await ServerConfiguration.SaveAsync(_url.Trim(), _nomeDispositivo.Trim());
+
+        // O endereço acabou de mudar: mede o alcance com ele antes de sair da tela, para que a
+        // entrada já mostre um estado verificado em vez do inicial.
+        await SyncStatus.RefreshConnectivityAsync();
+
         Navigation.NavigateTo("/entrar", replace: true);
     }
 

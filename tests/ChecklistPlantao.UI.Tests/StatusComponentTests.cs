@@ -81,7 +81,7 @@ public sealed class StatusComponentTests : BunitContext
     }
 
     [Fact]
-    public void Faixa_de_notificacao_lista_os_problemas_e_nao_pode_ser_fechada()
+    public void Faixa_de_notificacao_lista_os_problemas()
     {
         var cut = Render<NotificationHealthBanner>(p => p
             .Add(b => b.Status, new NotificationStatus(false, false, true, true, false, false, null, null,
@@ -92,9 +92,6 @@ public sealed class StatusComponentTests : BunitContext
         Assert.Contains("ATENÇÃO", faixa.TextContent, StringComparison.Ordinal);
         Assert.Contains("Permissão de notificações negada.", faixa.TextContent, StringComparison.Ordinal);
         Assert.Contains("Alarmes exatos não permitidos.", faixa.TextContent, StringComparison.Ordinal);
-
-        // Requisito: não existe botão de dispensar enquanto o problema persistir.
-        Assert.Empty(faixa.QuerySelectorAll("[data-testid=dismiss]"));
     }
 
     [Fact]

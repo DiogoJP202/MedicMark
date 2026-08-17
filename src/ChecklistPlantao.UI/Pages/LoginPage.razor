@@ -51,9 +51,10 @@
         </button>
     </EditForm>
 
-    <div class="cartao" style="margin-top:var(--esp-5)">
+    <div class="cartao" style="margin-top:var(--esp-5)" data-testid="login-connection">
         <p class="faixa__texto">
-            <strong>Estado da conexão:</strong> @SyncStatus.Current.Headline
+            <strong>Estado da conexão:</strong>
+            @(_verificando ? "Verificando o servidor…" : SyncStatus.Current.Headline)
         </p>
         @if (SyncStatus.Current.LastSyncAtUtc is { } ultima)
         {
@@ -64,7 +65,8 @@
             <p class="faixa__texto">Este dispositivo ainda não sincronizou.</p>
         }
 
-        @if (SyncStatus.Current.Connectivity is ConnectivityState.Offline or ConnectivityState.ServerUnreachable)
+        @* Só afirma "sem servidor" depois de ter medido — nunca antes. *@
+        @if (!_verificando && SyncStatus.Current.Connectivity is ConnectivityState.Offline or ConnectivityState.ServerUnreachable)
         {
             <p class="faixa__texto">
                 Sem servidor no momento. Se você já entrou neste aparelho antes e o acesso offline
@@ -78,6 +80,22 @@
     private readonly LoginModel _modelo = new();
     private bool _entrando;
     private string? _erro;
+
+    // Começa verdadeiro: o estado inicial de SyncStatus não foi medido, e exibi-lo como "Offline"
+    // seria afirmar algo que ninguém verificou.
+    private bool _verificando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await SyncStatus.RefreshConnectivityAsync();
+        }
+        finally
+        {
+            _verificando = false;
+        }
+    }
 
     private sealed class LoginModel
     {

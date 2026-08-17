@@ -114,6 +114,7 @@ deploy/                            Dockerfile, compose, backup e restore
 
 | Documento | Conteúdo |
 |---|---|
+| [HOW_TO_RUN.md](docs/HOW_TO_RUN.md) | **Da máquina limpa ao app rodando**, com os erros comuns e a saída de cada um |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Camadas, dependências e por quê |
 | [DECISIONS.md](docs/DECISIONS.md) | Decisões arquiteturais com contexto e consequências |
 | [DOMAIN.md](docs/DOMAIN.md) | Regras de negócio, turno, permissões, retenção |

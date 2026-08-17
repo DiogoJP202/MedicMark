@@ -5,6 +5,7 @@
 @inject IChecklistStore Store
 @inject ISyncStatusService SyncStatus
 @inject INotificationStatusService NotificationStatus
+@inject IServerConfigurationService ServerConfiguration
 @inject NavigationManager Navigation
 
 <PageTitle>Painel</PageTitle>
@@ -107,7 +108,36 @@ else
         SyncStatus.Changed += AoMudarSync;
     }
 
-    protected override async Task OnParametersSetAsync() => await CarregarAsync();
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Redirecionou())
+        {
+            return;
+        }
+
+        await CarregarAsync();
+    }
+
+    /// <summary>
+    /// Desvio da primeira execução.
+    ///
+    /// O aplicativo abre em "/", e esta é a única página nessa rota. Sem este desvio o usuário
+    /// fica preso em "Verificando o acesso…" para sempre: o menu do layout só aparece autenticado
+    /// e nenhuma outra tela alcançável aponta para a configuração.
+    ///
+    /// A ordem importa — sem endereço de servidor não há como entrar, então a configuração vem
+    /// antes do login. <c>replace</c> evita que o botão "voltar" devolva o usuário à espera.
+    /// </summary>
+    private bool Redirecionou()
+    {
+        if (Session.IsAuthenticated)
+        {
+            return false;
+        }
+
+        Navigation.NavigateTo(ServerConfiguration.IsConfigured ? "/entrar" : "/configuracao", replace: true);
+        return true;
+    }
 
     private async Task CarregarAsync()
     {
@@ -145,7 +175,17 @@ else
 
     private Task SincronizarAsync() => SyncStatus.SyncNowAsync();
 
-    private void AoMudar() => _ = InvokeAsync(async () => { await CarregarAsync(); StateHasChanged(); });
+    // Também desvia aqui: sair da conta dispara Changed e não pode deixar a espera na tela.
+    private void AoMudar() => _ = InvokeAsync(async () =>
+    {
+        if (Redirecionou())
+        {
+            return;
+        }
+
+        await CarregarAsync();
+        StateHasChanged();
+    });
 
     // Qualificado porque a propriedade injetada SyncStatus sombreia o tipo de mesmo nome.
     private void AoMudarSync(Abstractions.SyncStatus status) => _ = InvokeAsync(StateHasChanged);

@@ -358,6 +358,58 @@ p { margin: 0 0 var(--esp-3); }
 .faixa--erro { background: var(--cor-erro-suave); border-color: var(--cor-erro); }
 .faixa--fixa { position: sticky; top: 0; z-index: var(--z-banner); }
 
+/*
+    Faixa recolhida: uma linha só. O aviso continua visível e continua levando à correção —
+    apenas para de ocupar um terço da tela do celular.
+*/
+.faixa--compacta {
+    align-items: center;
+    padding: var(--esp-2) var(--esp-3);
+    gap: var(--esp-2);
+}
+
+.faixa__resumo {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+
+.faixa__resumo:hover { text-decoration: underline; }
+
+/*
+    Botão de recolher. Alvo de toque de 44px, que é o mínimo confortável no celular — a faixa
+    inteira é sticky e um alvo pequeno aqui seria tocado por engano.
+*/
+.faixa__fechar {
+    flex: 0 0 auto;
+    align-self: flex-start;
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 0;
+    border-radius: var(--raio-md);
+    font-size: var(--texto-lg);
+    line-height: 1;
+    color: inherit;
+    cursor: pointer;
+}
+
+.faixa__fechar:hover { background: rgb(0 0 0 / 8%); }
+
+.faixa__fechar:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
 .distintivo {
     display: inline-flex;
     align-items: center;
