@@ -65,6 +65,13 @@
     --z-banner: 50;
     --z-toast: 80;
     --z-modal: 100;
+
+    /*
+        Altura da barra do topo. A navegação e as faixas fixas se ancoram nela, então o valor
+        precisa existir num lugar só — e acompanhar a área segura do sistema, que no Android é
+        onde fica a barra de status.
+    */
+    --altura-topo: calc(3.25rem + env(safe-area-inset-top, 0px));
 }
 
 /* ------------------------------------------------------------------ base */
@@ -778,12 +785,23 @@ p { margin: 0 0 var(--esp-3); }
 
 /* ------------------------------------------------------------------ navegação */
 
+/*
+    A navegação acompanha a rolagem, colada logo abaixo da barra do topo.
+
+    Sem isto ela some assim que a página rola — e em telas longas (administração, pendências) o
+    usuário perde a única saída visível e precisa rolar todo o caminho de volta para trocar de
+    tela. O deslocamento usa a altura real da barra do topo mais a área segura do sistema.
+*/
 .nav-principal {
+    position: sticky;
+    top: var(--altura-topo);
+    z-index: calc(var(--z-banner) - 1);
     display: flex;
     gap: var(--esp-1);
     overflow-x: auto;
     background: var(--cor-primaria-clara);
     padding: var(--esp-1) var(--esp-2);
+    scrollbar-width: thin;
 }
 
 .nav-principal__item {

@@ -46,12 +46,24 @@ public sealed class ChecklistMutationService(IAppDataContext db, IClock clock)
         var session = guard.Required;
         var now = clock.UtcNow;
 
-        var entry = await db.ChecklistEntries.FirstOrDefaultAsync(
+        // Procura PRIMEIRO entre as entidades já rastreadas nesta unidade de trabalho.
+        //
+        // Um lote de sincronização pode trazer várias operações para a mesma célula — é o caso
+        // normal de quem marcou, desmarcou e marcou de novo offline. A consulta vai ao banco, e a
+        // entrada criada pela operação anterior do MESMO lote ainda não foi gravada: sem esta
+        // checagem, uma segunda entrada era criada para a mesma célula e o SaveChanges do lote
+        // inteiro estourava a restrição única, derrubando toda a sincronização com 500.
+        var entry = db.ChecklistEntries.Local.FirstOrDefault(
             e => e.SessionId == sessionId
                 && e.BedId == bedId
                 && e.ChecklistTemplateId == templateId
-                && e.ChecklistColumnId == columnId,
-            cancellationToken).ConfigureAwait(false);
+                && e.ChecklistColumnId == columnId)
+            ?? await db.ChecklistEntries.FirstOrDefaultAsync(
+                e => e.SessionId == sessionId
+                    && e.BedId == bedId
+                    && e.ChecklistTemplateId == templateId
+                    && e.ChecklistColumnId == columnId,
+                cancellationToken).ConfigureAwait(false);
 
         if (entry is null)
         {
@@ -108,9 +120,12 @@ public sealed class ChecklistMutationService(IAppDataContext db, IClock clock)
         var session = guard.Required;
         var now = clock.UtcNow;
 
-        var marker = await db.SessionBedMarkers.FirstOrDefaultAsync(
-            m => m.SessionId == sessionId && m.BedId == bedId && m.MarkerDefinitionId == markerDefinitionId,
-            cancellationToken).ConfigureAwait(false);
+        // Mesma razão da marcação: o lote pode alterar a mesma classificação mais de uma vez.
+        var marker = db.SessionBedMarkers.Local.FirstOrDefault(
+            m => m.SessionId == sessionId && m.BedId == bedId && m.MarkerDefinitionId == markerDefinitionId)
+            ?? await db.SessionBedMarkers.FirstOrDefaultAsync(
+                m => m.SessionId == sessionId && m.BedId == bedId && m.MarkerDefinitionId == markerDefinitionId,
+                cancellationToken).ConfigureAwait(false);
 
         if (marker is null)
         {

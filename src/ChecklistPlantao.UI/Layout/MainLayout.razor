@@ -57,13 +57,67 @@
             </div>
         }
 
-        @Body
+        @*
+            Uma tela que falha NÃO pode derrubar o aplicativo inteiro.
+
+            Sem esta barreira, qualquer exceção de página encerrava o renderizador do Blazor: a
+            interface toda morria, sobrava o aviso cru do host, e o único caminho era recarregar
+            o WebView — que trava em "Carregando…" quando o estado já está quebrado.
+
+            Com a barreira, o erro fica CONTIDO no conteúdo: a barra do topo e a navegação
+            continuam funcionando, e o usuário sai da tela quebrada por conta própria.
+        *@
+        <ErrorBoundary @ref="_barreira">
+            <ChildContent>
+                @Body
+            </ChildContent>
+            <ErrorContent Context="erro">
+                <div class="cartao" role="alert" data-testid="page-error">
+                    <h2 class="cartao__titulo">Esta tela não pôde ser aberta</h2>
+
+                    <p>
+                        Houve uma falha ao montar esta tela. <strong>Suas marcações continuam
+                        salvas neste aparelho</strong> e serão enviadas normalmente.
+                    </p>
+
+                    <div class="linha">
+                        <button type="button" class="botao botao--primario" @onclick="TentarNovamente">
+                            Tentar de novo
+                        </button>
+                        <button type="button" class="botao botao--contorno" @onclick="VoltarAoInicio">
+                            Voltar ao início
+                        </button>
+                    </div>
+
+                    @* Detalhe técnico recolhido: ajuda no diagnóstico sem assustar quem só quer trabalhar. *@
+                    <details style="margin-top:var(--esp-4)">
+                        <summary class="campo__ajuda">Detalhes técnicos</summary>
+                        <p class="campo__ajuda" data-testid="page-error-detail">@erro.Message</p>
+                    </details>
+                </div>
+            </ErrorContent>
+        </ErrorBoundary>
     </main>
 </div>
 
 @code {
     private SyncStatus _sync = Abstractions.SyncStatus.Unknown;
     private NotificationStatus _notificacoes = Abstractions.NotificationStatus.Unknown;
+
+    private ErrorBoundary? _barreira;
+
+    /// <summary>Remonta a tela atual. Serve para falha passageira, como uma consulta que expirou.</summary>
+    private void TentarNovamente() => _barreira?.Recover();
+
+    /// <summary>
+    /// Saída garantida. Recupera a barreira ANTES de navegar: sem isso, a tela de erro
+    /// continuaria exibida sobre o destino, e o usuário seguiria preso.
+    /// </summary>
+    private void VoltarAoInicio()
+    {
+        _barreira?.Recover();
+        Navigation.NavigateTo("/");
+    }
 
     protected override void OnInitialized()
     {

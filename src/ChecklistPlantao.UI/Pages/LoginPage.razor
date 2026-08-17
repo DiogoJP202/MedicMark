@@ -145,6 +145,15 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Já autenticado nesta tela significa que alguém chegou aqui por um caminho lateral —
+        // um "Voltar", um deep link. Ficar numa tela de login que não pede nada seria um beco
+        // sem saída, então o painel assume.
+        if (Session.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/", replace: true);
+            return;
+        }
+
         try
         {
             await SyncStatus.RefreshConnectivityAsync();

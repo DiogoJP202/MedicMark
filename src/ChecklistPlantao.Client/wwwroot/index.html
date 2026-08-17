@@ -16,12 +16,33 @@
 <body>
     <div class="status-bar-safe-area"></div>
 
-    <div id="app">Carregando…</div>
+    <div id="app">
+        <div class="host-carregando">
+            <p class="host-carregando__titulo">Checklist de Plantão</p>
+            <p>Abrindo…</p>
+        </div>
+    </div>
 
+    <!--
+        Último recurso do host: só aparece quando a falha é tão grave que nem a barreira de erro
+        do layout conseguiu conter. O caminho normal de erro é dentro do aplicativo, com a
+        navegação preservada.
+
+        O link "Recarregar" original apontava para href="" e recarregava o WebView — que trava em
+        "Abrindo…" quando o estado já está quebrado. Aqui a ação reinicia a navegação na raiz, e o
+        texto diz com honestidade o que fazer se isso não bastar.
+    -->
     <div id="blazor-error-ui">
-        Ocorreu um erro inesperado. Suas marcações continuam salvas neste aparelho.
-        <a href="" class="reload">Recarregar</a>
-        <span class="dismiss">🗙</span>
+        <strong>O aplicativo precisa ser reiniciado</strong>
+        <p>
+            Houve uma falha que não foi possível contornar.
+            <strong>Suas marcações continuam salvas neste aparelho</strong> e serão enviadas
+            quando o servidor estiver acessível — nada foi perdido.
+        </p>
+        <button type="button" onclick="location.assign('/')">Recomeçar</button>
+        <p class="host-erro__dica">
+            Se esta mensagem voltar, feche o aplicativo por completo e abra de novo.
+        </p>
     </div>
 
     <script src="_framework/blazor.webview.js" autostart="false"></script>

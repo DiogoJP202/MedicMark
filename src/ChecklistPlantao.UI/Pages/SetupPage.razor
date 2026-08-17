@@ -52,11 +52,15 @@
                 Redefinir
             </button>
 
-            @* Saída sem salvar: quem só veio conferir o endereço não pode ficar preso aqui. *@
+            @*
+                Saída sem salvar. Vai para "/" e não para "/entrar": quem já está autenticado
+                seria jogado numa tela de login que não pede nada — outro beco sem saída. O
+                painel decide o destino certo conforme haja sessão ou não.
+            *@
             <button type="button"
                     class="botao botao--texto"
                     data-testid="setup-back"
-                    @onclick="@(() => Navigation.NavigateTo("/entrar"))">
+                    @onclick="@(() => Navigation.NavigateTo("/"))">
                 Voltar
             </button>
         }
