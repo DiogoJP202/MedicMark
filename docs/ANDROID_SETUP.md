@@ -45,6 +45,49 @@ dotnet publish src/ChecklistPlantao.Client -f net10.0-android -c Release
 O APK sai em `bin/Release/net10.0-android/publish/`. Para distribuir fora da Play Store é preciso
 assinar com uma chave própria (`AndroidSigningKeyStore`) — **nunca** versione o keystore.
 
+## Alcançar o servidor a partir do aparelho (desenvolvimento)
+
+Quando o celular não está na mesma rede do PC — ou o firewall do Windows bloqueia a entrada — o
+túnel USB resolve sem mexer em firewall nem em endereço:
+
+```bash
+adb reverse tcp:5000 tcp:5000
+```
+
+Com isso, `localhost:5000` **no aparelho** vira a porta 5000 **do PC**, e o app pode ficar
+configurado com `http://localhost:5000`.
+
+> **A porta dos dois lados precisa bater.** `dotnet run` sem `--urls` usa o que está em
+> `Properties/launchSettings.json` — hoje **5136**, não 5000. O sintoma é o app não sincronizar,
+> sem erro visível: o túnel existe e o servidor existe, só que em portas diferentes.
+
+Duas saídas, qualquer uma serve:
+
+```bash
+dotnet run --project src/ChecklistPlantao.Server --urls http://0.0.0.0:5000
+```
+
+```bash
+adb reverse tcp:5000 tcp:5136
+```
+
+Como conferir, em ordem — o primeiro que falhar aponta a causa:
+
+```bash
+adb reverse --list
+```
+
+```bash
+curl http://localhost:5136/health
+```
+
+```bash
+adb shell curl -s http://localhost:5000/health
+```
+
+O último é o que importa: `Healthy` vindo dele significa que o aparelho alcança o servidor. O túnel
+**cai quando o cabo é desconectado** e precisa ser refeito na reconexão.
+
 ## Permissões declaradas
 
 | Permissão | Para quê | Quando é pedida |
