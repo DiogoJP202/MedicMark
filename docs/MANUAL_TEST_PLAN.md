@@ -1,7 +1,12 @@
 # Plano de testes manuais
 
-Cenários que **só um dispositivo real valida**. Nenhum deles foi executado no ambiente de
-desenvolvimento: não havia aparelho Android nem emulador, e o cliente Windows não foi executado.
+Cenários que **só um dispositivo real valida**.
+
+Parte já foi executada num Xiaomi com Android 13 e no cliente Windows — instalação, entrada,
+checklist em uso, cadastro pela administração, botão de teste de alerta e **alerta agendado
+disparando no horário**. O que foi validado até agora está registrado em
+[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md); esta lista segue como o roteiro completo,
+incluindo os cenários de longa duração que ainda não foram cobertos.
 
 Registre o resultado na coluna correspondente ao rodar.
 

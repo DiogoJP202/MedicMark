@@ -84,7 +84,7 @@ Todos esses casos têm teste automatizado, em `MergePoliciesTests`, `SyncTests` 
 - ao voltar para o primeiro plano;
 - após uma alteração, se houver servidor;
 - quando a conectividade retorna;
-- quando o hub SignalR avisa que há novidade;
+- quando o hub SignalR avisa que há novidade — **ainda não implementado no cliente**, ver abaixo;
 - quando o usuário toca em "Sincronizar agora".
 
 Não há laço apertado. Falha agenda nova tentativa com espera dobrando a cada erro (15 s → teto de
@@ -101,6 +101,15 @@ sincronizada produziria telas diferentes em aparelhos diferentes.
 
 As conexões são agrupadas por setor e por usuário, e a autorização é reavaliada no hub: um cliente
 não escolhe sozinho em qual setor se inscrever.
+
+> **Estado atual: só o servidor está pronto.** O `Client.Core` referencia
+> `Microsoft.AspNetCore.SignalR.Client`, mas nenhum arquivo dele abre uma `HubConnection`. Na
+> prática, o aviso não chega a lugar nenhum e a convergência depende dos demais gatilhos desta
+> lista. Registrado em [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
+>
+> Quem for implementar precisa chamar `SubscribeSector` ao escolher o setor: a inscrição
+> automática na conexão usa apenas os setores explícitos, e quem tem acesso a todos — o grupo
+> Administradores — não tem nenhum.
 
 ## Os três níveis de conectividade
 

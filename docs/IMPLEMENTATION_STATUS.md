@@ -100,10 +100,45 @@ Cobertos por `BatchSameCellTests`, `ErrorBoundaryTests`, `ServerConfigurationRea
 | Item | Como validar | Por que não foi feito |
 |---|---|---|
 | As seis correções da segunda rodada, no aparelho | Roteiro de teste, etapas 1–6 | Aparelho desconectado no momento da correção; compila e passa nos testes, **não reexecutado em campo** |
-| A terceira rodada (administração), no aparelho e no Windows | Cadastrar coluna, setor, leito e marcador pelos modais; percorrer os três níveis do menu | Aparelho desconectado; a criação de coluna foi confirmada por teste de integração cliente→servidor, o restante **não foi aberto em execução real** |
+| Dois dispositivos ao mesmo tempo | Marcar em um e ver aparecer no outro | **Bloqueado**: o cliente não consome o hub. Ver "Aviso em tempo real" |
 | Mensagem de conta bloqueada na tela | Errar a senha 5 vezes | Bloqueia a conta por 15 min; adiado a pedido |
-| Notificação agendada com o app fechado | Roteiro de teste, etapa 6 | Depende de tempo de espera real |
 | Isenção de bateria concedida | "Corrigir agora" → confirmar → "Verificar novamente" | Aguardando execução |
+| Implantação em Docker e ciclo de backup | MANUAL_TEST_PLAN, seção 11 | Docker nunca executado neste ambiente |
+| HTTPS com certificado confiável nos aparelhos | Seção 11 | Nunca exercitado |
+
+### Terceira rodada validada em execução real — 18/08
+
+Percorrido no **aparelho e no Windows**, com o servidor no ar:
+
+| Verificação | Resultado |
+|---|---|
+| Cadastrar coluna, setor, leito e marcador pelos modais | ✅ |
+| Três níveis do menu de administração | ✅ |
+| Barra sem "Dispositivo"; cartão do Painel abre a tela | ✅ |
+| Checklist em uso: marcar e desmarcar, celular e desktop | ✅ critérios 7, 8 e 9 |
+| Botão "Testar alerta" | ✅ critério 21 |
+| **Alerta disparando no horário da coluna** | ✅ critérios 20 e 25 — era o risco nº 1 do projeto |
+
+### Aviso em tempo real — o hub existe, o cliente não o usa
+
+Descoberto ao preparar o teste de dois dispositivos.
+
+O servidor tem o `SyncHub` completo: grupos por setor e por usuário, autorização reavaliada na
+inscrição, e um `SubscribeSector` escrito **exatamente** para quem tem acesso a todos os setores e
+por isso não recebe grupos individuais na conexão.
+
+O cliente nunca se conecta. `Microsoft.AspNetCore.SignalR.Client` está referenciado no
+`Client.Core.csproj` e **nenhum arquivo do projeto usa `HubConnection`** — `SyncHubEvents` só
+aparece no servidor.
+
+Consequência prática: marcar em um aparelho não avisa o outro. A convergência continua correta,
+porque o pull acontece na abertura, no login, na volta ao primeiro plano, no retorno de rede e no
+toque manual — mas não é imediata, que é o ponto do critério 16.
+
+Há ainda uma armadilha esperando quem implementar isso: `OnConnectedAsync` inscreve o dispositivo
+apenas nos `ExplicitSectorIds`, e o grupo **Administradores** é semeado com `GrantsAllSectors: true`
+e `SectorNames: []`. Um administrador entraria em nenhum grupo de setor. É para isso que o
+`SubscribeSector` existe, e o cliente precisará chamá-lo ao escolher o setor.
 
 ### Defeitos encontrados depois da entrega inicial
 
@@ -165,30 +200,30 @@ Servidor executado de verdade, com estas verificações feitas:
 | 4 | Usuário pertence a vários grupos | Implementado · Validado por teste automatizado |
 | 5 | Grupos controlam telas, ações e setores | Implementado · Validado por teste automatizado |
 | 6 | Usuário sem acesso não chama o endpoint protegido | Implementado · Validado por teste automatizado |
-| 7 | Checklist em matriz no desktop | Implementado · Validado por teste automatizado (bUnit) · **Não validado** em execução real |
-| 8 | Checklist no celular sem rolagem horizontal | Implementado · Validado por teste automatizado (bUnit) · **Não validado** em aparelho |
-| 9 | Um toque marca imediatamente | Implementado · Validado por teste automatizado · **Não validado** em aparelho |
+| 7 | Checklist em matriz no desktop | Implementado · Validado por teste automatizado (bUnit) · **Validado manualmente** no Windows |
+| 8 | Checklist no celular sem rolagem horizontal | Implementado · Validado por teste automatizado (bUnit) · **Validado em aparelho** |
+| 9 | Um toque marca imediatamente | Implementado · Validado por teste automatizado · **Validado em aparelho** |
 | 10 | Marcação gravada localmente | Implementado · Validado por teste automatizado |
 | 11 | Marcação permanece após reiniciar o app | Implementado · Validado por teste automatizado (contexto fechado e reaberto sobre o mesmo arquivo) |
 | 12 | Funciona sem servidor | Implementado · Validado por teste automatizado |
 | 13 | Alterações offline entram na fila | Implementado · Validado por teste automatizado |
 | 14 | Sincroniza quando o servidor retorna | Implementado · Validado por teste automatizado |
 | 15 | Operação reenviada não duplica | Implementado · Validado por teste automatizado **e manualmente** |
-| 16 | Dois dispositivos online recebem atualizações | Implementado (SignalR + pull) · **Não validado** com dois aparelhos |
+| 16 | Dois dispositivos online recebem atualizações | **Parcialmente implementado** · o hub existe no servidor, mas o cliente NUNCA se conecta a ele: o aviso em tempo real não chega. A convergência acontece só no próximo ciclo de sincronização. Ver "Aviso em tempo real" abaixo |
 | 17 | Conflito não apaga conclusão mais nova | Implementado · Validado por teste automatizado **e manualmente** |
 | 18 | C.I., Sondas e Drenos em qualquer leito | Implementado · Validado por teste automatizado |
 | 19 | Classificações são temporárias da sessão | Implementado · Validado por teste automatizado |
-| 20 | Notificação local pode ser agendada | Implementado · **Não validado** em aparelho |
-| 21 | Botão de teste dispara notificação | Implementado · **Não validado** em aparelho |
+| 20 | Notificação local pode ser agendada | Implementado · **Validado em aparelho**: alerta disparou no horário da coluna |
+| 21 | Botão de teste dispara notificação | Implementado · **Validado em aparelho** |
 | 22 | App informa quando as notificações não estão saudáveis | Implementado · Validado por teste automatizado (bUnit) |
 | 23 | Repetições canceladas ao concluir | Implementado · Validado por teste automatizado |
 | 24 | Administrador altera horários | Implementado · Validado por teste automatizado |
-| 25 | App reagenda após sincronizar configurações | Implementado · **Não validado** em aparelho |
+| 25 | App reagenda após sincronizar configurações | Implementado · **Validado em aparelho**, junto com o critério 20 |
 | 26 | Sessões fechadas apagadas após a retenção | Implementado · Validado por teste automatizado |
 | 27 | Não existe histórico de usuário por marcação | Implementado · Validado por teste automatizado (inspeciona o modelo do EF) |
 | 28 | Não existem dados de paciente | Implementado · Verificável por inspeção do modelo |
 | 29 | Build dos projetos compatíveis passa | ✅ **Toda a solução, 0 avisos** |
-| 30 | Testes compatíveis passam | ✅ **287 testes** |
+| 30 | Testes compatíveis passam | ✅ **354 testes** |
 
 ---
 
@@ -203,7 +238,7 @@ EF Core + SQLite, Identity, migrations, seed idempotente, JWT com refresh rotaci
 lockout, limite de requisições, políticas por chave de permissão, endpoints de sessão, checklist,
 sincronização, administração, dispositivos e health, hub SignalR, manutenção periódica.
 
-### Interface — Implementado · Validado por teste automatizado (bUnit) · Não validado em execução
+### Interface — Implementado · Validado por teste automatizado (bUnit) e em execução real
 Design system em CSS próprio sem CDN, todos os componentes pedidos pelo enunciado, matriz no
 desktop, lista por coluna no celular, telas de configuração, login, setor, painel, checklist,
 classificações, pendências, plantão, estado do dispositivo e administração.
@@ -212,12 +247,15 @@ classificações, pendências, plantão, estado do dispositivo e administração
 Banco local, fila gravada na mesma transação do estado, push/pull, idempotência, adoção de
 conflito, backoff com jitter, bootstrap de recuperação, autenticação offline PBKDF2.
 
-### Notificações — Implementado · Bloqueado pelo ambiente para validação
+### Notificações — Implementado · Validado em aparelho real
 Abstrações, cálculo de agendamento (com teste), Android com AlarmManager + BootReceiver + deep
 link, Windows com toast nativo e agendador in-process, diagnóstico de saúde.
 
-**Nada foi validado em aparelho**: não havia dispositivo Android nem emulador, e o cliente Windows
-não foi executado.
+**Validado em 18/08 num Xiaomi com Android 13**: o botão "Testar alerta" dispara, e o alerta
+agendado chegou no horário da coluna. Era o item de maior risco do projeto.
+
+Continua pendente: alerta com o aparelho **reiniciado** (o `BootReceiver`), e a isenção de bateria
+concedida pelo usuário.
 
 ### Implantação — Implementado · Não validado
 `Dockerfile`, `docker-compose.yml` com volume, `.env.example`, `backup.ps1`, `restore.ps1`.
@@ -229,17 +267,33 @@ não foi executado.
 
 Em ordem de risco:
 
-1. **Notificações em aparelho Android real** — o requisito mais crítico e o menos validado.
-   [MANUAL_TEST_PLAN.md](MANUAL_TEST_PLAN.md), seção 5.
-2. **Notificações no Windows**, incluindo a confirmação da limitação de app fechado. Seção 6.
-3. **Dois dispositivos simultâneos** com conflito real. Seção 3.
-4. **Implantação em Docker** e o ciclo de backup/restauração. Seção 11.
-5. **HTTPS com certificado confiável** nos aparelhos.
-6. **Fabricantes com restrição agressiva** (Xiaomi, Huawei, Samsung). Cenário 5.15.
+1. **Aviso em tempo real entre aparelhos** — o cliente do hub não existe. É trabalho de
+   implementação, não de validação. Sem ele, o critério 16 não se sustenta.
+2. **Implantação em Docker** e o ciclo de backup/restauração. Seção 11.
+3. **HTTPS com certificado confiável** nos aparelhos.
+4. **Alerta após reiniciar o aparelho** (`BootReceiver`) e com o app fechado por horas.
+5. **Fabricantes com restrição agressiva** — o Xiaomi usado no teste é um deles; falta confirmar
+   o comportamento com a economia de bateria realmente apertada. Cenário 5.15.
+
+Saíram desta lista, agora validados em aparelho: notificação agendada disparando no horário,
+botão de teste, reagendamento após sincronizar, e o checklist em uso no celular e no desktop.
 
 ## Conclusão
 
-O sistema **não pode ser declarado pronto para produção**. A arquitetura está completa, as regras
-críticas têm cobertura automatizada e o servidor foi exercitado de verdade — mas notificações em
-dispositivos reais, implantação e operação em plantão não foram validadas, e são exatamente os
-pontos em que este sistema falha de forma silenciosa se estiver errado.
+O sistema **ainda não pode ser declarado pronto para produção**, mas por motivos diferentes dos de
+antes.
+
+O que mudou: o aplicativo roda em aparelho real, o plantão é operável de ponta a ponta, e a
+**notificação agendada dispara no horário** — o requisito mais crítico e, até 18/08, o menos
+validado. Três rodadas de uso em campo encontraram dezesseis defeitos que nenhum teste pegava;
+todos corrigidos, todos com teste que os fixa.
+
+O que impede a declaração:
+
+- **o aviso em tempo real entre aparelhos não existe no cliente.** O hub está pronto no servidor e
+  nunca é consumido. Enquanto isso valer, dois aparelhos convergem no próximo ciclo de
+  sincronização, não na hora — e o critério 16 não se sustenta;
+- **a implantação nunca foi exercitada.** Docker e HTTPS com certificado confiável seguem como
+  no primeiro dia;
+- **falta um plantão inteiro de uso**, com o aparelho reiniciando, a bateria apertando e o app
+  fechado por horas. É onde este sistema falha em silêncio se estiver errado.
