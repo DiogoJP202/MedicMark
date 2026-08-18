@@ -103,5 +103,5 @@ conexão volta — mesmo horas depois, mesmo depois de fechar o aplicativo ou re
 **Meu acesso offline expirou.** Conecte-se ao servidor e entre uma vez. Depois volta a funcionar
 offline pelo período configurado.
 
-**Não recebi o alerta.** Abra **Estado do dispositivo** — a tela lista exatamente o que está
+**Não recebi o alerta.** Abra **Estado do dispositivo**, no cartão do Painel — a tela lista exatamente o que está
 faltando neste aparelho.

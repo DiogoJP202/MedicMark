@@ -1,6 +1,6 @@
 # Estado da implementação
 
-Última atualização: 2026-08-06.
+Última atualização: 2026-08-18.
 
 ## Estados usados
 
@@ -22,7 +22,7 @@
 |---|---|
 | `dotnet build ChecklistPlantao.sln -c Release` | ✅ 0 erros, **0 avisos** — inclui os dois heads MAUI |
 | `dotnet build ChecklistPlantao.NoMaui.slnf -c Release` | ✅ 0 erros, 0 avisos |
-| `dotnet test ChecklistPlantao.NoMaui.slnf -c Release` | ✅ **287 testes, 0 falhas** |
+| `dotnet test ChecklistPlantao.NoMaui.slnf -c Release` | ✅ **354 testes, 0 falhas** |
 | `dotnet build -f net10.0-android` | ✅ compila |
 | `dotnet build -f net10.0-windows10.0.19041.0` | ✅ compila |
 | `dotnet restore` | ✅ sem avisos de vulnerabilidade |
@@ -31,11 +31,16 @@
 
 | Projeto | Testes | O que cobre |
 |---|---|---|
-| Domain.Tests | 106 | Turno, permissões, retenção, conflito, agendamento, seeds |
-| UI.Tests (bUnit) | 63 | Componentes, filtros, faixas, desvio da primeira execução, estado da conexão no login, **contenção de falha de tela** |
-| Client.Core.Tests | 57 | Persistência offline, fila, idempotência, conflito, auth offline, recusa do servidor, **grafo de dependências real e sessão entre escopos** |
-| Server.IntegrationTests | 33 | API de ponta a ponta com servidor e SQLite reais, **lote com repetição na mesma célula** |
-| Application.Tests | 28 | Casos de uso, sessão, retenção, administração |
+| Domain.Tests | 114 | Turno, permissões, retenção, conflito, agendamento, seeds, **nome único de coluna** |
+| UI.Tests (bUnit) | 98 | Componentes, filtros, faixas, desvio da primeira execução, estado da conexão no login, contenção de falha de tela, **modais de cadastro e hierarquia da administração** |
+| Client.Core.Tests | 62 | Persistência offline, fila, idempotência, conflito, auth offline, recusa do servidor, grafo de dependências real e sessão entre escopos |
+| Server.IntegrationTests | 47 | API de ponta a ponta com servidor e SQLite reais, lote com repetição na mesma célula, **cadastro de estrutura e o cliente HTTP real contra o servidor real** |
+| Application.Tests | 33 | Casos de uso, sessão, retenção, administração, **criação de coluna e restrição de tipo a setor** |
+
+O `Server.IntegrationTests` passou a referenciar o `Client.Core`. Era o último ponto cego da
+suíte: todo teste de cliente substituía `IServerApi` por um duplo, então o `HttpServerApi` nunca
+falava com um servidor de verdade — montagem de URL, serialização de `TimeOnly`, envio do bearer e
+a tradução de `ProblemDetails` na mensagem exibida na tela não tinham cobertura nenhuma.
 
 ### Validado em aparelho real — Xiaomi 23122PCD1G, Android 13 (API 33)
 
@@ -95,6 +100,7 @@ Cobertos por `BatchSameCellTests`, `ErrorBoundaryTests`, `ServerConfigurationRea
 | Item | Como validar | Por que não foi feito |
 |---|---|---|
 | As seis correções da segunda rodada, no aparelho | Roteiro de teste, etapas 1–6 | Aparelho desconectado no momento da correção; compila e passa nos testes, **não reexecutado em campo** |
+| A terceira rodada (administração), no aparelho e no Windows | Cadastrar coluna, setor, leito e marcador pelos modais; percorrer os três níveis do menu | Aparelho desconectado; a criação de coluna foi confirmada por teste de integração cliente→servidor, o restante **não foi aberto em execução real** |
 | Mensagem de conta bloqueada na tela | Errar a senha 5 vezes | Bloqueia a conta por 15 min; adiado a pedido |
 | Notificação agendada com o app fechado | Roteiro de teste, etapa 6 | Depende de tempo de espera real |
 | Isenção de bateria concedida | "Corrigir agora" → confirmar → "Verificar novamente" | Aguardando execução |
@@ -116,6 +122,21 @@ antes de rotular.
 
 `ServiceGraphTests` fecha a lacuna: constrói o contêiner **real** com `ValidateOnBuild` e
 `ValidateScopes`, e resolve cada serviço que a interface injeta.
+
+### Terceira rodada — administração
+
+Relatados em uso real e corrigidos em 18/08.
+
+| Defeito | Sintoma | Correção |
+|---|---|---|
+| **Coluna nova nunca gravava** | HTTP 500 ao salvar. `DbUpdateConcurrencyException`: a coluna era rastreada como `Modified` e o `UPDATE` não achava a linha | `db.ChecklistColumns.Add`. A chave é `Guid` da aplicação mapeada como `ValueGenerated.OnAdd`, e para entidade descoberta por navegação o EF lê "chave preenchida" como "já existe". Era a única entidade criada sem `Add` explícito |
+| Renomear coluna para nome de outra ativa | HTTP 500 por violação do índice único | Regra de nome único passou a valer também na edição (`ChecklistTemplate.UpdateColumn`) |
+| Violação de restrição virava 500 | Nenhum ponto do servidor tratava `DbUpdateException` | `DatabaseConflictExceptionHandler` traduz em 409 |
+| Editar tipo apagava a restrição de setores | A tela enviava `SectorIds` vazio, e vazio significa "vale para todos" | O modal carrega, mostra e reenvia os setores atuais |
+
+O primeiro tinha uma lacuna de cobertura exata: existiam testes de **edição** de coluna e de
+**recusa** por nome repetido — os dois caminhos que não chegam ao `INSERT`. Nenhum criava uma
+coluna com sucesso.
 
 ### Validado manualmente neste ambiente
 
