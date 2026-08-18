@@ -31,7 +31,11 @@
             <NavLink class="nav-principal__item" href="/classificacoes">Classificações</NavLink>
             <NavLink class="nav-principal__item" href="/pendencias">Pendências</NavLink>
             <NavLink class="nav-principal__item" href="/sessao">Plantão</NavLink>
-            <NavLink class="nav-principal__item" href="/dispositivo">Dispositivo</NavLink>
+            @*
+                "Dispositivo" saiu da barra a pedido: a tela continua existindo e é alcançada pelo
+                cartão "Estado do dispositivo" no painel, além da faixa de saúde no topo. A lista
+                administrativa de aparelhos é outra coisa, e mora em Configurações avançadas.
+            *@
             <PermissionGuard Permission="@Permissions.AdminSettings" Access="Session.Access">
                 <NavLink class="nav-principal__item" href="/admin">Administração</NavLink>
             </PermissionGuard>
@@ -92,7 +96,7 @@
                     @* Detalhe técnico recolhido: ajuda no diagnóstico sem assustar quem só quer trabalhar. *@
                     <details style="margin-top:var(--esp-4)">
                         <summary class="campo__ajuda">Detalhes técnicos</summary>
-                        <p class="campo__ajuda" data-testid="page-error-detail">@erro.Message</p>
+                        <p class="campo__ajuda" data-testid="page-error-detail">@Detalhar(erro)</p>
                     </details>
                 </div>
             </ErrorContent>
@@ -101,6 +105,25 @@
 </div>
 
 @code {
+    /// <summary>
+    /// Mensagem de cada exceção da cadeia, e não só a de fora.
+    ///
+    /// A de fora costuma ser inútil para diagnosticar: "An error occurred while saving the entity
+    /// changes. See the inner exception for details." é literalmente um pedido para ver a
+    /// interna — que ficava escondida justamente quando a falha só acontece em uso real.
+    /// </summary>
+    private static string Detalhar(Exception erro)
+    {
+        var partes = new List<string>();
+
+        for (Exception? atual = erro; atual is not null; atual = atual.InnerException)
+        {
+            partes.Add($"{atual.GetType().Name}: {atual.Message}");
+        }
+
+        return string.Join(" → ", partes);
+    }
+
     private SyncStatus _sync = Abstractions.SyncStatus.Unknown;
     private NotificationStatus _notificacoes = Abstractions.NotificationStatus.Unknown;
 

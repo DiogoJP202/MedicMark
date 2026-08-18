@@ -1,0 +1,52 @@
+@page "/admin/dispositivos"
+
+@inject IAdministrationService Admin
+
+<PageTitle>Dispositivos</PageTitle>
+
+<h2>Dispositivos</h2>
+
+<div class="faixa faixa--info">
+    <span class="faixa__icone" aria-hidden="true">i</span>
+    <div class="faixa__conteudo">
+        <p class="faixa__texto">
+            Os dados abaixo são o <strong>último estado sincronizado</strong> de cada aparelho.
+            Um dispositivo totalmente offline não aparece atualizado aqui — o servidor não tem
+            como saber o estado atual dele.
+        </p>
+    </div>
+</div>
+
+<div class="tabela__area">
+    <table class="tabela">
+        <thead>
+            <tr><th>Dispositivo</th><th>Plataforma</th><th>Versão</th><th>Visto em</th><th>Notificações</th><th>Alarme exato</th><th>Situação</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var dispositivo in _dispositivos)
+            {
+                <tr data-testid="@($"device-row-{dispositivo.Id}")">
+                    <td>@dispositivo.DeviceName</td>
+                    <td>@dispositivo.Platform</td>
+                    <td>@dispositivo.AppVersion</td>
+                    <td>@dispositivo.LastSeenAtUtc.ToLocalTime().ToString("dd/MM HH:mm", CultureInfo.GetCultureInfo("pt-BR"))</td>
+                    <td>@dispositivo.NotificationHealth</td>
+                    <td>@(dispositivo.ExactAlarmPermissionGranted is { } e ? (e ? "sim" : "não") : "—")</td>
+                    <td>@(dispositivo.IsActive ? "ativo" : "inativo")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (_dispositivos.Count == 0)
+{
+    <EmptyState Title="Nenhum aparelho registrado"
+                Message="Os dispositivos aparecem aqui depois da primeira sincronização com este servidor." />
+}
+
+@code {
+    private IReadOnlyList<DeviceDto> _dispositivos = [];
+
+    protected override async Task OnInitializedAsync() => _dispositivos = await Admin.GetDevicesAsync();
+}

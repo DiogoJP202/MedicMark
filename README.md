@@ -106,7 +106,7 @@ src/
   ChecklistPlantao.UI              RCL: design system, componentes e páginas
   ChecklistPlantao.Client.Core     SQLite local, Outbox, sincronização, auth offline
   ChecklistPlantao.Client          MAUI Blazor Hybrid (Android + Windows)
-tests/                             5 projetos, 287 testes
+tests/                             5 projetos, 358 testes
 deploy/                            Dockerfile, compose, backup e restore
 ```
 
@@ -133,5 +133,9 @@ deploy/                            Dockerfile, compose, backup e restore
 | [IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) | O que está pronto e o que foi validado como |
 
 > **Antes de usar em produção**, leia [KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md) e a seção
-> de validação pendente em [IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md). As
-> notificações em aparelhos reais e a implantação ainda não foram validadas.
+> de validação pendente em [IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md).
+>
+> As notificações **já foram validadas em aparelho real** — o alerta agendado dispara no horário.
+> Segue pendente toda a implantação: Docker e HTTPS nunca foram exercitados. O aviso em tempo real
+> entre aparelhos está implementado e coberto por teste de integração, mas ainda não foi visto
+> acontecer entre dois aparelhos de verdade.

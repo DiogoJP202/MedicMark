@@ -1,6 +1,6 @@
 # Estado da implementação
 
-Última atualização: 2026-08-06.
+Última atualização: 2026-08-18.
 
 ## Estados usados
 
@@ -22,7 +22,7 @@
 |---|---|
 | `dotnet build ChecklistPlantao.sln -c Release` | ✅ 0 erros, **0 avisos** — inclui os dois heads MAUI |
 | `dotnet build ChecklistPlantao.NoMaui.slnf -c Release` | ✅ 0 erros, 0 avisos |
-| `dotnet test ChecklistPlantao.NoMaui.slnf -c Release` | ✅ **287 testes, 0 falhas** |
+| `dotnet test ChecklistPlantao.NoMaui.slnf -c Release` | ✅ **358 testes, 0 falhas** |
 | `dotnet build -f net10.0-android` | ✅ compila |
 | `dotnet build -f net10.0-windows10.0.19041.0` | ✅ compila |
 | `dotnet restore` | ✅ sem avisos de vulnerabilidade |
@@ -31,11 +31,16 @@
 
 | Projeto | Testes | O que cobre |
 |---|---|---|
-| Domain.Tests | 106 | Turno, permissões, retenção, conflito, agendamento, seeds |
-| UI.Tests (bUnit) | 63 | Componentes, filtros, faixas, desvio da primeira execução, estado da conexão no login, **contenção de falha de tela** |
-| Client.Core.Tests | 57 | Persistência offline, fila, idempotência, conflito, auth offline, recusa do servidor, **grafo de dependências real e sessão entre escopos** |
-| Server.IntegrationTests | 33 | API de ponta a ponta com servidor e SQLite reais, **lote com repetição na mesma célula** |
-| Application.Tests | 28 | Casos de uso, sessão, retenção, administração |
+| Domain.Tests | 114 | Turno, permissões, retenção, conflito, agendamento, seeds, **nome único de coluna** |
+| UI.Tests (bUnit) | 98 | Componentes, filtros, faixas, desvio da primeira execução, estado da conexão no login, contenção de falha de tela, **modais de cadastro e hierarquia da administração** |
+| Client.Core.Tests | 62 | Persistência offline, fila, idempotência, conflito, auth offline, recusa do servidor, grafo de dependências real e sessão entre escopos |
+| Server.IntegrationTests | 51 | API de ponta a ponta com servidor e SQLite reais, lote com repetição na mesma célula, cadastro de estrutura, o cliente HTTP real contra o servidor real e **o aviso em tempo real do hub até o cliente** |
+| Application.Tests | 33 | Casos de uso, sessão, retenção, administração, **criação de coluna e restrição de tipo a setor** |
+
+O `Server.IntegrationTests` passou a referenciar o `Client.Core`. Era o último ponto cego da
+suíte: todo teste de cliente substituía `IServerApi` por um duplo, então o `HttpServerApi` nunca
+falava com um servidor de verdade — montagem de URL, serialização de `TimeOnly`, envio do bearer e
+a tradução de `ProblemDetails` na mensagem exibida na tela não tinham cobertura nenhuma.
 
 ### Validado em aparelho real — Xiaomi 23122PCD1G, Android 13 (API 33)
 
@@ -95,9 +100,44 @@ Cobertos por `BatchSameCellTests`, `ErrorBoundaryTests`, `ServerConfigurationRea
 | Item | Como validar | Por que não foi feito |
 |---|---|---|
 | As seis correções da segunda rodada, no aparelho | Roteiro de teste, etapas 1–6 | Aparelho desconectado no momento da correção; compila e passa nos testes, **não reexecutado em campo** |
+| Dois dispositivos ao mesmo tempo | Marcar em um e ver aparecer no outro | O cliente do hub foi implementado e tem teste de integração; falta ver acontecer entre dois aparelhos |
 | Mensagem de conta bloqueada na tela | Errar a senha 5 vezes | Bloqueia a conta por 15 min; adiado a pedido |
-| Notificação agendada com o app fechado | Roteiro de teste, etapa 6 | Depende de tempo de espera real |
 | Isenção de bateria concedida | "Corrigir agora" → confirmar → "Verificar novamente" | Aguardando execução |
+| Implantação em Docker e ciclo de backup | MANUAL_TEST_PLAN, seção 11 | Docker nunca executado neste ambiente |
+| HTTPS com certificado confiável nos aparelhos | Seção 11 | Nunca exercitado |
+
+### Terceira rodada validada em execução real — 18/08
+
+Percorrido no **aparelho e no Windows**, com o servidor no ar:
+
+| Verificação | Resultado |
+|---|---|
+| Cadastrar coluna, setor, leito e marcador pelos modais | ✅ |
+| Três níveis do menu de administração | ✅ |
+| Barra sem "Dispositivo"; cartão do Painel abre a tela | ✅ |
+| Checklist em uso: marcar e desmarcar, celular e desktop | ✅ critérios 7, 8 e 9 |
+| Botão "Testar alerta" | ✅ critério 21 |
+| **Alerta disparando no horário da coluna** | ✅ critérios 20 e 25 — era o risco nº 1 do projeto |
+
+### Aviso em tempo real — o hub que existia só de um lado
+
+Descoberto ao preparar o teste de dois dispositivos, e corrigido em seguida.
+
+O servidor tinha o `SyncHub` completo desde o início. O cliente nunca se conectava:
+`Microsoft.AspNetCore.SignalR.Client` estava referenciado no `Client.Core.csproj` e **nenhum
+arquivo do projeto abria uma `HubConnection`** — `SyncHubEvents` só aparecia no servidor. Marcar em
+um aparelho não avisava o outro.
+
+`RealtimeSyncClient` fecha isso: acompanha o estado da sessão, conecta quando há usuário e
+endereço, ouve os cinco eventos e manda buscar. O aviso continua sem transportar estado.
+
+A armadilha que o desenho escondia: `OnConnectedAsync` inscreve a conexão apenas nos
+`ExplicitSectorIds`, e o grupo **Administradores** é semeado com `GrantsAllSectors: true` e
+`SectorNames: []` — um administrador entraria em nenhum grupo de setor. É para isso que o
+`SubscribeSector` existe, e o cliente o chama ao entrar no setor.
+
+`RealtimeSyncTests` liga o cliente real ao hub real. O teste da armadilha foi conferido por
+mutação: desativando a chamada a `SubscribeSector`, ele falha.
 
 ### Defeitos encontrados depois da entrega inicial
 
@@ -116,6 +156,21 @@ antes de rotular.
 
 `ServiceGraphTests` fecha a lacuna: constrói o contêiner **real** com `ValidateOnBuild` e
 `ValidateScopes`, e resolve cada serviço que a interface injeta.
+
+### Terceira rodada — administração
+
+Relatados em uso real e corrigidos em 18/08.
+
+| Defeito | Sintoma | Correção |
+|---|---|---|
+| **Coluna nova nunca gravava** | HTTP 500 ao salvar. `DbUpdateConcurrencyException`: a coluna era rastreada como `Modified` e o `UPDATE` não achava a linha | `db.ChecklistColumns.Add`. A chave é `Guid` da aplicação mapeada como `ValueGenerated.OnAdd`, e para entidade descoberta por navegação o EF lê "chave preenchida" como "já existe". Era a única entidade criada sem `Add` explícito |
+| Renomear coluna para nome de outra ativa | HTTP 500 por violação do índice único | Regra de nome único passou a valer também na edição (`ChecklistTemplate.UpdateColumn`) |
+| Violação de restrição virava 500 | Nenhum ponto do servidor tratava `DbUpdateException` | `DatabaseConflictExceptionHandler` traduz em 409 |
+| Editar tipo apagava a restrição de setores | A tela enviava `SectorIds` vazio, e vazio significa "vale para todos" | O modal carrega, mostra e reenvia os setores atuais |
+
+O primeiro tinha uma lacuna de cobertura exata: existiam testes de **edição** de coluna e de
+**recusa** por nome repetido — os dois caminhos que não chegam ao `INSERT`. Nenhum criava uma
+coluna com sucesso.
 
 ### Validado manualmente neste ambiente
 
@@ -144,30 +199,30 @@ Servidor executado de verdade, com estas verificações feitas:
 | 4 | Usuário pertence a vários grupos | Implementado · Validado por teste automatizado |
 | 5 | Grupos controlam telas, ações e setores | Implementado · Validado por teste automatizado |
 | 6 | Usuário sem acesso não chama o endpoint protegido | Implementado · Validado por teste automatizado |
-| 7 | Checklist em matriz no desktop | Implementado · Validado por teste automatizado (bUnit) · **Não validado** em execução real |
-| 8 | Checklist no celular sem rolagem horizontal | Implementado · Validado por teste automatizado (bUnit) · **Não validado** em aparelho |
-| 9 | Um toque marca imediatamente | Implementado · Validado por teste automatizado · **Não validado** em aparelho |
+| 7 | Checklist em matriz no desktop | Implementado · Validado por teste automatizado (bUnit) · **Validado manualmente** no Windows |
+| 8 | Checklist no celular sem rolagem horizontal | Implementado · Validado por teste automatizado (bUnit) · **Validado em aparelho** |
+| 9 | Um toque marca imediatamente | Implementado · Validado por teste automatizado · **Validado em aparelho** |
 | 10 | Marcação gravada localmente | Implementado · Validado por teste automatizado |
 | 11 | Marcação permanece após reiniciar o app | Implementado · Validado por teste automatizado (contexto fechado e reaberto sobre o mesmo arquivo) |
 | 12 | Funciona sem servidor | Implementado · Validado por teste automatizado |
 | 13 | Alterações offline entram na fila | Implementado · Validado por teste automatizado |
 | 14 | Sincroniza quando o servidor retorna | Implementado · Validado por teste automatizado |
 | 15 | Operação reenviada não duplica | Implementado · Validado por teste automatizado **e manualmente** |
-| 16 | Dois dispositivos online recebem atualizações | Implementado (SignalR + pull) · **Não validado** com dois aparelhos |
+| 16 | Dois dispositivos online recebem atualizações | Implementado · Validado por teste de integração (cliente real contra o hub real) · **Não validado** com dois aparelhos de verdade |
 | 17 | Conflito não apaga conclusão mais nova | Implementado · Validado por teste automatizado **e manualmente** |
 | 18 | C.I., Sondas e Drenos em qualquer leito | Implementado · Validado por teste automatizado |
 | 19 | Classificações são temporárias da sessão | Implementado · Validado por teste automatizado |
-| 20 | Notificação local pode ser agendada | Implementado · **Não validado** em aparelho |
-| 21 | Botão de teste dispara notificação | Implementado · **Não validado** em aparelho |
+| 20 | Notificação local pode ser agendada | Implementado · **Validado em aparelho**: alerta disparou no horário da coluna |
+| 21 | Botão de teste dispara notificação | Implementado · **Validado em aparelho** |
 | 22 | App informa quando as notificações não estão saudáveis | Implementado · Validado por teste automatizado (bUnit) |
 | 23 | Repetições canceladas ao concluir | Implementado · Validado por teste automatizado |
 | 24 | Administrador altera horários | Implementado · Validado por teste automatizado |
-| 25 | App reagenda após sincronizar configurações | Implementado · **Não validado** em aparelho |
+| 25 | App reagenda após sincronizar configurações | Implementado · **Validado em aparelho**, junto com o critério 20 |
 | 26 | Sessões fechadas apagadas após a retenção | Implementado · Validado por teste automatizado |
 | 27 | Não existe histórico de usuário por marcação | Implementado · Validado por teste automatizado (inspeciona o modelo do EF) |
 | 28 | Não existem dados de paciente | Implementado · Verificável por inspeção do modelo |
 | 29 | Build dos projetos compatíveis passa | ✅ **Toda a solução, 0 avisos** |
-| 30 | Testes compatíveis passam | ✅ **287 testes** |
+| 30 | Testes compatíveis passam | ✅ **358 testes** |
 
 ---
 
@@ -182,7 +237,7 @@ EF Core + SQLite, Identity, migrations, seed idempotente, JWT com refresh rotaci
 lockout, limite de requisições, políticas por chave de permissão, endpoints de sessão, checklist,
 sincronização, administração, dispositivos e health, hub SignalR, manutenção periódica.
 
-### Interface — Implementado · Validado por teste automatizado (bUnit) · Não validado em execução
+### Interface — Implementado · Validado por teste automatizado (bUnit) e em execução real
 Design system em CSS próprio sem CDN, todos os componentes pedidos pelo enunciado, matriz no
 desktop, lista por coluna no celular, telas de configuração, login, setor, painel, checklist,
 classificações, pendências, plantão, estado do dispositivo e administração.
@@ -191,12 +246,15 @@ classificações, pendências, plantão, estado do dispositivo e administração
 Banco local, fila gravada na mesma transação do estado, push/pull, idempotência, adoção de
 conflito, backoff com jitter, bootstrap de recuperação, autenticação offline PBKDF2.
 
-### Notificações — Implementado · Bloqueado pelo ambiente para validação
+### Notificações — Implementado · Validado em aparelho real
 Abstrações, cálculo de agendamento (com teste), Android com AlarmManager + BootReceiver + deep
 link, Windows com toast nativo e agendador in-process, diagnóstico de saúde.
 
-**Nada foi validado em aparelho**: não havia dispositivo Android nem emulador, e o cliente Windows
-não foi executado.
+**Validado em 18/08 num Xiaomi com Android 13**: o botão "Testar alerta" dispara, e o alerta
+agendado chegou no horário da coluna. Era o item de maior risco do projeto.
+
+Continua pendente: alerta com o aparelho **reiniciado** (o `BootReceiver`), e a isenção de bateria
+concedida pelo usuário.
 
 ### Implantação — Implementado · Não validado
 `Dockerfile`, `docker-compose.yml` com volume, `.env.example`, `backup.ps1`, `restore.ps1`.
@@ -208,17 +266,34 @@ não foi executado.
 
 Em ordem de risco:
 
-1. **Notificações em aparelho Android real** — o requisito mais crítico e o menos validado.
-   [MANUAL_TEST_PLAN.md](MANUAL_TEST_PLAN.md), seção 5.
-2. **Notificações no Windows**, incluindo a confirmação da limitação de app fechado. Seção 6.
-3. **Dois dispositivos simultâneos** com conflito real. Seção 3.
-4. **Implantação em Docker** e o ciclo de backup/restauração. Seção 11.
-5. **HTTPS com certificado confiável** nos aparelhos.
-6. **Fabricantes com restrição agressiva** (Xiaomi, Huawei, Samsung). Cenário 5.15.
+1. **Implantação em Docker** e o ciclo de backup/restauração. Seção 11.
+2. **HTTPS com certificado confiável** nos aparelhos.
+3. **Aviso em tempo real entre dois aparelhos de verdade** — o cliente do hub existe e tem teste
+   de integração contra o hub real, mas ninguém viu ainda uma marcação aparecer sozinha na outra
+   tela.
+4. **Alerta após reiniciar o aparelho** (`BootReceiver`) e com o app fechado por horas.
+5. **Fabricantes com restrição agressiva** — o Xiaomi usado no teste é um deles; falta confirmar
+   o comportamento com a economia de bateria realmente apertada. Cenário 5.15.
+
+Saíram desta lista, agora validados em aparelho: notificação agendada disparando no horário,
+botão de teste, reagendamento após sincronizar, e o checklist em uso no celular e no desktop.
 
 ## Conclusão
 
-O sistema **não pode ser declarado pronto para produção**. A arquitetura está completa, as regras
-críticas têm cobertura automatizada e o servidor foi exercitado de verdade — mas notificações em
-dispositivos reais, implantação e operação em plantão não foram validadas, e são exatamente os
-pontos em que este sistema falha de forma silenciosa se estiver errado.
+O sistema **ainda não pode ser declarado pronto para produção**, mas por motivos diferentes dos de
+antes.
+
+O que mudou: o aplicativo roda em aparelho real, o plantão é operável de ponta a ponta, e a
+**notificação agendada dispara no horário** — o requisito mais crítico e, até 18/08, o menos
+validado. Três rodadas de uso em campo encontraram dezesseis defeitos que nenhum teste pegava;
+todos corrigidos, todos com teste que os fixa.
+
+O que impede a declaração:
+
+- **a implantação nunca foi exercitada.** Docker e HTTPS com certificado confiável seguem como
+  no primeiro dia;
+- **o aviso em tempo real nunca foi visto entre dois aparelhos.** O cliente do hub foi
+  implementado e tem teste de integração contra o hub real, mas teste não substitui ver a
+  marcação aparecer sozinha na outra tela;
+- **falta um plantão inteiro de uso**, com o aparelho reiniciando, a bateria apertando e o app
+  fechado por horas. É onde este sistema falha em silêncio se estiver errado.

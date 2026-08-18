@@ -4,42 +4,22 @@
 
 <PageTitle>Marcadores</PageTitle>
 
-<h2>Marcadores de leito</h2>
+<div class="linha linha--entre">
+    <h2>Marcadores de leito</h2>
+    <button type="button" class="botao botao--primario" data-testid="marker-new" @onclick="Novo">Novo marcador</button>
+</div>
+
 <p>C.I., Sondas e Drenos são apenas os marcadores iniciais. Você pode criar outros.</p>
 
 <AdminFeedback Result="_resultado" />
 
-<div class="cartao">
-    <div class="linha">
-        <div class="campo" style="flex:1 1 200px">
-            <label class="campo__rotulo" for="marcador-nome">Nome</label>
-            <input id="marcador-nome" class="campo__controle" data-testid="marker-name" @bind="_nome" />
-        </div>
-        <div class="campo" style="flex:0 1 120px">
-            <label class="campo__rotulo" for="marcador-ordem">Ordem</label>
-            <input id="marcador-ordem" class="campo__controle" type="number" @bind="_ordem" />
-        </div>
-        <label class="campo campo--horizontal">
-            <input type="checkbox" style="width:24px;height:24px" @bind="_ativo" />
-            <span class="campo__rotulo">Ativo</span>
-        </label>
-        <button type="button" class="botao botao--primario" data-testid="marker-save" @onclick="SalvarAsync">
-            @(_editando is null ? "Adicionar" : "Salvar")
-        </button>
-        @if (_editando is not null)
-        {
-            <button type="button" class="botao botao--texto" @onclick="Limpar">Cancelar</button>
-        }
-    </div>
-</div>
-
-<div class="tabela__area" style="margin-top:var(--esp-4)">
+<div class="tabela__area">
     <table class="tabela">
         <thead><tr><th>Marcador</th><th>Código</th><th>Ordem</th><th>Situação</th><th></th></tr></thead>
         <tbody>
             @foreach (var marcador in _marcadores.OrderBy(m => m.SortOrder))
             {
-                <tr>
+                <tr data-testid="@($"marker-row-{marcador.Id}")">
                     <td>@marcador.Name</td>
                     <td><code>@marcador.Code</code></td>
                     <td>@marcador.SortOrder</td>
@@ -55,6 +35,30 @@
     O código não muda ao renomear: ele é a referência estável já sincronizada nos dispositivos.
 </p>
 
+<FormDialog @bind-Visible="_modalAberto"
+            Title="@(_editando is null ? "Novo marcador" : $"Editando: {_editando.Name}")"
+            Saving="_salvando"
+            OnSave="SalvarAsync">
+    @* Dentro do modal: com o formulário aberto, uma faixa de erro atrás dele não seria vista. *@
+    <AdminFeedback Result="_erroDoModal" />
+
+    <div class="campo">
+        <label class="campo__rotulo" for="marcador-nome">Nome</label>
+        <input id="marcador-nome" class="campo__controle" data-testid="marker-name" @bind="_nome" />
+    </div>
+
+    <div class="linha">
+        <div class="campo" style="flex:0 1 120px">
+            <label class="campo__rotulo" for="marcador-ordem">Ordem</label>
+            <input id="marcador-ordem" class="campo__controle" type="number" @bind="_ordem" />
+        </div>
+        <label class="campo campo--horizontal">
+            <input type="checkbox" style="width:24px;height:24px" @bind="_ativo" />
+            <span class="campo__rotulo">Ativo</span>
+        </label>
+    </div>
+</FormDialog>
+
 @code {
     private IReadOnlyList<BedMarkerDefinitionDto> _marcadores = [];
     private BedMarkerDefinitionDto? _editando;
@@ -63,9 +67,22 @@
     private bool _ativo = true;
     private Result? _resultado;
 
+    private bool _modalAberto;
+    private bool _salvando;
+    private Result? _erroDoModal;
+
     protected override async Task OnInitializedAsync() => await CarregarAsync();
 
     private async Task CarregarAsync() => _marcadores = await Admin.GetMarkersAsync();
+
+    private void Novo()
+    {
+        _editando = null;
+        _nome = string.Empty;
+        _ordem = (_marcadores.Count + 1) * 10;
+        _ativo = true;
+        Abrir();
+    }
 
     private void Editar(BedMarkerDefinitionDto marcador)
     {
@@ -73,24 +90,39 @@
         _nome = marcador.Name;
         _ordem = marcador.SortOrder;
         _ativo = marcador.IsActive;
+        Abrir();
     }
 
-    private void Limpar()
+    private void Abrir()
     {
-        _editando = null;
-        _nome = string.Empty;
-        _ordem = 10;
-        _ativo = true;
+        _erroDoModal = null;
+        _resultado = null;
+        _modalAberto = true;
     }
 
     private async Task SalvarAsync()
     {
-        _resultado = await Admin.SaveMarkerAsync(_editando?.Id, new SaveMarkerRequest(_nome, _ordem, _ativo, _editando?.Version ?? 0));
+        _salvando = true;
 
-        if (_resultado.Succeeded)
+        try
         {
-            Limpar();
+            var resultado = await Admin.SaveMarkerAsync(_editando?.Id, new SaveMarkerRequest(_nome, _ordem, _ativo, _editando?.Version ?? 0));
+
+            if (!resultado.Succeeded)
+            {
+                // Modal aberto de propósito: o texto digitado continua ali para ser corrigido.
+                _erroDoModal = resultado;
+                return;
+            }
+
+            _resultado = resultado;
+            _modalAberto = false;
+            _erroDoModal = null;
             await CarregarAsync();
+        }
+        finally
+        {
+            _salvando = false;
         }
     }
 }

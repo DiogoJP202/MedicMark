@@ -20,6 +20,7 @@ não foi implementada e traria complexidade desproporcional.
 
 ---
 
+
 ## 2. Desativar um usuário não alcança um aparelho offline
 
 Quando o administrador desativa um usuário ou muda seu grupo, o servidor revoga os tokens
@@ -156,7 +157,8 @@ diferentes.
 
 Registradas em [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md):
 
-- não havia aparelho Android nem emulador para validar notificações reais;
+- o **agendamento** de notificações em aparelho real ainda não foi validado. O aparelho existe e o
+  aplicativo roda nele — o que falta é observar um alerta chegando no horário, com o app fechado;
 - o Windows 10 SDK não está instalado, então o empacotamento MSIX não foi exercitado;
 - Docker não foi executado neste ambiente: o `Dockerfile` e o `docker-compose.yml` **não foram
   testados**;

@@ -5,6 +5,28 @@ correspondente — não existe um "modo admin" que libera tudo.
 
 Alterações administrativas **exigem conexão** com o servidor.
 
+## Onde fica cada coisa
+
+```
+Administração
+├── Configurações do Sistema
+│   ├── Setores e Leitos
+│   ├── Tipos de Checklist
+│   ├── Marcadores
+│   └── Configurações Avançadas
+│       ├── Usuários e Grupos
+│       ├── Notificações
+│       ├── Configurações Gerais
+│       └── Dispositivos
+└── Atalhos para Setores e leitos · Tipos de checklist
+```
+
+Os atalhos existem porque setores e tipos de checklist são o que se mexe no dia a dia.
+
+Cadastrar e editar acontece em **janela sobreposta**: os botões "Novo …" e "Editar" abrem um
+formulário sobre a lista, e ele só fecha quando o servidor aceita. Se algo for recusado, a janela
+continua aberta com o que você digitou e a explicação do motivo.
+
 ## Primeiro acesso
 
 O administrador inicial é criado na primeira execução do servidor, a partir de

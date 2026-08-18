@@ -1,0 +1,113 @@
+@*
+    Modal para formulários de cadastro.
+
+    Separado do ConfirmDialog de propósito. Aquele existe para ações destrutivas: é um
+    alertdialog, e clicar fora cancela — o que é seguro quando não há nada digitado. Aqui há um
+    formulário preenchido, e fechar por um clique fora do quadro jogaria fora o trabalho da
+    pessoa. Por isso o fundo NÃO fecha; só Cancelar e Esc fecham.
+*@
+
+@if (Visible)
+{
+    <div class="modal-fundo" role="presentation">
+        <div class="modal @(Wide ? "modal--largo" : null)"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="@_tituloId"
+             data-testid="form-dialog"
+             tabindex="-1"
+             @onkeydown="AoTeclarAsync">
+            <div class="linha linha--entre">
+                <h2 class="modal__titulo" id="@_tituloId">@Title</h2>
+                <button type="button"
+                        class="modal__fechar"
+                        data-testid="form-dialog-close"
+                        aria-label="Fechar"
+                        title="Fechar"
+                        @onclick="CancelarAsync">
+                    ✕
+                </button>
+            </div>
+
+            @ChildContent
+
+            <div class="modal__acoes">
+                <button type="button"
+                        class="botao botao--contorno"
+                        data-testid="form-dialog-cancel"
+                        @onclick="CancelarAsync">
+                    @CancelText
+                </button>
+                <button type="button"
+                        class="botao botao--primario"
+                        data-testid="form-dialog-save"
+                        disabled="@Saving"
+                        @onclick="SalvarAsync">
+                    @(Saving ? "Salvando…" : SaveText)
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private readonly string _tituloId = $"form-dialog-{Guid.CreateVersion7():N}";
+
+    [Parameter]
+    public bool Visible { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> VisibleChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>Formulários largos, como o da coluna, que tem doze campos.</summary>
+    [Parameter]
+    public bool Wide { get; set; }
+
+    [Parameter]
+    public string SaveText { get; set; } = "Salvar";
+
+    [Parameter]
+    public string CancelText { get; set; } = "Cancelar";
+
+    /// <summary>Desabilita a ação primária enquanto a gravação está em andamento.</summary>
+    [Parameter]
+    public bool Saving { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public EventCallback OnSave { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    /// <summary>
+    /// Quem fecha é a página, no sucesso da gravação — não este componente. Fechar aqui esconderia
+    /// o formulário mesmo quando o servidor recusa, e a pessoa perderia o que digitou junto com a
+    /// explicação do que estava errado.
+    /// </summary>
+    private Task SalvarAsync() => OnSave.InvokeAsync();
+
+    private async Task CancelarAsync()
+    {
+        if (Saving)
+        {
+            return;
+        }
+
+        await VisibleChanged.InvokeAsync(false);
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task AoTeclarAsync(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            await CancelarAsync();
+        }
+    }
+}

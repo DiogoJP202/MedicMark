@@ -418,7 +418,8 @@ p { margin: 0 0 var(--esp-3); }
     Botão de recolher. Alvo de toque de 44px, que é o mínimo confortável no celular — a faixa
     inteira é sticky e um alvo pequeno aqui seria tocado por engano.
 */
-.faixa__fechar {
+.faixa__fechar,
+.modal__fechar {
     flex: 0 0 auto;
     align-self: flex-start;
     min-width: 44px;
@@ -435,9 +436,14 @@ p { margin: 0 0 var(--esp-3); }
     cursor: pointer;
 }
 
-.faixa__fechar:hover { background: rgb(0 0 0 / 8%); }
+.faixa__fechar:hover,
+.modal__fechar:hover { background: rgb(0 0 0 / 8%); }
 
-.faixa__fechar:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.faixa__fechar:focus-visible,
+.modal__fechar:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+/* O botão de fechar do modal acompanha o título, sem empurrar o conteúdo. */
+.modal__fechar { align-self: center; }
 
 .distintivo {
     display: inline-flex;
@@ -716,6 +722,9 @@ p { margin: 0 0 var(--esp-3); }
 }
 
 .modal__titulo { font-size: var(--texto-xl); margin-bottom: var(--esp-3); }
+
+/* Formulários com muitos campos — o da coluna tem doze — respiram melhor em duas colunas. */
+.modal--largo { max-width: 780px; }
 
 .modal__acoes {
     display: flex;

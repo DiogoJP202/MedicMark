@@ -98,6 +98,10 @@ builder.Services
     });
 
 builder.Services.AddProblemDetails();
+
+// Antes do tratador padrão: violação de restrição do banco é conflito de dados (409), não falha
+// do servidor (500). Ver DatabaseConflictExceptionHandler.
+builder.Services.AddExceptionHandler<DatabaseConflictExceptionHandler>();
 builder.Services.AddChecklistRateLimiting(builder.Configuration);
 builder.Services.AddSignalR();
 builder.Services.AddHostedService<MaintenanceHostedService>();

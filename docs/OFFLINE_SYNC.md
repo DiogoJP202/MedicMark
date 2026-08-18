@@ -102,6 +102,18 @@ sincronizada produziria telas diferentes em aparelhos diferentes.
 As conexões são agrupadas por setor e por usuário, e a autorização é reavaliada no hub: um cliente
 não escolhe sozinho em qual setor se inscrever.
 
+No cliente, quem mantém a conexão é o `RealtimeSyncClient`: acompanha o estado da sessão, conecta
+quando há usuário autenticado e endereço de servidor, e reconecta sozinho. Cada aviso recebido
+dispara a mesma sincronização dos demais gatilhos.
+
+Ele **chama `SubscribeSector` ao entrar no setor**, e isso não é redundante: a inscrição automática
+da conexão usa apenas os setores explícitos do usuário, e quem tem acesso a todos — o grupo
+Administradores, semeado com `GrantsAllSectors` e nenhum setor nominal — não entraria em grupo
+nenhum. Sem essa chamada, justamente o administrador ficaria sem aviso.
+
+O token é buscado a cada tentativa de conexão, e não guardado: o SignalR pede de novo em cada
+reconexão, e um token vencido deixaria o aparelho mudo.
+
 ## Os três níveis de conectividade
 
 O enunciado exige distinguir, e o sistema distingue:

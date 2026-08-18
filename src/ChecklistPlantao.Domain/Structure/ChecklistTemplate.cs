@@ -106,15 +106,65 @@ public sealed class ChecklistTemplate : ISyncVersioned
 
     public ChecklistColumn AddColumn(Guid columnId, string displayName, TimeOnly? triggerTime, int sortOrder, DateTime nowUtc)
     {
-        if (_columns.Any(c => c.IsActive && string.Equals(c.DisplayName, displayName.Trim(), StringComparison.OrdinalIgnoreCase)))
-        {
-            throw new DomainRuleException($"Já existe uma coluna ativa chamada \"{displayName.Trim()}\" neste tipo de checklist.");
-        }
+        EnsureColumnNameIsFree(displayName, null);
 
         var column = new ChecklistColumn(columnId, Id, displayName, triggerTime, sortOrder, nowUtc);
         _columns.Add(column);
         Touch(nowUtc);
         return column;
+    }
+
+    /// <summary>
+    /// Alteração de coluna existente.
+    ///
+    /// Existe para que a MESMA regra de nome único valha na edição e na criação. Sem isto, renomear
+    /// uma coluna para o nome de outra ativa passava pelo domínio e só era barrado pelo índice
+    /// único do banco — que não é erro tratado e virava HTTP 500. Ver docs/DECISIONS.md (D-016).
+    /// </summary>
+    public void UpdateColumn(
+        ChecklistColumn column,
+        string displayName,
+        TimeOnly? triggerTime,
+        int sortOrder,
+        bool isActive,
+        DateTime nowUtc)
+    {
+        ArgumentNullException.ThrowIfNull(column);
+
+        if (!_columns.Contains(column))
+        {
+            throw new DomainRuleException("A coluna não pertence a este tipo de checklist.");
+        }
+
+        // Só há colisão possível se a coluna terminar ativa: o índice único ignora as inativas.
+        if (isActive)
+        {
+            EnsureColumnNameIsFree(displayName, column.Id);
+        }
+
+        column.Update(displayName, triggerTime, sortOrder, nowUtc);
+        column.SetActive(isActive, nowUtc);
+        Touch(nowUtc);
+    }
+
+    /// <summary>
+    /// Espelha o índice único filtrado <c>(ChecklistTemplateId, DisplayName) WHERE IsActive = 1</c>.
+    /// A comparação é sem diferenciar maiúsculas — mais estrita que a do SQLite de propósito, para
+    /// não permitir "20h" ao lado de "20H".
+    /// </summary>
+    private void EnsureColumnNameIsFree(string displayName, Guid? ignoringColumnId)
+    {
+        var name = displayName.Trim();
+
+        var taken = _columns.Any(c =>
+            c.IsActive
+            && c.Id != ignoringColumnId
+            && string.Equals(c.DisplayName, name, StringComparison.OrdinalIgnoreCase));
+
+        if (taken)
+        {
+            throw new DomainRuleException($"Já existe uma coluna ativa chamada \"{name}\" neste tipo de checklist.");
+        }
     }
 
     private void Touch(DateTime nowUtc)

@@ -70,6 +70,24 @@ public sealed class DashboardRoutingTests : BunitContext
         Assert.Equal(inicial, navegacao.Uri);
     }
 
+    /// <summary>
+    /// "Dispositivo" saiu da barra de navegação porque continua alcançável por aqui. Se este
+    /// cartão sumir, a tela de saúde das notificações fica sem porta — e ela é o critério 22.
+    /// </summary>
+    [Fact]
+    public void O_painel_continua_levando_ao_estado_do_dispositivo()
+    {
+        ServerConfiguration.IsConfigured = true;
+        Session.IsAuthenticated = true;
+        Session.CurrentSectorId = Guid.CreateVersion7();
+        Session.CurrentSectorName = "Oeste";
+        RegistrarServicos();
+
+        var cut = Render<DashboardPage>();
+
+        Assert.Contains("Estado do dispositivo", cut.Markup, StringComparison.Ordinal);
+    }
+
     /// <summary>O desvio não pode empilhar histórico: "voltar" devolveria o usuário à espera.</summary>
     [Fact]
     public void O_desvio_substitui_a_entrada_no_historico()
@@ -96,9 +114,9 @@ public sealed class DashboardRoutingTests : BunitContext
 
         public DateTime? LastServerValidationUtc => null;
 
-        public Guid? CurrentSectorId => null;
+        public Guid? CurrentSectorId { get; set; }
 
-        public string? CurrentSectorName => null;
+        public string? CurrentSectorName { get; set; }
 
         public string? LastSignInError => null;
 

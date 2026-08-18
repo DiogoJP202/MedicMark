@@ -1,0 +1,99 @@
+@page "/admin/configuracoes"
+
+@inject IAdministrationService Admin
+
+<PageTitle>Configurações gerais</PageTitle>
+
+<h2>Configurações gerais</h2>
+
+<AdminFeedback Result="_resultado" />
+
+@if (_configuracoes is null)
+{
+    <LoadingState Message="Carregando as configurações gerais…" />
+}
+else
+{
+    <div class="cartao">
+        <div class="campo" style="max-width:280px">
+            <label class="campo__rotulo" for="fuso">Fuso horário</label>
+            <input id="fuso" class="campo__controle" data-testid="settings-timezone" @bind="_fuso" />
+            <span class="campo__ajuda">Identificador IANA, por exemplo America/Sao_Paulo.</span>
+        </div>
+
+        <div class="linha">
+            <div class="campo" style="flex:0 1 150px">
+                <label class="campo__rotulo" for="turno-inicio">Início do plantão</label>
+                <input id="turno-inicio" class="campo__controle" type="time" data-testid="settings-shift-start" @bind="_inicio" />
+            </div>
+            <div class="campo" style="flex:0 1 150px">
+                <label class="campo__rotulo" for="turno-fim">Fim do plantão</label>
+                <input id="turno-fim" class="campo__controle" type="time" @bind="_fim" />
+            </div>
+        </div>
+        <p class="campo__ajuda">
+            Colunas com horário anterior ao início do turno pertencem ao dia seguinte —
+            é assim que 00H, 02H, 04H e 06H ficam no mesmo plantão que 20H e 22H.
+        </p>
+
+        <div class="linha">
+            <div class="campo" style="flex:0 1 190px">
+                <label class="campo__rotulo" for="retencao">Recuperação após encerrar (h)</label>
+                <input id="retencao" class="campo__controle" type="number" min="0" data-testid="settings-retention" @bind="_retencao" />
+                <span class="campo__ajuda">Zero apaga imediatamente ao encerrar.</span>
+            </div>
+            <div class="campo" style="flex:0 1 180px">
+                <label class="campo__rotulo" for="offline">Validade do acesso offline (dias)</label>
+                <input id="offline" class="campo__controle" type="number" min="1" @bind="_offlineDias" />
+            </div>
+            <div class="campo" style="flex:0 1 180px">
+                <label class="campo__rotulo" for="tentativas">Tentativas offline</label>
+                <input id="tentativas" class="campo__controle" type="number" min="1" @bind="_tentativas" />
+            </div>
+        </div>
+
+        <label class="campo campo--horizontal">
+            <input type="checkbox" style="width:24px;height:24px" @bind="_abrirAutomaticamente" />
+            <span class="campo__rotulo">Abrir o plantão automaticamente ao entrar no setor</span>
+        </label>
+
+        <button type="button" class="botao botao--primario" data-testid="settings-save" @onclick="SalvarAsync">
+            Salvar configurações
+        </button>
+    </div>
+}
+
+@code {
+    private InstitutionSettingsDto? _configuracoes;
+    private Result? _resultado;
+
+    private string _fuso = string.Empty;
+    private TimeOnly _inicio;
+    private TimeOnly _fim;
+    private int _retencao;
+    private int _offlineDias;
+    private int _tentativas;
+    private bool _abrirAutomaticamente;
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        _configuracoes = await Admin.GetSettingsAsync();
+        _fuso = _configuracoes.TimeZoneId;
+        _inicio = _configuracoes.ShiftStart;
+        _fim = _configuracoes.ShiftEnd;
+        _retencao = _configuracoes.RetentionAfterCloseHours;
+        _offlineDias = _configuracoes.OfflineLoginValidityDays;
+        _tentativas = _configuracoes.OfflineLoginMaxAttempts;
+        _abrirAutomaticamente = _configuracoes.AutoOpenSession;
+    }
+
+    private async Task SalvarAsync()
+    {
+        _resultado = await Admin.SaveSettingsAsync(new SaveInstitutionSettingsRequest(
+            _fuso, _inicio, _fim, _retencao, _offlineDias, _tentativas, _abrirAutomaticamente));
+
+        await CarregarAsync();
+    }
+}

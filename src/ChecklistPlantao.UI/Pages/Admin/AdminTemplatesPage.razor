@@ -11,40 +11,29 @@
 
 <PageTitle>Tipos de checklist</PageTitle>
 
-<h2>Tipos de checklist</h2>
+<div class="linha linha--entre">
+    <h2>Tipos de checklist</h2>
+    <button type="button" class="botao botao--primario" data-testid="template-new" @onclick="NovoTemplate">Novo tipo</button>
+</div>
 
 <AdminFeedback Result="_resultado" />
-
-<div class="cartao">
-    <h3 class="cartao__titulo">@(_templateEditando is null ? "Novo tipo" : $"Editando: {_templateEditando.Name}")</h3>
-    <div class="linha">
-        <div class="campo" style="flex:1 1 200px">
-            <label class="campo__rotulo" for="tpl-nome">Nome</label>
-            <input id="tpl-nome" class="campo__controle" data-testid="template-name" @bind="_nomeTemplate" />
-        </div>
-        <div class="campo" style="flex:0 1 120px">
-            <label class="campo__rotulo" for="tpl-ordem">Ordem</label>
-            <input id="tpl-ordem" class="campo__controle" type="number" @bind="_ordemTemplate" />
-        </div>
-        <label class="campo campo--horizontal">
-            <input type="checkbox" style="width:24px;height:24px" @bind="_templateAtivo" />
-            <span class="campo__rotulo">Ativo</span>
-        </label>
-        <button type="button" class="botao botao--primario" data-testid="template-save" @onclick="SalvarTemplateAsync">Salvar</button>
-        @if (_templateEditando is not null)
-        {
-            <button type="button" class="botao botao--texto" @onclick="LimparTemplate">Cancelar</button>
-        }
-    </div>
-</div>
 
 @foreach (var template in _templates)
 {
     <div class="cartao" style="margin-top:var(--esp-4)">
         <div class="linha linha--entre">
             <h3 class="cartao__titulo">@template.Name @(template.IsActive ? "" : "(desativado)")</h3>
-            <button type="button" class="botao botao--texto" @onclick="() => EditarTemplate(template)">Editar tipo</button>
+            <div class="linha">
+                <button type="button" class="botao botao--texto" @onclick="() => EditarTemplate(template)">Editar tipo</button>
+                <button type="button" class="botao botao--contorno" @onclick="() => NovaColuna(template)">Nova coluna</button>
+            </div>
         </div>
+
+        <p class="campo__ajuda">
+            @(template.SectorIds.Count == 0
+                ? "Vale para todos os setores."
+                : $"Restrito a {template.SectorIds.Count} setor(es).")
+        </p>
 
         <div class="tabela__area">
             <table class="tabela">
@@ -59,7 +48,7 @@
                     {
                         <tr data-testid="@($"column-row-{coluna.Id}")">
                             <td>@coluna.DisplayName</td>
-                            <td>@(coluna.TriggerTime is { } h ? h.ToString("HH\\:mm", CultureInfo.InvariantCulture) : "sem horário")</td>
+                            <td>@(coluna.TriggerTime is { } h ? h.ToString("HH':'mm", CultureInfo.InvariantCulture) : "sem horário")</td>
                             <td>@coluna.SortOrder</td>
                             <td>@(coluna.NotificationEnabled ? "sim" : "não")</td>
                             <td>@coluna.GracePeriodMinutes min</td>
@@ -73,87 +62,127 @@
                 </tbody>
             </table>
         </div>
-
-        <button type="button" class="botao botao--contorno" @onclick="() => NovaColuna(template)">Nova coluna</button>
     </div>
 }
 
-@if (_templateDaColuna is not null)
-{
-    <div class="cartao" style="margin-top:var(--esp-4)" data-testid="column-editor">
-        <h3 class="cartao__titulo">
-            @(_colunaEditando is null ? $"Nova coluna em {_templateDaColuna.Name}" : $"Editando {_colunaEditando.DisplayName}")
-        </h3>
+<FormDialog @bind-Visible="_modalTemplate"
+            Title="@(_templateEditando is null ? "Novo tipo de checklist" : $"Editando: {_templateEditando.Name}")"
+            Saving="_salvando"
+            OnSave="SalvarTemplateAsync">
+    @* Dentro do modal: com o formulário aberto, uma faixa de erro atrás dele não seria vista. *@
+    <AdminFeedback Result="_erroDoModal" />
 
-        <div class="linha">
-            <div class="campo" style="flex:1 1 160px">
-                <label class="campo__rotulo" for="col-nome">Nome exibido</label>
-                <input id="col-nome" class="campo__controle" data-testid="column-name" @bind="_nomeColuna" />
-            </div>
-            <div class="campo" style="flex:0 1 140px">
-                <label class="campo__rotulo" for="col-hora">Horário real</label>
-                <input id="col-hora" class="campo__controle" type="time" data-testid="column-time" @bind="_horaColuna" />
-                <span class="campo__ajuda">Sem horário, a coluna não gera notificação.</span>
-            </div>
-            <div class="campo" style="flex:0 1 100px">
-                <label class="campo__rotulo" for="col-ordem">Ordem</label>
-                <input id="col-ordem" class="campo__controle" type="number" @bind="_ordemColuna" />
-            </div>
+    <div class="campo">
+        <label class="campo__rotulo" for="tpl-nome">Nome</label>
+        <input id="tpl-nome" class="campo__controle" data-testid="template-name" @bind="_nomeTemplate" />
+    </div>
+
+    <div class="linha">
+        <div class="campo" style="flex:0 1 120px">
+            <label class="campo__rotulo" for="tpl-ordem">Ordem</label>
+            <input id="tpl-ordem" class="campo__controle" type="number" @bind="_ordemTemplate" />
         </div>
+        <label class="campo campo--horizontal">
+            <input type="checkbox" style="width:24px;height:24px" @bind="_templateAtivo" />
+            <span class="campo__rotulo">Ativo</span>
+        </label>
+    </div>
 
-        <div class="linha">
+    @*
+        Os setores precisam estar aqui. Antes a tela enviava sempre uma lista vazia, e como lista
+        vazia significa "vale para todos", editar o nome de um tipo apagava em silêncio a
+        restrição que o administrador havia configurado.
+    *@
+    <div class="campo">
+        <span class="campo__rotulo">Setores</span>
+        <span class="campo__ajuda">Nenhum marcado: o tipo vale para todos os setores, inclusive os criados depois.</span>
+
+        @foreach (var setor in _setores)
+        {
             <label class="campo campo--horizontal">
-                <input type="checkbox" style="width:24px;height:24px" data-testid="column-notify" @bind="_notificar" />
-                <span class="campo__rotulo">Notificar</span>
+                <input type="checkbox"
+                       style="width:24px;height:24px"
+                       data-testid="@($"template-sector-{setor.Id}")"
+                       checked="@_setoresDoTemplate.Contains(setor.Id)"
+                       @onchange="e => AlternarSetor(setor.Id, e.Value is true)" />
+                <span class="campo__rotulo">@setor.Name</span>
             </label>
-            <label class="campo campo--horizontal">
-                <input type="checkbox" style="width:24px;height:24px" @bind="_colunaAtiva" />
-                <span class="campo__rotulo">Ativa</span>
-            </label>
-            <label class="campo campo--horizontal">
-                <input type="checkbox" style="width:24px;height:24px" @bind="_permitirAdiar" />
-                <span class="campo__rotulo">Permitir adiar</span>
-            </label>
+        }
+    </div>
+</FormDialog>
+
+<FormDialog @bind-Visible="_modalColuna"
+            Wide="true"
+            Title="@_tituloDaColuna"
+            Saving="_salvando"
+            OnSave="SalvarColunaAsync">
+    <AdminFeedback Result="_erroDoModal" />
+
+    <div class="linha">
+        <div class="campo" style="flex:1 1 160px">
+            <label class="campo__rotulo" for="col-nome">Nome exibido</label>
+            <input id="col-nome" class="campo__controle" data-testid="column-name" @bind="_nomeColuna" />
         </div>
-
-        <div class="linha">
-            <div class="campo" style="flex:0 1 130px">
-                <label class="campo__rotulo" for="col-antecedencia">Antecedência (min)</label>
-                <input id="col-antecedencia" class="campo__controle" type="number" min="0" @bind="_antecedencia" />
-            </div>
-            <div class="campo" style="flex:0 1 130px">
-                <label class="campo__rotulo" for="col-tolerancia">Tolerância (min)</label>
-                <input id="col-tolerancia" class="campo__controle" type="number" min="0" @bind="_tolerancia" />
-            </div>
-            <div class="campo" style="flex:0 1 150px">
-                <label class="campo__rotulo" for="col-intervalo">Intervalo de repetição (min)</label>
-                <input id="col-intervalo" class="campo__controle" type="number" min="0" @bind="_intervalo" />
-            </div>
-            <div class="campo" style="flex:0 1 130px">
-                <label class="campo__rotulo" for="col-repeticoes">Máximo de repetições</label>
-                <input id="col-repeticoes" class="campo__controle" type="number" min="0" @bind="_repeticoes" />
-            </div>
-            <div class="campo" style="flex:0 1 130px">
-                <label class="campo__rotulo" for="col-adiar">Minutos do adiamento</label>
-                <input id="col-adiar" class="campo__controle" type="number" min="1" @bind="_minutosAdiar" />
-            </div>
+        <div class="campo" style="flex:0 1 140px">
+            <label class="campo__rotulo" for="col-hora">Horário real</label>
+            <input id="col-hora" class="campo__controle" type="time" data-testid="column-time" @bind="_horaColuna" />
+            <span class="campo__ajuda">Sem horário, a coluna não gera notificação.</span>
         </div>
-
-        <div class="linha">
-            <button type="button" class="botao botao--primario" data-testid="column-save" @onclick="SalvarColunaAsync">Salvar coluna</button>
-            <button type="button" class="botao botao--texto" @onclick="FecharEditorColuna">Cancelar</button>
+        <div class="campo" style="flex:0 1 100px">
+            <label class="campo__rotulo" for="col-ordem">Ordem</label>
+            <input id="col-ordem" class="campo__controle" type="number" @bind="_ordemColuna" />
         </div>
     </div>
-}
+
+    <div class="linha">
+        <label class="campo campo--horizontal">
+            <input type="checkbox" style="width:24px;height:24px" data-testid="column-notify" @bind="_notificar" />
+            <span class="campo__rotulo">Notificar</span>
+        </label>
+        <label class="campo campo--horizontal">
+            <input type="checkbox" style="width:24px;height:24px" @bind="_colunaAtiva" />
+            <span class="campo__rotulo">Ativa</span>
+        </label>
+        <label class="campo campo--horizontal">
+            <input type="checkbox" style="width:24px;height:24px" @bind="_permitirAdiar" />
+            <span class="campo__rotulo">Permitir adiar</span>
+        </label>
+    </div>
+
+    <div class="linha">
+        <div class="campo" style="flex:0 1 130px">
+            <label class="campo__rotulo" for="col-antecedencia">Antecedência (min)</label>
+            <input id="col-antecedencia" class="campo__controle" type="number" min="0" @bind="_antecedencia" />
+        </div>
+        <div class="campo" style="flex:0 1 130px">
+            <label class="campo__rotulo" for="col-tolerancia">Tolerância (min)</label>
+            <input id="col-tolerancia" class="campo__controle" type="number" min="0" @bind="_tolerancia" />
+        </div>
+        <div class="campo" style="flex:0 1 150px">
+            <label class="campo__rotulo" for="col-intervalo">Intervalo de repetição (min)</label>
+            <input id="col-intervalo" class="campo__controle" type="number" min="0" @bind="_intervalo" />
+        </div>
+        <div class="campo" style="flex:0 1 130px">
+            <label class="campo__rotulo" for="col-repeticoes">Máximo de repetições</label>
+            <input id="col-repeticoes" class="campo__controle" type="number" min="0" @bind="_repeticoes" />
+        </div>
+        <div class="campo" style="flex:0 1 130px">
+            <label class="campo__rotulo" for="col-adiar">Minutos do adiamento</label>
+            <input id="col-adiar" class="campo__controle" type="number" min="1" @bind="_minutosAdiar" />
+        </div>
+    </div>
+</FormDialog>
 
 @code {
     private IReadOnlyList<ChecklistTemplateDto> _templates = [];
+    private IReadOnlyList<SectorDto> _setores = [];
     private Result? _resultado;
 
     private ChecklistTemplateDto? _templateEditando;
     private string _nomeTemplate = string.Empty;
     private int _ordemTemplate = 10;
     private bool _templateAtivo = true;
+    private readonly HashSet<Guid> _setoresDoTemplate = [];
 
     private ChecklistTemplateDto? _templateDaColuna;
     private ChecklistColumnDto? _colunaEditando;
@@ -169,9 +198,33 @@
     private int _repeticoes = 3;
     private int _minutosAdiar = 5;
 
+    private bool _modalTemplate;
+    private bool _modalColuna;
+    private bool _salvando;
+    private Result? _erroDoModal;
+
+    private string _tituloDaColuna => _colunaEditando is null
+        ? $"Nova coluna em {_templateDaColuna?.Name}"
+        : $"Editando a coluna {_colunaEditando.DisplayName}";
+
     protected override async Task OnInitializedAsync() => await CarregarAsync();
 
-    private async Task CarregarAsync() => _templates = await Admin.GetTemplatesAsync();
+    private async Task CarregarAsync()
+    {
+        _templates = await Admin.GetTemplatesAsync();
+        _setores = await Admin.GetSectorsAsync();
+    }
+
+    private void NovoTemplate()
+    {
+        _templateEditando = null;
+        _nomeTemplate = string.Empty;
+        _ordemTemplate = (_templates.Count + 1) * 10;
+        _templateAtivo = true;
+        _setoresDoTemplate.Clear();
+        LimparAvisos();
+        _modalTemplate = true;
+    }
 
     private void EditarTemplate(ChecklistTemplateDto template)
     {
@@ -179,26 +232,27 @@
         _nomeTemplate = template.Name;
         _ordemTemplate = template.SortOrder;
         _templateAtivo = template.IsActive;
-    }
 
-    private void LimparTemplate()
-    {
-        _templateEditando = null;
-        _nomeTemplate = string.Empty;
-        _ordemTemplate = 10;
-        _templateAtivo = true;
-    }
-
-    private async Task SalvarTemplateAsync()
-    {
-        _resultado = await Admin.SaveTemplateAsync(
-            _templateEditando?.Id,
-            new SaveTemplateRequest(_nomeTemplate, null, _ordemTemplate, _templateAtivo, [], _templateEditando?.Version ?? 0));
-
-        if (_resultado.Succeeded)
+        // Carregar os setores atuais é o que impede a edição de apagá-los.
+        _setoresDoTemplate.Clear();
+        foreach (var id in template.SectorIds)
         {
-            LimparTemplate();
-            await CarregarAsync();
+            _setoresDoTemplate.Add(id);
+        }
+
+        LimparAvisos();
+        _modalTemplate = true;
+    }
+
+    private void AlternarSetor(Guid sectorId, bool marcado)
+    {
+        if (marcado)
+        {
+            _setoresDoTemplate.Add(sectorId);
+        }
+        else
+        {
+            _setoresDoTemplate.Remove(sectorId);
         }
     }
 
@@ -217,6 +271,8 @@
         _intervalo = 10;
         _repeticoes = 3;
         _minutosAdiar = 5;
+        LimparAvisos();
+        _modalColuna = true;
     }
 
     private void EditarColuna(ChecklistTemplateDto template, ChecklistColumnDto coluna)
@@ -234,12 +290,47 @@
         _intervalo = coluna.RepeatIntervalMinutes;
         _repeticoes = coluna.MaximumRepeats;
         _minutosAdiar = coluna.SnoozeMinutes;
+        LimparAvisos();
+        _modalColuna = true;
     }
 
-    private void FecharEditorColuna()
+    private void LimparAvisos()
     {
-        _templateDaColuna = null;
-        _colunaEditando = null;
+        _erroDoModal = null;
+        _resultado = null;
+    }
+
+    private async Task SalvarTemplateAsync()
+    {
+        _salvando = true;
+
+        try
+        {
+            var resultado = await Admin.SaveTemplateAsync(
+                _templateEditando?.Id,
+                new SaveTemplateRequest(
+                    _nomeTemplate,
+                    null,
+                    _ordemTemplate,
+                    _templateAtivo,
+                    [.. _setoresDoTemplate],
+                    _templateEditando?.Version ?? 0));
+
+            if (!resultado.Succeeded)
+            {
+                // Modal aberto de propósito: o que foi digitado continua ali para ser corrigido.
+                _erroDoModal = resultado;
+                return;
+            }
+
+            _resultado = resultado;
+            _modalTemplate = false;
+            await CarregarAsync();
+        }
+        finally
+        {
+            _salvando = false;
+        }
     }
 
     private async Task SalvarColunaAsync()
@@ -249,27 +340,40 @@
             return;
         }
 
-        _resultado = await Admin.SaveColumnAsync(
-            _templateDaColuna.Id,
-            _colunaEditando?.Id,
-            new SaveColumnRequest(
-                _nomeColuna,
-                _horaColuna,
-                _ordemColuna,
-                _colunaAtiva,
-                _notificar,
-                _antecedencia,
-                _tolerancia,
-                _intervalo,
-                _repeticoes,
-                _permitirAdiar,
-                _minutosAdiar,
-                _colunaEditando?.Version ?? 0));
+        _salvando = true;
 
-        if (_resultado.Succeeded)
+        try
         {
-            FecharEditorColuna();
+            var resultado = await Admin.SaveColumnAsync(
+                _templateDaColuna.Id,
+                _colunaEditando?.Id,
+                new SaveColumnRequest(
+                    _nomeColuna,
+                    _horaColuna,
+                    _ordemColuna,
+                    _colunaAtiva,
+                    _notificar,
+                    _antecedencia,
+                    _tolerancia,
+                    _intervalo,
+                    _repeticoes,
+                    _permitirAdiar,
+                    _minutosAdiar,
+                    _colunaEditando?.Version ?? 0));
+
+            if (!resultado.Succeeded)
+            {
+                _erroDoModal = resultado;
+                return;
+            }
+
+            _resultado = resultado;
+            _modalColuna = false;
             await CarregarAsync();
+        }
+        finally
+        {
+            _salvando = false;
         }
     }
 }
