@@ -197,6 +197,24 @@ public sealed class StructureAdminService(IAppDataContext db, IClock clock)
             return OperationError.NotFound("Tipo de checklist não encontrado.");
         }
 
+        // Duplicidade é recusada aqui, e não só pela regra do domínio, para responder com o mesmo
+        // código que setor, leito, tipo e marcador já usam (409, "valor.duplicado") em vez de um
+        // 400 genérico. A regra no domínio continua sendo a garantia; esta é a tradução para HTTP.
+        if (request.IsActive || columnId is null)
+        {
+            var nome = request.DisplayName.Trim();
+
+            var nomeOcupado = template.Columns.Any(c =>
+                c.IsActive
+                && c.Id != columnId
+                && string.Equals(c.DisplayName, nome, StringComparison.OrdinalIgnoreCase));
+
+            if (nomeOcupado)
+            {
+                return OperationError.Duplicate($"Já existe uma coluna ativa chamada \"{nome}\" neste tipo de checklist.");
+            }
+        }
+
         ChecklistColumn column;
 
         try
@@ -204,6 +222,16 @@ public sealed class StructureAdminService(IAppDataContext db, IClock clock)
             if (columnId is null)
             {
                 column = template.AddColumn(Guid.CreateVersion7(), request.DisplayName, request.TriggerTime, request.SortOrder, now);
+
+                // Add explícito, e não apenas o vínculo pela navegação.
+                //
+                // A chave é Guid preenchido pela aplicação e está mapeada como ValueGenerated.OnAdd.
+                // Para uma entidade DESCOBERTA por navegação, o EF usa "chave preenchida" como
+                // sinal de que a linha já existe e a rastreia como Modified — emitindo UPDATE numa
+                // linha inexistente, que afeta 0 registros e estoura DbUpdateConcurrencyException.
+                // As demais entidades deste serviço não sofrem disso porque já são adicionadas
+                // explicitamente ao seu DbSet.
+                db.ChecklistColumns.Add(column);
             }
             else
             {
@@ -219,8 +247,10 @@ public sealed class StructureAdminService(IAppDataContext db, IClock clock)
                 }
 
                 column = found;
-                column.Update(request.DisplayName, request.TriggerTime, request.SortOrder, now);
-                column.SetActive(request.IsActive, now);
+
+                // Pelo template, e não pela coluna: só ele enxerga as irmãs e pode aplicar a regra
+                // de nome único também na edição.
+                template.UpdateColumn(column, request.DisplayName, request.TriggerTime, request.SortOrder, request.IsActive, now);
             }
 
             column.ConfigureNotification(

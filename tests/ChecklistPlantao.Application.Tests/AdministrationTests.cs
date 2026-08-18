@@ -85,6 +85,44 @@ public sealed class AdministrationTests
         Assert.Equal(leste.Id, result.Required.SectorId);
     }
 
+    /// <summary>
+    /// Criar coluna nova. Faltava cobertura justamente aqui: os testes só exercitavam edição e
+    /// recusa por nome repetido, então a inserção nunca era executada de fato.
+    /// </summary>
+    [Fact]
+    public async Task Criar_coluna_nova_no_tipo_funciona()
+    {
+        using var host = await ApplicationTestHost.CreateAsync();
+        var template = await host.Db.ChecklistTemplates.Include(t => t.Columns).FirstAsync(t => t.Code == "GELO");
+
+        var result = await host.Structure.SaveColumnAsync(template.Id, null, new SaveColumnRequest(
+            "08H", new TimeOnly(8, 0), 99, true, true, 0, 15, 10, 3, true, 5, 0));
+
+        Assert.True(result.IsSuccess, result.Error?.Message);
+        Assert.Equal("08H", result.Required.DisplayName);
+
+        // Gravada de fato, e não só aceita em memória.
+        Assert.True(await host.Db.ChecklistColumns.AnyAsync(c => c.Id == result.Required.Id));
+    }
+
+    /// <summary>
+    /// Restringir um tipo JÁ EXISTENTE a um setor. Mesma família do defeito da coluna: a
+    /// associação também nasce por navegação, sem Add explícito no DbSet.
+    /// </summary>
+    [Fact]
+    public async Task Restringir_um_tipo_existente_a_um_setor_funciona()
+    {
+        using var host = await ApplicationTestHost.CreateAsync();
+        var template = await host.Db.ChecklistTemplates.Include(t => t.Sectors).FirstAsync(t => t.Code == "GELO");
+        var setor = await host.Db.Sectors.FirstAsync();
+
+        var result = await host.Structure.SaveTemplateAsync(template.Id, new SaveTemplateRequest(
+            template.Name, null, template.SortOrder, true, [setor.Id], template.Version));
+
+        Assert.True(result.IsSuccess, result.Error?.Message);
+        Assert.Contains(setor.Id, result.Required.SectorIds);
+    }
+
     [Fact]
     public async Task Alterar_horario_da_coluna_avanca_a_versao_e_entra_no_log()
     {
@@ -113,6 +151,11 @@ public sealed class AdministrationTests
         Assert.Equal(ApiErrorCodes.ValidationFailed, criada.Error!.Code);
     }
 
+    /// <summary>
+    /// Duplicidade responde "valor.duplicado" (409), igual a setor, leito, tipo e marcador.
+    /// Antes a coluna era a única a devolver "validacao.falhou" (400), porque a regra vinha de uma
+    /// exceção de domínio genérica em vez do erro específico.
+    /// </summary>
     [Fact]
     public async Task Coluna_com_nome_repetido_no_mesmo_tipo_e_recusada()
     {
@@ -123,7 +166,58 @@ public sealed class AdministrationTests
             "20H", new TimeOnly(21, 0), 99, true, true, 0, 15, 10, 3, true, 5, 0));
 
         Assert.True(result.IsFailure);
-        Assert.Equal(ApiErrorCodes.ValidationFailed, result.Error!.Code);
+        Assert.Equal(ApiErrorCodes.DuplicateValue, result.Error!.Code);
+    }
+
+    /// <summary>
+    /// O defeito relatado: renomear uma coluna para o nome de outra ATIVA devolvia HTTP 500.
+    /// A regra de nome único existia só na criação; a edição passava direto e só era barrada pelo
+    /// índice único do banco, cuja exceção ninguém tratava.
+    /// </summary>
+    [Fact]
+    public async Task Renomear_coluna_para_nome_de_outra_ativa_e_recusado_sem_estourar()
+    {
+        using var host = await ApplicationTestHost.CreateAsync();
+        var template = await host.Db.ChecklistTemplates.Include(t => t.Columns).FirstAsync(t => t.Code == "GELO");
+        var coluna22 = template.Columns.First(c => c.DisplayName == "22H");
+
+        var result = await host.Structure.SaveColumnAsync(template.Id, coluna22.Id, new SaveColumnRequest(
+            "20H", coluna22.TriggerTime, coluna22.SortOrder, true, true, 0, 15, 10, 3, true, 5, coluna22.Version));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ApiErrorCodes.DuplicateValue, result.Error!.Code);
+    }
+
+    /// <summary>Renomear para o próprio nome não é duplicidade — a coluna não colide consigo mesma.</summary>
+    [Fact]
+    public async Task Salvar_coluna_sem_mudar_o_nome_continua_funcionando()
+    {
+        using var host = await ApplicationTestHost.CreateAsync();
+        var template = await host.Db.ChecklistTemplates.Include(t => t.Columns).FirstAsync(t => t.Code == "GELO");
+        var coluna = template.Columns.First(c => c.DisplayName == "22H");
+
+        var result = await host.Structure.SaveColumnAsync(template.Id, coluna.Id, new SaveColumnRequest(
+            "22H", new TimeOnly(23, 0), coluna.SortOrder, true, true, 0, 20, 10, 3, true, 5, coluna.Version));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(new TimeOnly(23, 0), result.Value!.TriggerTime);
+    }
+
+    /// <summary>
+    /// Uma coluna DESATIVADA pode repetir o nome: o índice único é filtrado por ativo, e desativar
+    /// uma coluna não deve travar o cadastro de outra com o mesmo nome.
+    /// </summary>
+    [Fact]
+    public async Task Coluna_desativada_pode_repetir_o_nome_de_uma_ativa()
+    {
+        using var host = await ApplicationTestHost.CreateAsync();
+        var template = await host.Db.ChecklistTemplates.Include(t => t.Columns).FirstAsync(t => t.Code == "GELO");
+        var coluna22 = template.Columns.First(c => c.DisplayName == "22H");
+
+        var result = await host.Structure.SaveColumnAsync(template.Id, coluna22.Id, new SaveColumnRequest(
+            "20H", coluna22.TriggerTime, coluna22.SortOrder, IsActive: false, false, 0, 15, 10, 3, true, 5, coluna22.Version));
+
+        Assert.True(result.IsSuccess);
     }
 
     [Fact]
