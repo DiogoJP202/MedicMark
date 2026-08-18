@@ -22,7 +22,7 @@
 |---|---|
 | `dotnet build ChecklistPlantao.sln -c Release` | ✅ 0 erros, **0 avisos** — inclui os dois heads MAUI |
 | `dotnet build ChecklistPlantao.NoMaui.slnf -c Release` | ✅ 0 erros, 0 avisos |
-| `dotnet test ChecklistPlantao.NoMaui.slnf -c Release` | ✅ **354 testes, 0 falhas** |
+| `dotnet test ChecklistPlantao.NoMaui.slnf -c Release` | ✅ **358 testes, 0 falhas** |
 | `dotnet build -f net10.0-android` | ✅ compila |
 | `dotnet build -f net10.0-windows10.0.19041.0` | ✅ compila |
 | `dotnet restore` | ✅ sem avisos de vulnerabilidade |
@@ -34,7 +34,7 @@
 | Domain.Tests | 114 | Turno, permissões, retenção, conflito, agendamento, seeds, **nome único de coluna** |
 | UI.Tests (bUnit) | 98 | Componentes, filtros, faixas, desvio da primeira execução, estado da conexão no login, contenção de falha de tela, **modais de cadastro e hierarquia da administração** |
 | Client.Core.Tests | 62 | Persistência offline, fila, idempotência, conflito, auth offline, recusa do servidor, grafo de dependências real e sessão entre escopos |
-| Server.IntegrationTests | 47 | API de ponta a ponta com servidor e SQLite reais, lote com repetição na mesma célula, **cadastro de estrutura e o cliente HTTP real contra o servidor real** |
+| Server.IntegrationTests | 51 | API de ponta a ponta com servidor e SQLite reais, lote com repetição na mesma célula, cadastro de estrutura, o cliente HTTP real contra o servidor real e **o aviso em tempo real do hub até o cliente** |
 | Application.Tests | 33 | Casos de uso, sessão, retenção, administração, **criação de coluna e restrição de tipo a setor** |
 
 O `Server.IntegrationTests` passou a referenciar o `Client.Core`. Era o último ponto cego da
@@ -100,7 +100,7 @@ Cobertos por `BatchSameCellTests`, `ErrorBoundaryTests`, `ServerConfigurationRea
 | Item | Como validar | Por que não foi feito |
 |---|---|---|
 | As seis correções da segunda rodada, no aparelho | Roteiro de teste, etapas 1–6 | Aparelho desconectado no momento da correção; compila e passa nos testes, **não reexecutado em campo** |
-| Dois dispositivos ao mesmo tempo | Marcar em um e ver aparecer no outro | **Bloqueado**: o cliente não consome o hub. Ver "Aviso em tempo real" |
+| Dois dispositivos ao mesmo tempo | Marcar em um e ver aparecer no outro | O cliente do hub foi implementado e tem teste de integração; falta ver acontecer entre dois aparelhos |
 | Mensagem de conta bloqueada na tela | Errar a senha 5 vezes | Bloqueia a conta por 15 min; adiado a pedido |
 | Isenção de bateria concedida | "Corrigir agora" → confirmar → "Verificar novamente" | Aguardando execução |
 | Implantação em Docker e ciclo de backup | MANUAL_TEST_PLAN, seção 11 | Docker nunca executado neste ambiente |
@@ -119,26 +119,25 @@ Percorrido no **aparelho e no Windows**, com o servidor no ar:
 | Botão "Testar alerta" | ✅ critério 21 |
 | **Alerta disparando no horário da coluna** | ✅ critérios 20 e 25 — era o risco nº 1 do projeto |
 
-### Aviso em tempo real — o hub existe, o cliente não o usa
+### Aviso em tempo real — o hub que existia só de um lado
 
-Descoberto ao preparar o teste de dois dispositivos.
+Descoberto ao preparar o teste de dois dispositivos, e corrigido em seguida.
 
-O servidor tem o `SyncHub` completo: grupos por setor e por usuário, autorização reavaliada na
-inscrição, e um `SubscribeSector` escrito **exatamente** para quem tem acesso a todos os setores e
-por isso não recebe grupos individuais na conexão.
+O servidor tinha o `SyncHub` completo desde o início. O cliente nunca se conectava:
+`Microsoft.AspNetCore.SignalR.Client` estava referenciado no `Client.Core.csproj` e **nenhum
+arquivo do projeto abria uma `HubConnection`** — `SyncHubEvents` só aparecia no servidor. Marcar em
+um aparelho não avisava o outro.
 
-O cliente nunca se conecta. `Microsoft.AspNetCore.SignalR.Client` está referenciado no
-`Client.Core.csproj` e **nenhum arquivo do projeto usa `HubConnection`** — `SyncHubEvents` só
-aparece no servidor.
+`RealtimeSyncClient` fecha isso: acompanha o estado da sessão, conecta quando há usuário e
+endereço, ouve os cinco eventos e manda buscar. O aviso continua sem transportar estado.
 
-Consequência prática: marcar em um aparelho não avisa o outro. A convergência continua correta,
-porque o pull acontece na abertura, no login, na volta ao primeiro plano, no retorno de rede e no
-toque manual — mas não é imediata, que é o ponto do critério 16.
+A armadilha que o desenho escondia: `OnConnectedAsync` inscreve a conexão apenas nos
+`ExplicitSectorIds`, e o grupo **Administradores** é semeado com `GrantsAllSectors: true` e
+`SectorNames: []` — um administrador entraria em nenhum grupo de setor. É para isso que o
+`SubscribeSector` existe, e o cliente o chama ao entrar no setor.
 
-Há ainda uma armadilha esperando quem implementar isso: `OnConnectedAsync` inscreve o dispositivo
-apenas nos `ExplicitSectorIds`, e o grupo **Administradores** é semeado com `GrantsAllSectors: true`
-e `SectorNames: []`. Um administrador entraria em nenhum grupo de setor. É para isso que o
-`SubscribeSector` existe, e o cliente precisará chamá-lo ao escolher o setor.
+`RealtimeSyncTests` liga o cliente real ao hub real. O teste da armadilha foi conferido por
+mutação: desativando a chamada a `SubscribeSector`, ele falha.
 
 ### Defeitos encontrados depois da entrega inicial
 
@@ -209,7 +208,7 @@ Servidor executado de verdade, com estas verificações feitas:
 | 13 | Alterações offline entram na fila | Implementado · Validado por teste automatizado |
 | 14 | Sincroniza quando o servidor retorna | Implementado · Validado por teste automatizado |
 | 15 | Operação reenviada não duplica | Implementado · Validado por teste automatizado **e manualmente** |
-| 16 | Dois dispositivos online recebem atualizações | **Parcialmente implementado** · o hub existe no servidor, mas o cliente NUNCA se conecta a ele: o aviso em tempo real não chega. A convergência acontece só no próximo ciclo de sincronização. Ver "Aviso em tempo real" abaixo |
+| 16 | Dois dispositivos online recebem atualizações | Implementado · Validado por teste de integração (cliente real contra o hub real) · **Não validado** com dois aparelhos de verdade |
 | 17 | Conflito não apaga conclusão mais nova | Implementado · Validado por teste automatizado **e manualmente** |
 | 18 | C.I., Sondas e Drenos em qualquer leito | Implementado · Validado por teste automatizado |
 | 19 | Classificações são temporárias da sessão | Implementado · Validado por teste automatizado |
@@ -223,7 +222,7 @@ Servidor executado de verdade, com estas verificações feitas:
 | 27 | Não existe histórico de usuário por marcação | Implementado · Validado por teste automatizado (inspeciona o modelo do EF) |
 | 28 | Não existem dados de paciente | Implementado · Verificável por inspeção do modelo |
 | 29 | Build dos projetos compatíveis passa | ✅ **Toda a solução, 0 avisos** |
-| 30 | Testes compatíveis passam | ✅ **354 testes** |
+| 30 | Testes compatíveis passam | ✅ **358 testes** |
 
 ---
 
@@ -267,10 +266,11 @@ concedida pelo usuário.
 
 Em ordem de risco:
 
-1. **Aviso em tempo real entre aparelhos** — o cliente do hub não existe. É trabalho de
-   implementação, não de validação. Sem ele, o critério 16 não se sustenta.
-2. **Implantação em Docker** e o ciclo de backup/restauração. Seção 11.
-3. **HTTPS com certificado confiável** nos aparelhos.
+1. **Implantação em Docker** e o ciclo de backup/restauração. Seção 11.
+2. **HTTPS com certificado confiável** nos aparelhos.
+3. **Aviso em tempo real entre dois aparelhos de verdade** — o cliente do hub existe e tem teste
+   de integração contra o hub real, mas ninguém viu ainda uma marcação aparecer sozinha na outra
+   tela.
 4. **Alerta após reiniciar o aparelho** (`BootReceiver`) e com o app fechado por horas.
 5. **Fabricantes com restrição agressiva** — o Xiaomi usado no teste é um deles; falta confirmar
    o comportamento com a economia de bateria realmente apertada. Cenário 5.15.
@@ -290,10 +290,10 @@ todos corrigidos, todos com teste que os fixa.
 
 O que impede a declaração:
 
-- **o aviso em tempo real entre aparelhos não existe no cliente.** O hub está pronto no servidor e
-  nunca é consumido. Enquanto isso valer, dois aparelhos convergem no próximo ciclo de
-  sincronização, não na hora — e o critério 16 não se sustenta;
 - **a implantação nunca foi exercitada.** Docker e HTTPS com certificado confiável seguem como
   no primeiro dia;
+- **o aviso em tempo real nunca foi visto entre dois aparelhos.** O cliente do hub foi
+  implementado e tem teste de integração contra o hub real, mas teste não substitui ver a
+  marcação aparecer sozinha na outra tela;
 - **falta um plantão inteiro de uso**, com o aparelho reiniciando, a bateria apertando e o app
   fechado por horas. É onde este sistema falha em silêncio se estiver errado.

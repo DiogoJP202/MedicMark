@@ -283,7 +283,7 @@ vale por 7 dias configuráveis.
 dotnet test ChecklistPlantao.NoMaui.slnf -c Debug
 ```
 
-São **354 testes**. O filtro `.slnf` exclui o head MAUI, que não executa testes.
+São **358 testes**. O filtro `.slnf` exclui o head MAUI, que não executa testes.
 
 > **Pare o servidor e o aplicativo Windows antes de rodar os testes.** Os processos em execução
 > travam os binários e o build falha com arquivo em uso.

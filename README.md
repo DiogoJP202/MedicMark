@@ -106,7 +106,7 @@ src/
   ChecklistPlantao.UI              RCL: design system, componentes e páginas
   ChecklistPlantao.Client.Core     SQLite local, Outbox, sincronização, auth offline
   ChecklistPlantao.Client          MAUI Blazor Hybrid (Android + Windows)
-tests/                             5 projetos, 354 testes
+tests/                             5 projetos, 358 testes
 deploy/                            Dockerfile, compose, backup e restore
 ```
 
@@ -136,5 +136,6 @@ deploy/                            Dockerfile, compose, backup e restore
 > de validação pendente em [IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md).
 >
 > As notificações **já foram validadas em aparelho real** — o alerta agendado dispara no horário.
-> Seguem pendentes o aviso em tempo real entre aparelhos (o hub existe no servidor, mas o cliente
-> ainda não se conecta a ele) e toda a implantação: Docker e HTTPS nunca foram exercitados.
+> Segue pendente toda a implantação: Docker e HTTPS nunca foram exercitados. O aviso em tempo real
+> entre aparelhos está implementado e coberto por teste de integração, mas ainda não foi visto
+> acontecer entre dois aparelhos de verdade.

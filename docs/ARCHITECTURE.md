@@ -84,8 +84,8 @@ Toque → célula muda na tela
       → (quando houver servidor) push
       → servidor aplica ou resolve conflito
       → resposta adotada; item sai da fila
-      → SignalR avisa os outros aparelhos  (servidor pronto; o cliente ainda NÃO se conecta)
-      → eles fazem pull no próximo ciclo
+      → SignalR avisa os outros aparelhos
+      → eles fazem pull
 ```
 
 Nenhum passo depois do primeiro bloqueia a interface.

@@ -20,22 +20,6 @@ não foi implementada e traria complexidade desproporcional.
 
 ---
 
-## 1-A. Um aparelho não é avisado na hora do que o outro fez
-
-O servidor tem o hub de avisos pronto, mas **o aplicativo ainda não se conecta a ele**. Marcar um
-leito em um aparelho não acende nada no outro.
-
-Os dados não divergem: a sincronização acontece na abertura do aplicativo, no login, na volta ao
-primeiro plano, no retorno da rede e no toque em "Sincronizar agora". O que falta é a atualização
-**imediata**.
-
-**Consequência prática.** Dois profissionais no mesmo setor podem levar alguns minutos para ver o
-trabalho um do outro, dependendo de quando o aplicativo sincronizar. A regra de "conclusão vence"
-continua garantindo que nada se perca no reencontro.
-
-**Como reduzir.** Tocar em "Sincronizar agora" força a atualização na hora.
-
----
 
 ## 2. Desativar um usuário não alcança um aparelho offline
 

@@ -84,7 +84,7 @@ Todos esses casos têm teste automatizado, em `MergePoliciesTests`, `SyncTests` 
 - ao voltar para o primeiro plano;
 - após uma alteração, se houver servidor;
 - quando a conectividade retorna;
-- quando o hub SignalR avisa que há novidade — **ainda não implementado no cliente**, ver abaixo;
+- quando o hub SignalR avisa que há novidade;
 - quando o usuário toca em "Sincronizar agora".
 
 Não há laço apertado. Falha agenda nova tentativa com espera dobrando a cada erro (15 s → teto de
@@ -102,14 +102,17 @@ sincronizada produziria telas diferentes em aparelhos diferentes.
 As conexões são agrupadas por setor e por usuário, e a autorização é reavaliada no hub: um cliente
 não escolhe sozinho em qual setor se inscrever.
 
-> **Estado atual: só o servidor está pronto.** O `Client.Core` referencia
-> `Microsoft.AspNetCore.SignalR.Client`, mas nenhum arquivo dele abre uma `HubConnection`. Na
-> prática, o aviso não chega a lugar nenhum e a convergência depende dos demais gatilhos desta
-> lista. Registrado em [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
->
-> Quem for implementar precisa chamar `SubscribeSector` ao escolher o setor: a inscrição
-> automática na conexão usa apenas os setores explícitos, e quem tem acesso a todos — o grupo
-> Administradores — não tem nenhum.
+No cliente, quem mantém a conexão é o `RealtimeSyncClient`: acompanha o estado da sessão, conecta
+quando há usuário autenticado e endereço de servidor, e reconecta sozinho. Cada aviso recebido
+dispara a mesma sincronização dos demais gatilhos.
+
+Ele **chama `SubscribeSector` ao entrar no setor**, e isso não é redundante: a inscrição automática
+da conexão usa apenas os setores explícitos do usuário, e quem tem acesso a todos — o grupo
+Administradores, semeado com `GrantsAllSectors` e nenhum setor nominal — não entraria em grupo
+nenhum. Sem essa chamada, justamente o administrador ficaria sem aviso.
+
+O token é buscado a cada tentativa de conexão, e não guardado: o SignalR pede de novo em cada
+reconexão, e um token vencido deixaria o aparelho mudo.
 
 ## Os três níveis de conectividade
 

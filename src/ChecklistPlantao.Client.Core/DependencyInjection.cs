@@ -98,6 +98,10 @@ public static class DependencyInjection
         services.AddSingleton<SyncStatusService>();
         services.AddSingleton<ISyncStatusService>(sp => sp.GetRequiredService<SyncStatusService>());
 
+        // Uma conexão de tempo real por aplicativo, não por tela: singleton. Ela acompanha o
+        // estado da sessão e abre escopos quando precisa do token ou do endereço.
+        services.AddSingleton<RealtimeSyncClient>();
+
         services.AddHttpClient(HttpServerApi.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(20));
 
         return services;
@@ -132,5 +136,9 @@ public static class DependencyInjection
         }
 
         db.SaveChanges();
+
+        // Liga o acompanhamento do hub. Só assina o evento de sessão aqui — a conexão em si
+        // acontece quando houver usuário autenticado e endereço de servidor.
+        services.GetRequiredService<RealtimeSyncClient>().Start();
     }
 }
