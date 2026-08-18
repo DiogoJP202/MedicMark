@@ -31,7 +31,11 @@
             <NavLink class="nav-principal__item" href="/classificacoes">Classificações</NavLink>
             <NavLink class="nav-principal__item" href="/pendencias">Pendências</NavLink>
             <NavLink class="nav-principal__item" href="/sessao">Plantão</NavLink>
-            <NavLink class="nav-principal__item" href="/dispositivo">Dispositivo</NavLink>
+            @*
+                "Dispositivo" saiu da barra a pedido: a tela continua existindo e é alcançada pelo
+                cartão "Estado do dispositivo" no painel, além da faixa de saúde no topo. A lista
+                administrativa de aparelhos é outra coisa, e mora em Configurações avançadas.
+            *@
             <PermissionGuard Permission="@Permissions.AdminSettings" Access="Session.Access">
                 <NavLink class="nav-principal__item" href="/admin">Administração</NavLink>
             </PermissionGuard>

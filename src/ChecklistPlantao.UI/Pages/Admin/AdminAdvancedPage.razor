@@ -1,0 +1,25 @@
+@page "/admin/avancado"
+
+@inject IAppSession Session
+@inject NavigationManager Navigation
+
+@*
+    Configurações avançadas: o que se ajusta uma vez e raramente se revisita.
+*@
+
+<PageTitle>Configurações avançadas</PageTitle>
+
+<h2>Configurações avançadas</h2>
+<p>Ajustes que afetam todos os setores e todos os aparelhos.</p>
+
+<AdminMenu Items="Itens" Access="Session.Access" OnSelect="@(rota => Navigation.NavigateTo(rota))" />
+
+@code {
+    private static readonly AdminMenuItem[] Itens =
+    [
+        new("Usuários e Grupos", "Acesso por grupos, permissões e setores autorizados.", "/admin/acessos", Permissions.AdminUsers),
+        new("Notificações", "Som, vibração, prioridade e textos dos alertas.", "/admin/notificacoes", Permissions.AdminNotifications),
+        new("Configurações Gerais", "Fuso horário, janela do plantão, retenção e acesso offline.", "/admin/configuracoes", Permissions.AdminSettings),
+        new("Dispositivos", "Aparelhos conhecidos e o último estado sincronizado.", "/admin/dispositivos", Permissions.AdminDevices),
+    ];
+}

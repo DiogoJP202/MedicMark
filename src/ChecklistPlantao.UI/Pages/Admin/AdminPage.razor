@@ -4,8 +4,11 @@
 @inject NavigationManager Navigation
 
 @*
-    Índice da administração. Cada cartão exige a permissão correspondente — não existe um
-    "modo admin" que libera tudo de uma vez.
+    Índice da administração.
+
+    A porta principal é Configurações do sistema, que reúne tudo. Os dois atalhos abaixo existem
+    porque setores e tipos de checklist são o que se mexe no dia a dia — enterrá-los dois níveis
+    abaixo trocaria organização por atrito.
 *@
 
 <PageTitle>Administração</PageTitle>
@@ -13,30 +16,26 @@
 <h2>Administração</h2>
 <p>As alterações feitas aqui são sincronizadas para todos os dispositivos.</p>
 
-<div class="grade-cartoes">
-    @foreach (var item in Itens)
-    {
-        <PermissionGuard Permission="@item.Permission" Access="Session.Access">
-            <button type="button" class="cartao cartao--acionavel" data-testid="@($"admin-{item.Route}")"
-                    @onclick="@(() => Navigation.NavigateTo(item.Route))">
-                <span class="cartao__titulo">@item.Title</span>
-                <span class="faixa__texto">@item.Description</span>
-            </button>
-        </PermissionGuard>
-    }
-</div>
+<PermissionGuard Permission="@Permissions.AdminSettings" Access="Session.Access">
+    <button type="button"
+            class="cartao cartao--acionavel"
+            data-testid="admin-configuracoes-sistema"
+            @onclick="@(() => Navigation.NavigateTo("/admin/sistema"))">
+        <span class="cartao__titulo">Configurações do Sistema</span>
+        <span class="faixa__texto">
+            Setores e leitos, tipos de checklist, marcadores e configurações avançadas.
+        </span>
+    </button>
+</PermissionGuard>
+
+<h3 style="margin-top:var(--esp-6)">Atalhos</h3>
+
+<AdminMenu Items="Atalhos" Access="Session.Access" OnSelect="@(rota => Navigation.NavigateTo(rota))" />
 
 @code {
-    private sealed record ItemAdmin(string Title, string Description, string Route, string Permission);
-
-    private static readonly ItemAdmin[] Itens =
+    private static readonly AdminMenuItem[] Atalhos =
     [
         new("Setores e leitos", "Cadastrar, editar, reordenar, ativar e mover leitos.", "/admin/setores", Permissions.AdminSectors),
         new("Tipos de checklist", "Colunas, horários reais e parâmetros de notificação.", "/admin/templates", Permissions.AdminTemplates),
-        new("Marcadores", "C.I., Sondas, Drenos e outras classificações de leito.", "/admin/marcadores", Permissions.AdminTemplates),
-        new("Usuários e grupos", "Acesso por grupos, permissões e setores autorizados.", "/admin/acessos", Permissions.AdminUsers),
-        new("Notificações", "Som, vibração, prioridade e textos dos alertas.", "/admin/notificacoes", Permissions.AdminNotifications),
-        new("Configurações gerais", "Fuso horário, janela do plantão, retenção e acesso offline.", "/admin/configuracoes", Permissions.AdminSettings),
-        new("Dispositivos", "Aparelhos conhecidos e o último estado sincronizado.", "/admin/dispositivos", Permissions.AdminDevices),
     ];
 }

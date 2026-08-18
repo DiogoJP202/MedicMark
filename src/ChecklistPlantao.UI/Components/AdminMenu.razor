@@ -1,0 +1,33 @@
+@*
+    Grade de cartões do menu administrativo.
+
+    Existe para que os três níveis — Administração, Configurações do sistema e Configurações
+    avançadas — compartilhem a mesma aparência e a mesma regra de permissão, em vez de repetir
+    o laço com PermissionGuard em cada página.
+*@
+
+<div class="grade-cartoes">
+    @foreach (var item in Items)
+    {
+        <PermissionGuard Permission="@item.Permission" Access="Access">
+            <button type="button"
+                    class="cartao cartao--acionavel"
+                    data-testid="@($"admin-{item.Route}")"
+                    @onclick="() => OnSelect.InvokeAsync(item.Route)">
+                <span class="cartao__titulo">@item.Title</span>
+                <span class="faixa__texto">@item.Description</span>
+            </button>
+        </PermissionGuard>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<AdminMenuItem> Items { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public EffectiveAccess Access { get; set; } = EffectiveAccess.None;
+
+    [Parameter]
+    public EventCallback<string> OnSelect { get; set; }
+}

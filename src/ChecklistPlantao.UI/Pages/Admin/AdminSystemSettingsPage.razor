@@ -1,0 +1,28 @@
+@page "/admin/sistema"
+
+@inject IAppSession Session
+@inject NavigationManager Navigation
+
+@*
+    Configurações do sistema: o que estrutura o checklist.
+
+    O que é do dia a dia fica aqui em cima; o que se mexe raramente desce para Configurações
+    avançadas, um nível abaixo.
+*@
+
+<PageTitle>Configurações do sistema</PageTitle>
+
+<h2>Configurações do sistema</h2>
+<p>As alterações feitas aqui são sincronizadas para todos os dispositivos.</p>
+
+<AdminMenu Items="Itens" Access="Session.Access" OnSelect="@(rota => Navigation.NavigateTo(rota))" />
+
+@code {
+    private static readonly AdminMenuItem[] Itens =
+    [
+        new("Setores e Leitos", "Cadastrar, editar, reordenar, ativar e mover leitos.", "/admin/setores", Permissions.AdminSectors),
+        new("Tipos de Checklist", "Colunas, horários reais e parâmetros de notificação.", "/admin/templates", Permissions.AdminTemplates),
+        new("Marcadores", "C.I., Sondas, Drenos e outras classificações de leito.", "/admin/marcadores", Permissions.AdminTemplates),
+        new("Configurações Avançadas", "Usuários, notificações, ajustes gerais e dispositivos.", "/admin/avancado", Permissions.AdminSettings),
+    ];
+}

@@ -1,0 +1,111 @@
+@page "/admin/notificacoes"
+
+@inject IAdministrationService Admin
+
+@*
+    Notificações: som, vibração, prioridade e os textos do alerta.
+
+    Página própria — antes os três assuntos de sistema dividiam uma única página e três rotas, o
+    que carregava dados desnecessários e mostrava a quem só tinha uma permissão os formulários
+    das outras duas.
+*@
+
+<PageTitle>Notificações</PageTitle>
+
+<h2>Notificações</h2>
+
+<AdminFeedback Result="_resultado" />
+
+@if (_notificacoes is null)
+{
+    <LoadingState Message="Carregando as configurações de notificação…" />
+}
+else
+{
+    <div class="cartao">
+        <div class="linha">
+            <label class="campo campo--horizontal">
+                <input type="checkbox" style="width:24px;height:24px" data-testid="notif-sound" @bind="_som" />
+                <span class="campo__rotulo">Som</span>
+            </label>
+            <label class="campo campo--horizontal">
+                <input type="checkbox" style="width:24px;height:24px" @bind="_vibracao" />
+                <span class="campo__rotulo">Vibração</span>
+            </label>
+            <label class="campo campo--horizontal">
+                <input type="checkbox" style="width:24px;height:24px" @bind="_android" />
+                <span class="campo__rotulo">Habilitado no Android</span>
+            </label>
+            <label class="campo campo--horizontal">
+                <input type="checkbox" style="width:24px;height:24px" @bind="_windows" />
+                <span class="campo__rotulo">Habilitado no Windows</span>
+            </label>
+        </div>
+
+        <div class="campo" style="max-width:220px">
+            <label class="campo__rotulo" for="prioridade">Prioridade</label>
+            <select id="prioridade" class="campo__controle" @bind="_prioridade">
+                <option value="Normal">Normal</option>
+                <option value="High">Alta</option>
+                <option value="Urgent">Urgente</option>
+            </select>
+        </div>
+
+        <div class="campo">
+            <label class="campo__rotulo" for="titulo">Modelo do título</label>
+            <input id="titulo" class="campo__controle" @bind="_titulo" />
+            <span class="campo__ajuda">Marcadores: {checklist}, {coluna}, {setor}, {pendentes}.</span>
+        </div>
+
+        <div class="campo">
+            <label class="campo__rotulo" for="corpo">Modelo da mensagem</label>
+            <input id="corpo" class="campo__controle" @bind="_corpo" />
+        </div>
+
+        <label class="campo campo--horizontal">
+            <input type="checkbox" style="width:24px;height:24px" @bind="_telaCheia" />
+            <span class="campo__rotulo">Permitir alerta em tela cheia no Android</span>
+        </label>
+        <p class="campo__ajuda">
+            Desligado por padrão: exige permissão especial, é intrusivo e as lojas restringem o uso.
+            Ative apenas se a instituição realmente precisar. Ver docs/NOTIFICATIONS.md.
+        </p>
+
+        <button type="button" class="botao botao--primario" data-testid="notif-save" @onclick="SalvarAsync">
+            Salvar notificações
+        </button>
+    </div>
+}
+
+@code {
+    private NotificationConfigurationDto? _notificacoes;
+    private Result? _resultado;
+
+    private bool _som, _vibracao, _android, _windows, _telaCheia;
+    private string _prioridade = "High";
+    private string _titulo = string.Empty;
+    private string _corpo = string.Empty;
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        _notificacoes = await Admin.GetNotificationConfigurationAsync();
+        _som = _notificacoes.SoundEnabled;
+        _vibracao = _notificacoes.VibrationEnabled;
+        _android = _notificacoes.EnabledOnAndroid;
+        _windows = _notificacoes.EnabledOnWindows;
+        _telaCheia = _notificacoes.AllowFullScreenIntent;
+        _prioridade = _notificacoes.Priority;
+        _titulo = _notificacoes.TitleTemplate;
+        _corpo = _notificacoes.BodyTemplate;
+    }
+
+    private async Task SalvarAsync()
+    {
+        _resultado = await Admin.SaveNotificationConfigurationAsync(new SaveNotificationConfigurationRequest(
+            _som, _vibracao, _prioridade, _android, _windows, _telaCheia, _titulo, _corpo, _notificacoes?.Version ?? 0));
+
+        await CarregarAsync();
+    }
+}
