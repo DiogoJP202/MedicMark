@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "apresentacao",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "apresentacao/servir.cs"],
+      "port": 5173
+    }
+  ]
+}

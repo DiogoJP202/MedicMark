@@ -1,0 +1,35 @@
+/*
+    Acréscimos EXCLUSIVOS da apresentação.
+
+    O design-system.css ao lado é cópia literal do aplicativo. Tudo o que muda o visual real
+    fica aqui, separado, para não haver dúvida sobre o que é o produto e o que é a demonstração.
+*/
+
+/* Faixa que identifica a demonstração. Sem ela, alguém pode achar que é o sistema em produção. */
+.demo-aviso {
+    background: var(--cor-texto);
+    color: var(--cor-texto-inverso);
+    text-align: center;
+    padding: var(--esp-1) var(--esp-3);
+    font-size: var(--texto-xs);
+    font-weight: 600;
+}
+
+/* No navegador não existe barra de status do Android, então a navegação cola direto no topo. */
+.nav-principal {
+    top: 3.25rem;
+}
+
+/* O item ativo da navegação é marcado por JS, já que aqui não há o NavLink do Blazor. */
+.nav-principal__item {
+    cursor: pointer;
+    border: 0;
+    background: transparent;
+    font-family: inherit;
+}
+
+.demo-nota {
+    font-size: var(--texto-xs);
+    color: var(--cor-texto-suave);
+    margin-top: var(--esp-2);
+}
