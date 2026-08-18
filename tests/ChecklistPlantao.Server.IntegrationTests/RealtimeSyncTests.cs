@@ -87,6 +87,29 @@ public sealed class RealtimeSyncTests(ChecklistServerFactory factory) : IClassFi
             "O aviso do setor não chegou: provavelmente o SubscribeSector não foi chamado.");
     }
 
+    /// <summary>
+    /// Servidor fora do ar quando o aplicativo tenta conectar, e de volta em seguida.
+    ///
+    /// Foi o defeito encontrado em campo: o WithAutomaticReconnect padrão desiste em cerca de
+    /// 40 segundos, e ele nem se aplica quando a PRIMEIRA conexão falha. O aparelho ficava mudo
+    /// até alguém sair e entrar da conta — parecendo funcionar, sem funcionar.
+    /// </summary>
+    [Fact]
+    public async Task Servidor_fora_do_ar_na_conexao_e_o_cliente_tenta_de_novo()
+    {
+        using var manipulador = new ServidorQueVolta(factory.Server.CreateHandler(), recusasIniciais: 2);
+
+        await using var cliente = await MontarAsync(manipulador: manipulador);
+
+        Assert.False(cliente.Cliente.IsConnected);
+
+        await EsperarAsync(() => cliente.Cliente.IsConnected, TimeSpan.FromSeconds(30));
+
+        Assert.True(
+            cliente.Cliente.IsConnected,
+            "O cliente desistiu depois da primeira recusa: sem retentativa, o aparelho fica mudo.");
+    }
+
     // ------------------------------------------------------------------ apoio
 
     private static async Task EsperarAsync(Func<bool> condicao, TimeSpan? limite = null)
@@ -99,7 +122,7 @@ public sealed class RealtimeSyncTests(ChecklistServerFactory factory) : IClassFi
         }
     }
 
-    private async Task<Montagem> MontarAsync(bool autenticar = true, Guid? setorId = null)
+    private async Task<Montagem> MontarAsync(bool autenticar = true, Guid? setorId = null, HttpMessageHandler? manipulador = null)
     {
         var login = await ChecklistServerFactory.LoginAsync(
             factory.CreateClient(),
@@ -114,10 +137,16 @@ public sealed class RealtimeSyncTests(ChecklistServerFactory factory) : IClassFi
         var estado = new AuthenticatedSessionState();
         var espia = new SincronizacaoEspia();
 
-        var cliente = new RealtimeSyncClient(provider, estado, espia, NullLogger<RealtimeSyncClient>.Instance)
+        var cliente = new RealtimeSyncClient(
+            provider,
+            estado,
+            new ConectividadeFalsa(),
+            espia,
+            NullLogger<RealtimeSyncClient>.Instance)
         {
             // O servidor de teste não tem socket: o SignalR precisa do manipulador em memória.
-            ConfigureConnection = opcoes => opcoes.HttpMessageHandlerFactory = _ => factory.Server.CreateHandler(),
+            ConfigureConnection = opcoes => opcoes.HttpMessageHandlerFactory =
+                _ => manipulador ?? factory.Server.CreateHandler(),
         };
 
         cliente.Start();
@@ -182,6 +211,40 @@ public sealed class RealtimeSyncTests(ChecklistServerFactory factory) : IClassFi
         public Task<bool> TryRefreshAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
 
         public Task ClearAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    private sealed class ConectividadeFalsa : IConnectivityProbe
+    {
+        public bool HasNetwork => true;
+
+        public bool HasInternet => true;
+
+        public event Action? ConnectivityChanged
+        {
+            add { }
+            remove { }
+        }
+    }
+
+    /// <summary>
+    /// Recusa as primeiras tentativas e depois deixa passar — é o servidor que estava fora do ar
+    /// e voltou.
+    /// </summary>
+    private sealed class ServidorQueVolta(HttpMessageHandler real, int recusasIniciais) : HttpMessageHandler
+    {
+        private int _recusas;
+
+        public bool JaLiberou => Volatile.Read(ref _recusas) >= recusasIniciais;
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (Interlocked.Increment(ref _recusas) <= recusasIniciais)
+            {
+                throw new HttpRequestException("Servidor fora do ar (simulado).");
+            }
+
+            return new HttpMessageInvoker(real).SendAsync(request, cancellationToken);
+        }
     }
 
     private sealed class EnderecoFalso(string url) : IServerAddressProvider

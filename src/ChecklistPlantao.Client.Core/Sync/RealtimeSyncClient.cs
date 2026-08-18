@@ -22,11 +22,15 @@ namespace ChecklistPlantao.Client.Core.Sync;
 public sealed class RealtimeSyncClient(
     IServiceProvider services,
     AuthenticatedSessionState session,
+    IConnectivityProbe conectividade,
     ISyncStatusService sincronizacao,
     ILogger<RealtimeSyncClient> logger) : IAsyncDisposable
 {
     /// <summary>Uma operação de conexão por vez: entrar e sair podem chegar quase juntos.</summary>
     private readonly SemaphoreSlim _porta = new(1, 1);
+
+    /// <summary>Cancela a espera da retentativa quando a rede volta ou o aplicativo encerra.</summary>
+    private CancellationTokenSource? _retentativa;
 
     private HubConnection? _conexao;
 
@@ -54,10 +58,21 @@ public sealed class RealtimeSyncClient(
     public void Start()
     {
         session.Changed += AoMudarSessao;
+
+        // A volta da rede é o melhor momento para tentar de novo, e não custa espera nenhuma.
+        conectividade.ConnectivityChanged += AoMudarConectividade;
+
         AoMudarSessao();
     }
 
     private void AoMudarSessao() => _ = AjustarAsync();
+
+    private void AoMudarConectividade()
+    {
+        // Encurta a espera da retentativa em vez de esperar o próximo intervalo.
+        _retentativa?.Cancel();
+        _ = AjustarAsync();
+    }
 
     private async Task AjustarAsync()
     {
@@ -86,11 +101,58 @@ public sealed class RealtimeSyncClient(
             // Tempo real é complemento. Falhar aqui não pode atrapalhar quem está trabalhando:
             // os demais gatilhos de sincronização continuam valendo.
             logger.LogDebug(ex, "Não foi possível ajustar a conexão de tempo real.");
+
+            // Servidor fora do ar na hora de conectar. O WithAutomaticReconnect NÃO cobre este
+            // caso: ele só age depois de uma conexão que chegou a dar certo. Sem esta retentativa,
+            // o aparelho ficaria mudo até alguém entrar ou sair da conta.
+            AgendarRetentativa();
         }
         finally
         {
             _porta.Release();
         }
+    }
+
+    /// <summary>
+    /// Espera crescente antes de tentar de novo, começando em 5 s e parando de crescer em 1 min.
+    ///
+    /// Sem laço fixo de fundo: o temporizador só existe enquanto DEVERIA haver conexão e não há.
+    /// Conectado, nada roda — o requisito sobre bateria é explícito.
+    /// </summary>
+    private void AgendarRetentativa()
+    {
+        if (_descartado || _retentativa is not null)
+        {
+            return;
+        }
+
+        var fonte = new CancellationTokenSource();
+        _retentativa = fonte;
+
+        _ = Task.Run(async () =>
+        {
+            var espera = TimeSpan.FromSeconds(5);
+
+            try
+            {
+                while (!fonte.IsCancellationRequested && !_descartado && !IsConnected)
+                {
+                    await Task.Delay(espera, fonte.Token).ConfigureAwait(false);
+                    espera = TimeSpan.FromSeconds(Math.Min(espera.TotalSeconds * 2, 60));
+
+                    await AjustarAsync().ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Rede voltou ou o aplicativo encerrou: quem cancelou já cuidou do próximo passo.
+            }
+            finally
+            {
+                Interlocked.CompareExchange(ref _retentativa, null, fonte);
+                fonte.Dispose();
+            }
+        });
     }
 
     private string? EnderecoDoServidor()
@@ -121,7 +183,10 @@ public sealed class RealtimeSyncClient(
                 opcoes.AccessTokenProvider = TokenAtualAsync;
                 ConfigureConnection?.Invoke(opcoes);
             })
-            .WithAutomaticReconnect()
+            // Política própria: o WithAutomaticReconnect sem argumentos tenta em 0s, 2s, 10s e 30s
+            // e DESISTE. Um servidor fora do ar por mais de um minuto — reinício, atualização,
+            // queda de rede no corredor — deixava o aparelho mudo até alguém sair e entrar de novo.
+            .WithAutomaticReconnect(new ReconexaoSemDesistir())
             .Build();
 
         RegistrarEventos(conexao);
@@ -135,9 +200,21 @@ public sealed class RealtimeSyncClient(
             await SincronizarAsync(SyncHubEvents.ChangesAvailable).ConfigureAwait(false);
         };
 
+        // Fechou de vez: sobrou algum caso que a reconexão automática não cobre, como o servidor
+        // recusando a credencial. A retentativa própria assume.
+        conexao.Closed += _ =>
+        {
+            AgendarRetentativa();
+            return Task.CompletedTask;
+        };
+
         _conexao = conexao;
 
         await conexao.StartAsync().ConfigureAwait(false);
+
+        // Conectou: encerra a espera, se houver uma rodando.
+        _retentativa?.Cancel();
+
         logger.LogInformation("Conectado ao hub de avisos em {Url}.", url);
     }
 
@@ -280,8 +357,39 @@ public sealed class RealtimeSyncClient(
 
         _descartado = true;
         session.Changed -= AoMudarSessao;
+        conectividade.ConnectivityChanged -= AoMudarConectividade;
+
+        _retentativa?.Cancel();
 
         await DescartarConexaoAsync().ConfigureAwait(false);
         _porta.Dispose();
+    }
+}
+
+/// <summary>
+/// Reconexão que não desiste, com espera crescente até 1 minuto.
+///
+/// A política padrão do SignalR para de tentar depois de cerca de 40 segundos. Num plantão isso
+/// é pouco: o servidor pode reiniciar, a rede do corredor pode cair, e o aparelho não pode ficar
+/// mudo esperando alguém sair e entrar da conta para voltar a receber avisos.
+/// </summary>
+internal sealed class ReconexaoSemDesistir : IRetryPolicy
+{
+    private static readonly TimeSpan[] Primeiras =
+    [
+        TimeSpan.Zero,
+        TimeSpan.FromSeconds(2),
+        TimeSpan.FromSeconds(5),
+        TimeSpan.FromSeconds(10),
+        TimeSpan.FromSeconds(30),
+    ];
+
+    public TimeSpan? NextRetryDelay(RetryContext retryContext)
+    {
+        ArgumentNullException.ThrowIfNull(retryContext);
+
+        var tentativa = retryContext.PreviousRetryCount;
+
+        return tentativa < Primeiras.Length ? Primeiras[tentativa] : TimeSpan.FromMinutes(1);
     }
 }
