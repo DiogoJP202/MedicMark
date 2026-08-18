@@ -242,7 +242,10 @@ plantão.
 
 ---
 
-## 10. Dois dispositivos (opcional)
+## 10. Dois dispositivos
+
+Deixou de ser opcional: é o critério 16, e o cliente do hub que faz o aviso chegar é código novo,
+nunca visto funcionando fora dos testes.
 
 Precisa do cliente Windows rodando junto com o celular:
 
@@ -250,11 +253,30 @@ Precisa do cliente Windows rodando junto com o celular:
 dotnet build src/ChecklistPlantao.Client -f net10.0-windows10.0.19041.0 -c Debug -t:Run
 ```
 
+Os dois precisam estar **no mesmo setor**. Usar a mesma conta `admin` nos dois é o teste mais
+severo, não o mais frouxo: quem tem acesso a todos os setores não entra em nenhum grupo do
+servidor automaticamente, e só recebe aviso porque o aplicativo pede a inscrição explicitamente.
+
 1. Marque um leito no celular.
 
-**Esperado:** aparece no Windows em segundos.
+**Esperado:** aparece no Windows em segundos, sem ninguém tocar em "Sincronizar agora".
 
-2. **Conflito:** deixe o celular offline, marque o leito 1148 no Windows, e **desmarque** o mesmo
+2. Marque outro leito no Windows.
+
+**Esperado:** aparece no celular, também sozinho.
+
+3. **Reconexão.** Com os dois abertos, encerre o servidor e suba de novo. Espere alguns segundos e
+   marque um leito no Windows.
+
+**Esperado:** o celular volta a receber sozinho. É o que prova que a reconexão refaz a inscrição
+no setor — sem isso o aparelho reconecta mudo, que é a falha mais traiçoeira desta parte.
+
+4. **Troca de setor.** Se houver mais de um setor, mude o setor no Windows e marque um leito no
+   celular, no setor antigo.
+
+**Esperado:** o Windows **não** se mexe. Ele só deve receber avisos do setor em que está.
+
+5. **Conflito:** deixe o celular offline, marque o leito 1148 no Windows, e **desmarque** o mesmo
    leito no celular. Reconecte o celular.
 
 **Esperado:** a **conclusão prevalece** — o leito continua marcado. O celular adota o estado do
@@ -262,6 +284,9 @@ servidor sem exibir mensagem técnica.
 
 **Por que importa:** é a regra que garante que uma tarefa realmente feita nunca seja apagada por
 uma operação antiga vinda de um aparelho que estava sem rede.
+
+> Se o aviso não chegar mas a marcação aparecer ao tocar em "Sincronizar agora", o problema é o
+> hub, não a sincronização. Vale anotar em qual dos cinco passos parou.
 
 ---
 
