@@ -10,12 +10,15 @@ using Microsoft.Extensions.Options;
 namespace ChecklistPlantao.Client.Core.Tests;
 
 /// <summary>
-/// Entrar é a única porta do aplicativo. Uma falha de gravação no banco local subia até o topo e
-/// derrubava tudo — no aparelho aparecia "o aplicativo precisa ser reiniciado", em toda tentativa,
-/// e a causa real (a exceção interna do SQLite) morria junto.
+/// Entrar é a única porta do aplicativo, e estes testes cobrem os dois modos de ela emperrar.
 ///
-/// A regra que estes testes fixam: a entrada nunca lança. Ela recusa, explica e guarda o detalhe
-/// técnico separado, para quem vai resolver.
+/// O primeiro é real e apareceu em campo: o mesmo celular usado contra DOIS servidores diferentes.
+/// Cada servidor gera o seu próprio identificador para "admin", o nome de usuário é único no banco
+/// local, e a inserção estourava a restrição — a pessoa ficava trancada para fora, sem outra saída
+/// além de reinstalar o aplicativo.
+///
+/// O segundo é a rede embaixo: qualquer OUTRA falha de gravação não pode derrubar a tela. Ela
+/// recusa, explica, e guarda o detalhe técnico separado para quem vai resolver.
 /// </summary>
 public sealed class LoginStorageFailureTests
 {
@@ -29,39 +32,99 @@ public sealed class LoginStorageFailureTests
             Options.Create(new OfflineAuthOptions { Iterations = 1_000 }),
             NullLogger<ClientSession>.Instance);
 
-    /// <summary>
-    /// O servidor foi reconstruído (ou restaurado de um backup) e passou a usar outro identificador
-    /// para a mesma pessoa. O nome de usuário é único no banco local, então inserir a credencial
-    /// nova colide com a antiga.
-    /// </summary>
+    /// <summary>Resposta de um servidor que não conhece o identificador que o aparelho guardou.</summary>
     private static ServerLoginResult LoginComOutroIdentificador(string userName) =>
         ServerLoginResult.Success(new LoginResponse(
             new TokenPairDto("acesso", DateTime.UtcNow.AddMinutes(30), "renovacao", DateTime.UtcNow.AddDays(7)),
             new AuthenticatedUserDto(Guid.CreateVersion7(), userName, "Administrador", ["checklist.mark"], true, [], [])));
 
+    /// <summary>
+    /// Impede QUALQUER inserção de credencial, para exercitar o caminho de falha sem depender de
+    /// uma colisão de nome — que é justamente o caso que passou a funcionar.
+    /// </summary>
+    private static Task BloquearInsercaoAsync(LocalDbContext db) =>
+        db.Database.ExecuteSqlRawAsync(
+            "CREATE TRIGGER teste_bloqueia_credencial BEFORE INSERT ON CredenciaisLocais "
+            + "BEGIN SELECT RAISE(ABORT, 'bloqueado pelo teste'); END;");
+
+    private static async Task<Guid> SemearCredencialAsync(LocalTestHost host, string userName, string displayName)
+    {
+        var id = Guid.CreateVersion7();
+
+        await using var db = host.CreateContext();
+
+        db.Credentials.Add(new LocalCredential(
+            id, userName, displayName, [1, 2, 3], [4, 5, 6], 1_000, "{}", host.Clock.UtcNow));
+
+        await db.SaveChangesAsync();
+        return id;
+    }
+
+    /// <summary>
+    /// O defeito relatado em campo: o mesmo celular apontado para o servidor de outra máquina.
+    ///
+    /// O servidor que acabou de autenticar é a autoridade — a credencial antiga sai e a nova entra,
+    /// sem exigir reinstalação do aplicativo.
+    /// </summary>
     [Fact]
-    public async Task Falha_de_gravacao_local_nao_derruba_a_entrada()
+    public async Task Servidor_diferente_com_o_mesmo_usuario_substitui_a_credencial()
     {
         using var host = await LocalTestHost.CreateAsync();
 
-        await using (var preparo = host.CreateContext())
-        {
-            preparo.Credentials.Add(new LocalCredential(
-                Guid.CreateVersion7(), "admin", "Administrador",
-                [1, 2, 3], [4, 5, 6], 1_000, "{}", host.Clock.UtcNow));
-
-            await preparo.SaveChangesAsync();
-        }
+        var identificadorAntigo = await SemearCredencialAsync(host, "admin", "Administrador");
 
         host.Api.LoginResult = LoginComOutroIdentificador("admin");
 
         await using var db = host.CreateContext();
         var sessao = CreateSession(host, db);
 
-        // Antes desta correção, esta linha lançava DbUpdateException.
-        var entrou = await sessao.SignInAsync("admin", "Senha12345");
+        Assert.True(await sessao.SignInAsync("admin", "Senha12345"));
+        Assert.True(sessao.IsAuthenticated);
+        Assert.Null(sessao.LastSignInError);
 
-        Assert.False(entrou);
+        // Exatamente uma credencial para este nome, e é a do servidor atual.
+        await using var conferencia = host.CreateContext();
+        var credenciais = await conferencia.Credentials.Where(c => c.UserName == "admin").ToListAsync();
+
+        Assert.Single(credenciais);
+        Assert.NotEqual(identificadorAntigo, credenciais[0].UserId);
+    }
+
+    /// <summary>Trocar de servidor não pode arrastar a credencial de outra pessoa junto.</summary>
+    [Fact]
+    public async Task Substituicao_nao_toca_nas_credenciais_dos_outros_usuarios()
+    {
+        using var host = await LocalTestHost.CreateAsync();
+
+        await SemearCredencialAsync(host, "admin", "Administrador");
+        var mariaAntes = await SemearCredencialAsync(host, "maria", "Maria");
+
+        host.Api.LoginResult = LoginComOutroIdentificador("admin");
+
+        await using var db = host.CreateContext();
+        Assert.True(await CreateSession(host, db).SignInAsync("admin", "Senha12345"));
+
+        await using var conferencia = host.CreateContext();
+        var maria = await conferencia.Credentials.FirstOrDefaultAsync(c => c.UserName == "maria");
+
+        Assert.NotNull(maria);
+        Assert.Equal(mariaAntes, maria.UserId);
+    }
+
+    [Fact]
+    public async Task Falha_de_gravacao_local_nao_derruba_a_entrada()
+    {
+        using var host = await LocalTestHost.CreateAsync();
+
+        await using var db = host.CreateContext();
+        await BloquearInsercaoAsync(db);
+
+        host.Api.LoginResult = LoginComOutroIdentificador("admin");
+
+        var sessao = CreateSession(host, db);
+
+        // Antes desta correção, esta linha lançava DbUpdateException e derrubava a tela inteira.
+        Assert.False(await sessao.SignInAsync("admin", "Senha12345"));
         Assert.False(sessao.IsAuthenticated);
         Assert.NotNull(sessao.LastSignInError);
     }
@@ -71,17 +134,11 @@ public sealed class LoginStorageFailureTests
     {
         using var host = await LocalTestHost.CreateAsync();
 
-        await using (var preparo = host.CreateContext())
-        {
-            preparo.Credentials.Add(new LocalCredential(
-                Guid.CreateVersion7(), "maria", "Maria", [1], [2], 1_000, "{}", host.Clock.UtcNow));
-
-            await preparo.SaveChangesAsync();
-        }
+        await using var db = host.CreateContext();
+        await BloquearInsercaoAsync(db);
 
         host.Api.LoginResult = LoginComOutroIdentificador("maria");
 
-        await using var db = host.CreateContext();
         var sessao = CreateSession(host, db);
 
         Assert.False(await sessao.SignInAsync("maria", "Senha12345"));
@@ -100,18 +157,11 @@ public sealed class LoginStorageFailureTests
     {
         using var host = await LocalTestHost.CreateAsync();
 
-        // Primeiro uma falha, para sujar o estado.
-        await using (var preparo = host.CreateContext())
-        {
-            preparo.Credentials.Add(new LocalCredential(
-                Guid.CreateVersion7(), "admin", "Administrador", [1], [2], 1_000, "{}", host.Clock.UtcNow));
-
-            await preparo.SaveChangesAsync();
-        }
+        await using var db = host.CreateContext();
+        await BloquearInsercaoAsync(db);
 
         host.Api.LoginResult = LoginComOutroIdentificador("admin");
 
-        await using var db = host.CreateContext();
         var sessao = CreateSession(host, db);
 
         Assert.False(await sessao.SignInAsync("admin", "Senha12345"));
@@ -143,10 +193,7 @@ public sealed class LoginStorageFailureTests
 
         await using (var preparo = host.CreateContext())
         {
-            preparo.Credentials.Add(new LocalCredential(
-                Guid.CreateVersion7(), "admin", "Administrador", [1], [2], 1_000, "{}", host.Clock.UtcNow));
-
-            await preparo.SaveChangesAsync();
+            await BloquearInsercaoAsync(preparo);
         }
 
         host.Api.LoginResult = LoginComOutroIdentificador("admin");
@@ -174,10 +221,6 @@ public sealed class LoginStorageFailureTests
 
         Assert.True(marcacao.IsCompleted);
         Assert.Equal(1, await escritor.PendingCountAsync());
-
-        // E entrar de novo continua possível — a falha não deixou resíduo.
-        Assert.False(await sessao.SignInAsync("admin", "Senha12345"));
-        Assert.NotNull(sessao.LastSignInError);
     }
 
     /// <summary>
