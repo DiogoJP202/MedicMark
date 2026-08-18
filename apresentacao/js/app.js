@@ -140,7 +140,6 @@ function render() {
 
     const conteudo = document.getElementById("conteudo");
     conteudo.innerHTML = "";
-    conteudo.appendChild(el('<div class="demo-aviso">Demonstração com dados fictícios — nenhum servidor, nenhum dado de paciente</div>'));
 
     TELAS.find((t) => t.rota === ui.rota).render(conteudo);
 }
