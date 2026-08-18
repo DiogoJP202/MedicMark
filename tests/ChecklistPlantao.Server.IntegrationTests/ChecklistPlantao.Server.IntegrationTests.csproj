@@ -6,6 +6,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ChecklistPlantao.Server\ChecklistPlantao.Server.csproj" />
+
+    <!--
+        O cliente entra aqui de propósito. Até então nenhum teste ligava o HttpServerApi real a um
+        servidor real: todos trocavam IServerApi por um duplo, e a montagem de URL, a serialização
+        e a tradução de ProblemDetails em Result nunca eram exercitadas.
+    -->
+    <ProjectReference Include="..\..\src\ChecklistPlantao.Client.Core\ChecklistPlantao.Client.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
