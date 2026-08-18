@@ -203,6 +203,31 @@ Ver [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md), item 4.
 
 **Esperado:** muda no aplicativo; nada quebra. As regras usam identificador, nunca o nome.
 
+6. **Cadastro em modal.** Em qualquer tela de administração, toque em **Novo** (setor, leito,
+   marcador ou coluna).
+
+**Esperado:** abre um diálogo sobre a tela, com o foco já no primeiro campo. **Esc** e **Cancelar**
+fecham sem salvar. A tela de trás não perde a rolagem nem o filtro.
+
+7. **Nome duplicado — a regra que virava erro 500.** Em **Tipos de checklist → Gelo**, crie uma
+   coluna nova chamada exatamente **20H** (que já existe e está ativa).
+
+**Esperado:** mensagem legível dizendo que já existe uma coluna ativa com esse nome. **Não** pode
+aparecer "erro inesperado", nem a tela quebrar.
+
+8. Repita renomeando uma coluna existente para o nome de outra ativa — por exemplo, renomeie
+   **22H** para **20H**.
+
+**Esperado:** a mesma recusa. A regra vale na edição e na criação, não só na criação.
+
+**Por que importa:** antes, a edição passava pelo domínio e só era barrada pelo índice único do
+banco, que virava HTTP 500 sem informação nenhuma para quem estava preenchendo o formulário.
+
+9. **Coluna sem horário.** Crie uma coluna deixando o campo **Horário real** vazio.
+
+**Esperado:** ela é aceita e aparece no checklist, mas a ajuda do campo avisa que sem horário a
+coluna **não gera notificação** — e ela não aparece entre os horários agendados na tela Dispositivo.
+
 ---
 
 ## 8. Encerramento do plantão
