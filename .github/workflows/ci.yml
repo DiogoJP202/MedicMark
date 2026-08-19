@@ -1,0 +1,81 @@
+# Integração contínua do ChecklistPlantão.
+#
+# Existe porque os testes só rodavam quando alguém lembrava. O projeto inteiro se apoia em não
+# afirmar o que não foi medido — medir automaticamente é a continuação natural disso.
+#
+# Dois jobs, por um motivo concreto: a solução completa inclui os heads MAUI, que só compilam no
+# Windows. Separar mantém o retorno rápido (testes em minutos no Linux) sem abrir mão de provar
+# que Android e Windows continuam compilando.
+
+name: CI
+
+on:
+  push:
+    branches: [main, "**"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  # Um push novo cancela a execução anterior do mesmo ramo: ninguém precisa do resultado de um
+  # commit que já foi substituído.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testes:
+    name: Build e testes
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # A versão vem do global.json, que fixa 10.0.201 — o mesmo SDK da máquina de desenvolvimento.
+      - name: Instalar o .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restaurar
+        run: dotnet restore ChecklistPlantao.NoMaui.slnf
+
+      # Release e não Debug: é em Release que TreatWarningsAsErrors está ligado. Um aviso novo
+      # falha aqui, que é exatamente o ponto.
+      - name: Compilar
+        run: dotnet build ChecklistPlantao.NoMaui.slnf -c Release --no-restore
+
+      - name: Testar
+        run: >
+          dotnet test ChecklistPlantao.NoMaui.slnf -c Release --no-build
+          --logger "trx;LogFileName=resultados.trx"
+          --collect:"XPlat Code Coverage"
+          --results-directory ./resultados
+
+      - name: Publicar resultados e cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-e-cobertura
+          path: ./resultados
+          retention-days: 14
+
+  heads-maui:
+    name: Compilar Android e Windows
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar o .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # Os heads MAUI exigem as workloads; sem isto o build falha na restauração.
+      - name: Instalar as workloads MAUI
+        run: dotnet workload install maui-android maui-windows
+
+      - name: Compilar a solução completa
+        run: dotnet build ChecklistPlantao.sln -c Release
