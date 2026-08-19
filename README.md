@@ -108,7 +108,7 @@ src/
   ChecklistPlantao.UI              RCL: design system, componentes e páginas
   ChecklistPlantao.Client.Core     SQLite local, Outbox, sincronização, auth offline
   ChecklistPlantao.Client          MAUI Blazor Hybrid (Android + Windows)
-tests/                             5 projetos, 367 testes
+tests/                             5 projetos, 373 testes
 deploy/                            Dockerfile, compose, backup e restore
 ```
 
@@ -120,6 +120,7 @@ deploy/                            Dockerfile, compose, backup e restore
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Camadas, dependências e por quê |
 | [DECISIONS.md](docs/DECISIONS.md) | Decisões arquiteturais com contexto e consequências |
 | [DOMAIN.md](docs/DOMAIN.md) | Regras de negócio, turno, permissões, retenção |
+| [CONFIGURATION.md](docs/CONFIGURATION.md) | **Toda opção de configuração**: chave, padrão, efeito e quando mexer |
 | [DATA_MODEL.md](docs/DATA_MODEL.md) | Tabelas, índices e restrições |
 | [OFFLINE_SYNC.md](docs/OFFLINE_SYNC.md) | Outbox, cursor, idempotência e conflitos |
 | [NOTIFICATIONS.md](docs/NOTIFICATIONS.md) | Agendamento, repetição e o que cada plataforma entrega |

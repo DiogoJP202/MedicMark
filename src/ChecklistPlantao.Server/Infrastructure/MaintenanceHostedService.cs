@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using ChecklistPlantao.Application.Sessions;
 using ChecklistPlantao.Infrastructure.Persistence;
 using ChecklistPlantao.Server.Auth;
@@ -11,15 +12,22 @@ public sealed class MaintenanceOptions
     public const string SectionName = "Maintenance";
 
     /// <summary>Intervalo entre as passagens de manutenção.</summary>
+    [Range(1, 1440, ErrorMessage = "Maintenance:IntervalMinutes precisa estar entre 1 e 1440.")]
     public int IntervalMinutes { get; set; } = 30;
 
-    /// <summary>Dias que o log de alterações é mantido antes de ser podado.</summary>
+    /// <summary>
+    /// Dias que o log de alterações é mantido antes de ser podado. Zero poda tudo o que já foi
+    /// consumido; negativo não tem significado e é recusado na subida.
+    /// </summary>
+    [Range(0, 3650, ErrorMessage = "Maintenance:ChangeLogRetentionDays precisa estar entre 0 e 3650.")]
     public int ChangeLogRetentionDays { get; set; } = 30;
 
     /// <summary>Dias que o registro de operações idempotentes é mantido.</summary>
+    [Range(0, 3650, ErrorMessage = "Maintenance:ProcessedOperationRetentionDays precisa estar entre 0 e 3650.")]
     public int ProcessedOperationRetentionDays { get; set; } = 7;
 
     /// <summary>Dias sem contato até um dispositivo ser marcado como inativo.</summary>
+    [Range(1, 3650, ErrorMessage = "Maintenance:DeviceInactivityDays precisa estar entre 1 e 3650.")]
     public int DeviceInactivityDays { get; set; } = 30;
 }
 

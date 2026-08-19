@@ -23,6 +23,9 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <!-- ValidateDataAnnotations: as opções do banco são recusadas na subida, e não na primeira
+         requisição. Ver docs/CONFIGURATION.md. -->
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
     <!-- Necessário para gerar migrations a partir deste projeto (dotnet ef). Não vai para o runtime. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
