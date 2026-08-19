@@ -25,21 +25,12 @@
 
     @if (Session.IsAuthenticated)
     {
-        <nav class="nav-principal" aria-label="Navegação principal">
-            <NavLink class="nav-principal__item" href="/" Match="NavLinkMatch.All">Painel</NavLink>
-            <NavLink class="nav-principal__item" href="/checklist">Checklist</NavLink>
-            <NavLink class="nav-principal__item" href="/classificacoes">Classificações</NavLink>
-            <NavLink class="nav-principal__item" href="/pendencias">Pendências</NavLink>
-            <NavLink class="nav-principal__item" href="/sessao">Plantão</NavLink>
-            @*
-                "Dispositivo" saiu da barra a pedido: a tela continua existindo e é alcançada pelo
-                cartão "Estado do dispositivo" no painel, além da faixa de saúde no topo. A lista
-                administrativa de aparelhos é outra coisa, e mora em Configurações avançadas.
-            *@
-            <PermissionGuard Permission="@Permissions.AdminSettings" Access="Session.Access">
-                <NavLink class="nav-principal__item" href="/admin">Administração</NavLink>
-            </PermissionGuard>
-        </nav>
+        @*
+            "Dispositivo" não está na lista, a pedido: a tela continua existindo e é alcançada pelo
+            cartão "Estado do dispositivo" no painel, além da faixa de saúde no topo. A lista
+            administrativa de aparelhos é outra coisa, e mora em Configurações avançadas.
+        *@
+        <IslandNav Items="Destinos" />
     }
 
     <NotificationHealthBanner Status="_notificacoes"
@@ -105,6 +96,33 @@
 </div>
 
 @code {
+    /// <summary>
+    /// Destinos da ilha. A administração entra só para quem tem a permissão — a mesma regra que a
+    /// barra antiga aplicava com <c>PermissionGuard</c>, agora expressa na montagem da lista,
+    /// porque a ilha precisa da lista inteira para se dimensionar ao expandir.
+    /// </summary>
+    private IReadOnlyList<IslandNav.ItemDaIlha> Destinos
+    {
+        get
+        {
+            var destinos = new List<IslandNav.ItemDaIlha>
+            {
+                new("/", "Painel", "painel"),
+                new("/checklist", "Checklist", "checklist"),
+                new("/classificacoes", "Classificações", "classificacoes"),
+                new("/pendencias", "Pendências", "pendencias"),
+                new("/sessao", "Plantão", "plantao"),
+            };
+
+            if (Session.Access.Has(Permissions.AdminSettings))
+            {
+                destinos.Add(new("/admin", "Administração", "administracao"));
+            }
+
+            return destinos;
+        }
+    }
+
     /// <summary>
     /// Mensagem de cada exceção da cadeia, e não só a de fora.
     ///

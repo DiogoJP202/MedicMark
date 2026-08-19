@@ -1,0 +1,135 @@
+@implements IDisposable
+@inject NavigationManager Navigation
+
+@*
+    Navegação em ilha.
+
+    A ilha É o componente de navegação, não uma cápsula com um menu dentro: o mesmo elemento
+    muda de forma entre compacto e expandido — largura, altura e raio da borda transitam juntos.
+    Fechada mostra onde você está; aberta, para onde pode ir.
+
+    Fica fixa no topo e flutua sobre o conteúdo. O espaçador abaixo reserva a altura FECHADA, para
+    que a página nunca comece escondida atrás dela; expandida, a ilha cobre o conteúdo de
+    propósito — é um estado momentâneo, com fundo capturando o toque de fora.
+*@
+
+<div class="ilha-espaco" aria-hidden="true"></div>
+
+@if (_aberta)
+{
+    @* Captura o toque fora. Sem isto, sair do menu exigiria acertar a própria ilha. *@
+    <div class="ilha-fundo" data-testid="island-backdrop" @onclick="Fechar"></div>
+}
+
+<nav class="ilha @(_aberta ? "ilha--aberta" : "")"
+     aria-label="Navegação principal"
+     data-testid="island-nav">
+
+    <button type="button"
+            class="ilha__gatilho"
+            data-testid="island-toggle"
+            aria-expanded="@_aberta.ToString().ToLowerInvariant()"
+            aria-controls="ilha-lista"
+            @onclick="Alternar">
+        <span class="ilha__icone" aria-hidden="true">@((MarkupString)Icone(Atual.Icone))</span>
+        <span class="ilha__titulo" data-testid="island-current">@Atual.Titulo</span>
+        @* O símbolo gira ao abrir: é o indicador discreto de que há mais. *@
+        <span class="ilha__seta" aria-hidden="true">@((MarkupString)Icone("seta"))</span>
+    </button>
+
+    <ul class="ilha__lista" id="ilha-lista" data-testid="island-list">
+        @foreach (var item in Items)
+        {
+            var atual = item.Rota == Atual.Rota;
+
+            <li class="ilha__item">
+                <button type="button"
+                        class="ilha__link @(atual ? "ilha__link--atual" : "")"
+                        data-testid="@($"island-link-{item.Rota.Trim('/')}")"
+                        aria-current="@(atual ? "page" : null)"
+                        @onclick="() => Ir(item)">
+                    <span class="ilha__icone" aria-hidden="true">@((MarkupString)Icone(item.Icone))</span>
+                    <span class="ilha__nome">@item.Titulo</span>
+                    @*
+                        A marca do item atual não é só a cor de fundo: quem não distingue cores, ou
+                        está com a tela no sol, continua vendo qual é.
+                    *@
+                    @if (atual)
+                    {
+                        <span class="ilha__marca" aria-hidden="true">@((MarkupString)Icone("check"))</span>
+                    }
+                </button>
+            </li>
+        }
+    </ul>
+</nav>
+
+@code {
+    /// <summary>Um destino da navegação. O ícone é a chave de um dos desenhos abaixo.</summary>
+    public sealed record ItemDaIlha(string Rota, string Titulo, string Icone);
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<ItemDaIlha> Items { get; set; } = [];
+
+    private bool _aberta;
+
+    /// <summary>
+    /// O item que corresponde à rota atual. Sem correspondência — uma tela fora do menu, como
+    /// "Estado do dispositivo" — a ilha mostra o primeiro item em vez de ficar vazia.
+    /// </summary>
+    private ItemDaIlha Atual
+    {
+        get
+        {
+            var rota = "/" + Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0].TrimEnd('/');
+
+            // A mais específica primeiro: "/checklist/{id}" precisa casar com "/checklist", e não
+            // com "/", que é prefixo de tudo.
+            return Items.Where(i => i.Rota != "/")
+                       .OrderByDescending(i => i.Rota.Length)
+                       .FirstOrDefault(i => rota.StartsWith(i.Rota, StringComparison.OrdinalIgnoreCase))
+                ?? Items.FirstOrDefault(i => i.Rota == "/")
+                ?? Items.FirstOrDefault()
+                ?? new ItemDaIlha("/", "Menu", "painel");
+        }
+    }
+
+    protected override void OnInitialized() => Navigation.LocationChanged += AoNavegar;
+
+    // Fecha ao navegar por qualquer caminho — o botão voltar do Android, um link do conteúdo,
+    // um deep link de notificação. A ilha aberta sobre uma tela nova seria um estado órfão.
+    private void AoNavegar(object? remetente, LocationChangedEventArgs argumentos) =>
+        _ = InvokeAsync(() => { _aberta = false; StateHasChanged(); });
+
+    private void Alternar() => _aberta = !_aberta;
+
+    private void Fechar() => _aberta = false;
+
+    private void Ir(ItemDaIlha item)
+    {
+        _aberta = false;
+        Navigation.NavigateTo(item.Rota);
+    }
+
+    /// <summary>
+    /// Desenhos em SVG, embutidos: nenhum asset externo, nada de CDN, e a cor acompanha o texto.
+    /// Traço fino e cantos arredondados para casar com o restante da interface.
+    /// </summary>
+    private static string Icone(string chave) => chave switch
+    {
+        "painel" => Svg("""<path d="M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-16v5h6V4h-6Z"/>"""),
+        "checklist" => Svg("""<path d="M4 6h10M4 12h10M4 18h10"/><path d="m17 5 2 2 3-3M17 11l2 2 3-3M17 17l2 2 3-3"/>"""),
+        "classificacoes" => Svg("""<path d="M3 7h13l5 5-5 5H3z"/><circle cx="7.5" cy="12" r="1.4"/>"""),
+        "pendencias" => Svg("""<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>"""),
+        "plantao" => Svg("""<path d="M5 4h14v16l-7-3.5L5 20z"/>"""),
+        "administracao" => Svg("""<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1"/>"""),
+        "seta" => Svg("""<path d="m6 9 6 6 6-6"/>"""),
+        "check" => Svg("""<path d="m5 13 4 4 10-10"/>"""),
+        _ => Svg("""<circle cx="12" cy="12" r="8.5"/>"""),
+    };
+
+    private static string Svg(string conteudo) =>
+        $"""<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false">{conteudo}</svg>""";
+
+    public void Dispose() => Navigation.LocationChanged -= AoNavegar;
+}

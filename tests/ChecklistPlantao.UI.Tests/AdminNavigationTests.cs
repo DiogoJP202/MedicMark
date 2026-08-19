@@ -41,7 +41,11 @@ public sealed class AdminNavigationTests : BunitContext
 
         var cut = Render<MainLayout>();
 
-        Assert.DoesNotContain("href=\"/dispositivo\"", cut.Markup, StringComparison.Ordinal);
+        // A ilha usa botões, não âncoras: a asserção é sobre o destino, não sobre o href.
+        cut.Find("[data-testid=island-toggle]").Click();
+
+        Assert.Empty(cut.FindAll("[data-testid=island-link-dispositivo]"));
+        Assert.DoesNotContain("Estado do dispositivo", cut.Find("[data-testid=island-list]").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -53,9 +57,13 @@ public sealed class AdminNavigationTests : BunitContext
 
         var cut = Render<MainLayout>();
 
-        Assert.Contains("href=\"/checklist\"", cut.Markup, StringComparison.Ordinal);
-        Assert.Contains("href=\"/pendencias\"", cut.Markup, StringComparison.Ordinal);
-        Assert.Contains("href=\"/sessao\"", cut.Markup, StringComparison.Ordinal);
+        cut.Find("[data-testid=island-toggle]").Click();
+
+        var lista = cut.Find("[data-testid=island-list]").TextContent;
+
+        Assert.Contains("Checklist", lista, StringComparison.Ordinal);
+        Assert.Contains("Pendências", lista, StringComparison.Ordinal);
+        Assert.Contains("Plantão", lista, StringComparison.Ordinal);
     }
 
     // ------------------------------------------------------------------ níveis do menu

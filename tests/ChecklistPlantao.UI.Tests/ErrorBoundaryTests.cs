@@ -96,8 +96,8 @@ public sealed class ErrorBoundaryTests : BunitContext
         AguardarTelaDeErro(cut);
 
         // A saída da tela quebrada precisa continuar visível — é o que faltava.
-        Assert.NotEmpty(cut.FindAll(".nav-principal"));
-        Assert.Contains("Painel", cut.Find(".nav-principal").TextContent, StringComparison.Ordinal);
+        Assert.NotEmpty(cut.FindAll("[data-testid=island-nav]"));
+        Assert.Contains("Painel", cut.Find("[data-testid=island-nav]").TextContent, StringComparison.Ordinal);
     }
 
     /// <summary>

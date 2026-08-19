@@ -926,42 +926,199 @@ p { margin: 0 0 var(--esp-3); }
 
 .tabela__area { overflow-x: auto; }
 
-/* ------------------------------------------------------------------ navegação */
+/* ------------------------------------------------------------------ navegação em ilha
 
-/*
-    A navegação acompanha a rolagem, colada logo abaixo da barra do topo.
+   A ilha É o componente de navegação, e não uma cápsula com um menu dentro. O mesmo elemento
+   transita entre compacto e expandido: largura, altura e raio da borda mudam juntos, o que dá a
+   sensação de a forma crescer em vez de um painel aparecer embaixo.
 
-    Sem isto ela some assim que a página rola — e em telas longas (administração, pendências) o
-    usuário perde a única saída visível e precisa rolar todo o caminho de volta para trocar de
-    tela. O deslocamento usa a altura real da barra do topo mais a área segura do sistema.
-*/
-.nav-principal {
-    position: sticky;
-    top: var(--altura-topo);
-    z-index: calc(var(--z-banner) - 1);
-    display: flex;
-    gap: var(--esp-1);
-    overflow-x: auto;
-    background: var(--cor-primaria-clara);
-    padding: var(--esp-1) var(--esp-2);
-    scrollbar-width: thin;
+   Por isso as duas larguras são EXPLÍCITAS: `width: auto` não anima, e sem animar a largura o
+   efeito vira dropdown.                                                                        */
+
+:root {
+    --ilha-altura: 52px;
+    --ilha-largura-fechada: min(76vw, 260px);
+    --ilha-largura-aberta: min(92vw, 360px);
 }
 
-.nav-principal__item {
+/* Reserva a altura da ilha FECHADA no fluxo. Expandida ela cobre o conteúdo de propósito. */
+.ilha-espaco {
+    height: calc(var(--ilha-altura) + var(--esp-4));
     flex: 0 0 auto;
-    min-height: var(--toque-min);
+}
+
+.ilha-fundo {
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-banner) + 1);
+    /* Escurece de leve: separa a ilha da página sem esconder onde a pessoa estava. */
+    background: rgba(22, 35, 44, 0.28);
+}
+
+.ilha {
+    position: fixed;
+    top: calc(var(--altura-topo) + var(--esp-2));
+    left: 50%;
+    z-index: calc(var(--z-banner) + 2);
+
+    width: var(--ilha-largura-fechada);
+    border-radius: 999px;
+    background: var(--cor-primaria);
+    color: var(--cor-texto-inverso);
+    box-shadow: 0 6px 18px rgba(22, 35, 44, 0.28);
+    overflow: hidden;
+
+    /* translateX(-50%) fica no transform para o centro não depender de cálculo de largura. */
+    transform: translateX(-50%);
+
+    transition:
+        width 260ms cubic-bezier(0.22, 1, 0.36, 1),
+        border-radius 260ms cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 260ms ease;
+}
+
+.ilha--aberta {
+    width: var(--ilha-largura-aberta);
+    border-radius: 26px;
+    box-shadow: 0 18px 44px rgba(22, 35, 44, 0.42);
+}
+
+/* ---- estado fechado: o gatilho ---- */
+
+.ilha__gatilho {
     display: flex;
     align-items: center;
-    padding: 0 var(--esp-3);
-    color: var(--cor-texto-inverso);
-    text-decoration: none;
-    border-radius: var(--raio-sm);
-    font-weight: 600;
-    font-size: var(--texto-sm);
+    gap: var(--esp-2);
+    width: 100%;
+    height: var(--ilha-altura);
+    padding: 0 var(--esp-4);
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
 }
 
-.nav-principal__item:hover { background: rgba(255, 255, 255, 0.15); }
-.nav-principal__item.active { background: rgba(255, 255, 255, 0.25); }
+.ilha__titulo {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+}
+
+.ilha__icone {
+    flex: 0 0 auto;
+    display: inline-flex;
+}
+
+.ilha__icone > svg { width: 22px; height: 22px; }
+
+.ilha__seta {
+    flex: 0 0 auto;
+    display: inline-flex;
+    opacity: 0.85;
+    transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ilha__seta > svg { width: 18px; height: 18px; }
+
+.ilha--aberta .ilha__seta { transform: rotate(180deg); }
+
+/* ---- estado aberto: a lista ---- */
+
+.ilha__lista {
+    list-style: none;
+    margin: 0;
+    padding: 0 var(--esp-2);
+    max-height: 0;
+    opacity: 0;
+    /* Fechada não recebe toque nem tabulação; sem isto haveria alvos invisíveis. */
+    visibility: hidden;
+    transition:
+        max-height 260ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 180ms ease,
+        padding-bottom 260ms cubic-bezier(0.22, 1, 0.36, 1),
+        visibility 0s linear 260ms;
+}
+
+.ilha--aberta .ilha__lista {
+    max-height: 60vh;
+    overflow-y: auto;
+    opacity: 1;
+    visibility: visible;
+    padding-bottom: var(--esp-2);
+    transition:
+        max-height 300ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 200ms ease 80ms,
+        padding-bottom 300ms cubic-bezier(0.22, 1, 0.36, 1),
+        visibility 0s;
+}
+
+.ilha__item { margin: 0; }
+
+.ilha__link {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-3);
+    width: 100%;
+    min-height: var(--toque-min);
+    padding: var(--esp-2) var(--esp-3);
+    border: 0;
+    border-radius: var(--raio-md);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: var(--texto-sm);
+    text-align: left;
+    cursor: pointer;
+}
+
+.ilha__link:hover { background: rgba(255, 255, 255, 0.14); }
+
+.ilha__nome { flex: 1 1 auto; }
+
+/* O item atual: fundo, peso e a marca de conferido — nunca só a cor. */
+.ilha__link--atual {
+    background: rgba(255, 255, 255, 0.20);
+    font-weight: 700;
+}
+
+.ilha__marca { display: inline-flex; }
+
+.ilha__marca > svg { width: 18px; height: 18px; }
+
+.ilha__link:focus-visible {
+    outline: 2px solid var(--cor-texto-inverso);
+    outline-offset: -2px;
+}
+
+/*
+    Em tela larga a ilha pode ser um pouco maior sem competir com o conteúdo — e o alvo de toque
+    continua o mesmo, porque quem usa mouse também erra menos com alvo grande.
+*/
+@media (min-width: 900px) {
+    :root {
+        --ilha-largura-fechada: 300px;
+        --ilha-largura-aberta: 380px;
+    }
+}
+
+/*
+    Movimento reduzido: a ilha muda de estado sem transição. Aqui, diferente da roda de
+    carregamento, não se perde informação nenhuma — o estado final é o que importa, e ele
+    continua evidente.
+*/
+@media (prefers-reduced-motion: reduce) {
+    .ilha,
+    .ilha__lista,
+    .ilha--aberta .ilha__lista,
+    .ilha__seta {
+        transition: none;
+    }
+}
 
 /* ------------------------------------------------------------------ responsivo */
 
