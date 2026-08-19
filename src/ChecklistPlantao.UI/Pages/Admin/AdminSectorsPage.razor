@@ -140,7 +140,11 @@
                ConfirmText="Desativar"
                OnConfirm="ConfirmarDesativacaoAsync" />
 
+<LoadingOverlay Visible="_carregando" Message="Carregando setores e leitos…" />
+
 @code {
+    private bool _carregando;
+
     private IReadOnlyList<SectorDto> _setores = [];
     private IReadOnlyList<BedDto> _leitos = [];
     private Result? _resultado;
@@ -171,12 +175,21 @@
 
     private async Task CarregarAsync()
     {
-        _setores = await Admin.GetSectorsAsync();
-        _leitos = await Admin.GetBedsAsync(null);
+        _carregando = true;
 
-        if (_setorDoLeito == Guid.Empty && _setores.Count > 0)
+        try
         {
-            _setorDoLeito = _setores[0].Id;
+            _setores = await Admin.GetSectorsAsync();
+            _leitos = await Admin.GetBedsAsync(null);
+
+            if (_setorDoLeito == Guid.Empty && _setores.Count > 0)
+            {
+                _setorDoLeito = _setores[0].Id;
+            }
+        }
+        finally
+        {
+            _carregando = false;
         }
     }
 

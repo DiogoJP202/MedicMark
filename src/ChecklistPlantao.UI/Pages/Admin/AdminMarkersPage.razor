@@ -59,7 +59,12 @@
     </div>
 </FormDialog>
 
+<LoadingOverlay Visible="_carregando" Message="@_mensagemDeEspera" />
+
 @code {
+    private bool _carregando;
+    private string _mensagemDeEspera = "Carregando os marcadores…";
+
     private IReadOnlyList<BedMarkerDefinitionDto> _marcadores = [];
     private BedMarkerDefinitionDto? _editando;
     private string _nome = string.Empty;
@@ -73,7 +78,19 @@
 
     protected override async Task OnInitializedAsync() => await CarregarAsync();
 
-    private async Task CarregarAsync() => _marcadores = await Admin.GetMarkersAsync();
+    private async Task CarregarAsync()
+    {
+        _carregando = true;
+
+        try
+        {
+            _marcadores = await Admin.GetMarkersAsync();
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
 
     private void Novo()
     {

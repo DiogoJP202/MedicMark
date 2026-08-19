@@ -45,8 +45,23 @@
                 Message="Os dispositivos aparecem aqui depois da primeira sincronização com este servidor." />
 }
 
+<LoadingOverlay Visible="_carregando" Message="Carregando os dispositivos…" />
+
 @code {
     private IReadOnlyList<DeviceDto> _dispositivos = [];
+    private bool _carregando;
 
-    protected override async Task OnInitializedAsync() => _dispositivos = await Admin.GetDevicesAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _carregando = true;
+
+        try
+        {
+            _dispositivos = await Admin.GetDevicesAsync();
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
 }

@@ -177,7 +177,11 @@
     </div>
 </ConfirmDialog>
 
+<LoadingOverlay Visible="_carregando" Message="Carregando grupos, usuários e permissões…" />
+
 @code {
+    private bool _carregando;
+
     private IReadOnlyList<AccessGroupDto> _grupos = [];
     private IReadOnlyList<AppUserDto> _usuarios = [];
     private IReadOnlyList<SectorDto> _setores = [];
@@ -205,10 +209,19 @@
 
     private async Task CarregarAsync()
     {
-        _grupos = await Admin.GetGroupsAsync();
-        _usuarios = await Admin.GetUsersAsync();
-        _setores = await Estrutura.GetSectorsAsync();
-        _permissoes = await Admin.GetPermissionsAsync();
+        _carregando = true;
+
+        try
+        {
+            _grupos = await Admin.GetGroupsAsync();
+            _usuarios = await Admin.GetUsersAsync();
+            _setores = await Estrutura.GetSectorsAsync();
+            _permissoes = await Admin.GetPermissionsAsync();
+        }
+        finally
+        {
+            _carregando = false;
+        }
     }
 
     private void AlternarSetor(Guid id, bool marcado)

@@ -67,6 +67,13 @@
     --z-modal: 100;
 
     /*
+        Acima do modal: a sobreposição de carregamento também cobre o diálogo de cadastro, que
+        faz requisição ao salvar. Se ficasse abaixo, o botão "Salvar" continuaria clicável
+        durante a gravação — e clicar duas vezes é justamente o que ela impede.
+    */
+    --z-carregando: 120;
+
+    /*
         Altura da barra do topo. A navegação e as faixas fixas se ancoram nela, então o valor
         precisa existir num lugar só — e acompanhar a área segura do sistema, que no Android é
         onde fica a barra de status.
@@ -818,6 +825,56 @@ p { margin: 0 0 var(--esp-3); }
     cursor: pointer;
 }
 
+/* ------------------------------------------------------------------ sobreposição de carregamento
+
+   Escurece a tela e BLOQUEIA o toque enquanto a requisição corre. O bloqueio não é enfeite: sem
+   ele dava para tocar nos botões durante a busca e disparar a mesma operação duas vezes.        */
+
+.carregando-fundo {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-carregando);
+    background: rgba(22, 35, 44, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--esp-4);
+    /* Redundante com o inset fixo, mas explícito: nada atrás recebe toque. */
+    touch-action: none;
+}
+
+.carregando-caixa {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--esp-3);
+    background: var(--cor-superficie);
+    border-radius: var(--raio-lg);
+    box-shadow: var(--sombra-2);
+    padding: var(--esp-5) var(--esp-6);
+    max-width: 320px;
+    text-align: center;
+}
+
+.carregando-roda {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 4px solid var(--cor-neutro-suave);
+    border-top-color: var(--cor-primaria);
+    animation: carregando-girar 900ms linear infinite;
+}
+
+@keyframes carregando-girar {
+    to { transform: rotate(360deg); }
+}
+
+.carregando-texto {
+    margin: 0;
+    font-weight: 600;
+    color: var(--cor-texto);
+}
+
 /* ------------------------------------------------------------------ estados */
 
 .estado-vazio,
@@ -928,5 +985,17 @@ p { margin: 0 0 var(--esp-3); }
     * {
         animation-duration: 0.01ms !important;
         transition-duration: 0.01ms !important;
+    }
+
+    /*
+        Uma exceção, e só uma: a roda de carregamento.
+
+        A regra acima existe para eliminar movimento decorativo. Esta roda não é decoração — é a
+        única evidência de que o aplicativo está trabalhando enquanto a tela está escura e
+        bloqueada. Parada, ela comunica "travou", que é pior para qualquer pessoa do que o
+        movimento que a regra tenta evitar. Fica mais lenta, em vez de imóvel.
+    */
+    .carregando-roda {
+        animation-duration: 2s !important;
     }
 }

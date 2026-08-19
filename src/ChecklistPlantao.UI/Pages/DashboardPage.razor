@@ -94,7 +94,11 @@ else
     </div>
 }
 
+<LoadingOverlay Visible="_carregando" Message="Carregando o plantão…" />
+
 @code {
+    private bool _carregando;
+
     private IReadOnlyList<SectorSummary> _setores = [];
     private IReadOnlyList<ChecklistTemplateDto> _templates = [];
     private IReadOnlyList<PendingGroup> _pendencias = [];
@@ -115,7 +119,7 @@ else
             return;
         }
 
-        await CarregarAsync();
+        await CarregarAsync(comEspera: true);
     }
 
     /// <summary>
@@ -139,13 +143,34 @@ else
         return true;
     }
 
-    private async Task CarregarAsync()
+    /// <summary>
+    /// Carrega o painel. <paramref name="comEspera"/> controla a sobreposição de carregamento.
+    ///
+    /// Ela aparece quando a PESSOA provocou a carga — abrir a tela, trocar de setor — e não quando
+    /// a recarga vem de um evento de fundo, como o aviso do hub. Piscar a tela escura no meio do
+    /// trabalho, sem ninguém ter pedido nada, seria pior que não mostrar nada.
+    /// </summary>
+    private async Task CarregarAsync(bool comEspera = false)
     {
         if (!Session.IsAuthenticated)
         {
             return;
         }
 
+        _carregando = comEspera;
+
+        try
+        {
+            await CarregarDadosAsync();
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private async Task CarregarDadosAsync()
+    {
         _setores = await Session.GetAvailableSectorsAsync();
 
         if (Session.CurrentSectorId is not { } sectorId)
@@ -170,7 +195,7 @@ else
     private async Task SelecionarSetorAsync(Guid sectorId)
     {
         await Session.SelectSectorAsync(sectorId);
-        await CarregarAsync();
+        await CarregarAsync(comEspera: true);
     }
 
     private Task SincronizarAsync() => SyncStatus.SyncNowAsync();
