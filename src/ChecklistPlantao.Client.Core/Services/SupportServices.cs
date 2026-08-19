@@ -485,7 +485,7 @@ public sealed class DeviceDiagnosticsService(
 /// Administração pela API. Exige servidor: cadastro não é operação offline — mudar um horário
 /// sem o servidor criaria divergência entre aparelhos.
 /// </summary>
-public sealed class AdministrationService(IServerApi api) : IAdministrationService
+public sealed class AdministrationService(IServerApi api) : IStructureAdminService, IAccessAdminService, ISystemAdminService
 {
     private HttpServerApi Http => api as HttpServerApi
         ?? throw new InvalidOperationException("A administração exige o cliente HTTP do servidor.");

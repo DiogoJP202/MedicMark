@@ -106,7 +106,7 @@ src/
   ChecklistPlantao.UI              RCL: design system, componentes e páginas
   ChecklistPlantao.Client.Core     SQLite local, Outbox, sincronização, auth offline
   ChecklistPlantao.Client          MAUI Blazor Hybrid (Android + Windows)
-tests/                             5 projetos, 365 testes
+tests/                             5 projetos, 367 testes
 deploy/                            Dockerfile, compose, backup e restore
 ```
 

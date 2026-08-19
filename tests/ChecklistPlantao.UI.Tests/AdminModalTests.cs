@@ -17,7 +17,12 @@ public sealed class AdminModalTests : BunitContext
 {
     private FakeAdministrationService Admin { get; } = new();
 
-    private void Registrar() => Services.AddSingleton<IAdministrationService>(Admin);
+    private void Registrar()
+    {
+        Services.AddSingleton<IStructureAdminService>(Admin);
+        Services.AddSingleton<IAccessAdminService>(Admin);
+        Services.AddSingleton<ISystemAdminService>(Admin);
+    }
 
     private static SectorDto Setor(string nome = "Oeste") =>
         new(Guid.CreateVersion7(), nome, null, 10, true, null, null, 3);

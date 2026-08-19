@@ -1,6 +1,9 @@
 @page "/admin/acessos"
 
-@inject IAdministrationService Admin
+@inject IAccessAdminService Admin
+@* A lista de setores vem da estrutura: um grupo é associado a setores, e essa é a única
+   travessia entre os dois contratos. *@
+@inject IStructureAdminService Estrutura
 
 @*
     Usuários e grupos.
@@ -204,7 +207,7 @@
     {
         _grupos = await Admin.GetGroupsAsync();
         _usuarios = await Admin.GetUsersAsync();
-        _setores = await Admin.GetSectorsAsync();
+        _setores = await Estrutura.GetSectorsAsync();
         _permissoes = await Admin.GetPermissionsAsync();
     }
 

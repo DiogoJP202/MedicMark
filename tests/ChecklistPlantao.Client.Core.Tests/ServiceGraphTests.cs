@@ -76,7 +76,9 @@ public sealed class ServiceGraphTests
     [InlineData(typeof(INotificationStatusService))]
     [InlineData(typeof(IServerConfigurationService))]
     [InlineData(typeof(IDeviceDiagnosticsService))]
-    [InlineData(typeof(IAdministrationService))]
+    [InlineData(typeof(IStructureAdminService))]
+    [InlineData(typeof(IAccessAdminService))]
+    [InlineData(typeof(ISystemAdminService))]
     [InlineData(typeof(IServerApi))]
     [InlineData(typeof(ITokenStore))]
     public void Servicos_da_interface_sao_resolviveis(Type servico)

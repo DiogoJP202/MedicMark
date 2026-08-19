@@ -24,7 +24,9 @@ public sealed class AdminTemplatesPageTests : BunitContext
     {
         Admin.Sectors.Add(new SectorDto(SetorOeste, "Oeste", null, 10, true, null, null, 1));
         Admin.Sectors.Add(new SectorDto(SetorLeste, "Leste", null, 20, true, null, null, 1));
-        Services.AddSingleton<IAdministrationService>(Admin);
+        Services.AddSingleton<IStructureAdminService>(Admin);
+        Services.AddSingleton<IAccessAdminService>(Admin);
+        Services.AddSingleton<ISystemAdminService>(Admin);
     }
 
     private static ChecklistTemplateDto Template(params Guid[] setores) =>

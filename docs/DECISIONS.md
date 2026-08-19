@@ -405,6 +405,41 @@ pertencem ao contexto que as leu. `ClientSession` deixou de cachear o `DeviceSta
 
 ---
 
+## D-022 — Administração em três contratos, não em um
+
+**Contexto.** `IAdministrationService` tinha **21 membros**: setores, leitos, tipos de checklist,
+colunas, marcadores, grupos, usuários, permissões, notificações, ajustes institucionais e a lista de
+dispositivos. A tela que cadastra um leito dependia de `ResetPasswordAsync`.
+
+Era a pior violação de segregação de interface do projeto, e o custo aparecia nos testes: um único
+dublê de 128 linhas para exercitar qualquer tela de administração.
+
+**Decisão.** Três contratos, recortados pelo que as telas de fato usam — não por simetria:
+
+| Contrato | Membros | Quem usa |
+|---|---|---|
+| `IStructureAdminService` | 9 | Setores, Marcadores, Tipos de checklist |
+| `IAccessAdminService` | 7 | Acessos |
+| `ISystemAdminService` | 5 | Notificações, Configurações, Dispositivos |
+
+`AdministrationService` implementa os três — uma classe, três contratos —, e o registro em
+`DependencyInjection` aponta as três interfaces para a mesma instância com escopo.
+
+**Sobre o nome do terceiro.** "Sistema", e não "Configurações", porque a lista de dispositivos é
+diagnóstico e não ajuste. Chamar de configurações seria mentir sobre o que há dentro.
+
+**A única travessia.** `AdminAccessPage` injeta os dois primeiros: um grupo é associado a setores, e
+a lista de setores é estrutura. A dependência é real e ficou explícita, em vez de escondida atrás de
+um contrato que continha tudo.
+
+**Consequências.** Cada tela declara o que usa. `ServiceGraphTests` passou a exigir que os três
+resolvam. O dublê único continua servindo aos testes por implementar as três interfaces — o ganho
+lá é poder criar dublês menores quando fizer sentido, não uma reescrita obrigatória.
+
+**Status.** Aceita.
+
+---
+
 ## D-012 — Administrador inicial sem senha no repositório
 
 **Contexto.** O enunciado proíbe senha padrão no código.
