@@ -462,6 +462,61 @@ p { margin: 0 0 var(--esp-3); }
 .distintivo--alerta { background: var(--cor-alerta-suave); border-color: var(--cor-alerta); color: var(--cor-alerta); }
 .distintivo--erro { background: var(--cor-erro-suave); border-color: var(--cor-erro); color: var(--cor-erro); }
 
+/* ------------------------------------------------------------------ botão de sincronizar
+
+   Fica na barra do topo, sobre fundo escuro. Precisa LER como botão: enquanto usava a aparência
+   de distintivo, era interpretado como rótulo de estado, e sincronizar à mão — a saída quando
+   algo trava — ficava escondido atrás de um elemento que ninguém pensava em tocar.            */
+
+.sync-botao {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--esp-2);
+    min-height: 44px;
+    padding: var(--esp-1) var(--esp-3);
+    border-radius: var(--raio-md);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--cor-texto-inverso);
+    font: inherit;
+    font-size: var(--texto-sm);
+    cursor: pointer;
+    text-align: left;
+}
+
+.sync-botao:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.22);
+    border-color: var(--cor-texto-inverso);
+}
+
+.sync-botao:active:not(:disabled) { transform: translateY(1px); }
+
+.sync-botao:disabled { opacity: 0.7; cursor: progress; }
+
+.sync-botao__icone { font-size: var(--texto-lg); line-height: 1; }
+
+.sync-botao__icone--girando { animation: sync-girar 1.1s linear infinite; }
+
+@keyframes sync-girar {
+    to { transform: rotate(360deg); }
+}
+
+.sync-botao__textos { display: flex; flex-direction: column; line-height: 1.15; }
+
+.sync-botao__estado { font-weight: 650; }
+
+/* O verbo, menor, é o que transforma um rótulo em convite. */
+.sync-botao__acao {
+    font-size: var(--texto-xs);
+    opacity: 0.9;
+    text-decoration: underline;
+}
+
+/* A cor reforça o estado, nunca o transmite sozinha — o texto ao lado já o diz. */
+.sync-botao--ok { border-color: rgba(255, 255, 255, 0.45); }
+.sync-botao--atencao { background: var(--cor-alerta); border-color: var(--cor-alerta-suave); }
+.sync-botao--pendente { background: var(--cor-primaria-clara); border-color: var(--cor-texto-inverso); }
+
 /* ------------------------------------------------------------------ progresso */
 
 .progresso { display: flex; flex-direction: column; gap: var(--esp-1); }

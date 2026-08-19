@@ -8,6 +8,23 @@
 
 <PageTitle>Entrar</PageTitle>
 
+@if (_carregandoDados)
+{
+    @*
+        Entrou, e agora o aplicativo busca tudo de uma vez. Mostrar isto — em vez de abrir o
+        painel vazio — é o que evita a pergunta "cadê os leitos?" no primeiro uso.
+    *@
+    <div class="app-conteudo" style="max-width:440px;margin:0 auto" data-testid="login-loading">
+        <LoadingState Message="Carregando os dados do plantão…" />
+        <p class="campo__ajuda" style="text-align:center">
+            Setores, leitos, horários e classificações vêm do servidor uma única vez. A partir daí
+            o aplicativo funciona sem rede.
+        </p>
+    </div>
+}
+else
+{
+
 <div class="app-conteudo" style="max-width:440px;margin:0 auto">
     <h1>Checklist de Plantão</h1>
 
@@ -138,10 +155,12 @@
         }
     </div>
 </div>
+}
 
 @code {
     private readonly LoginModel _modelo = new();
     private bool _entrando;
+    private bool _carregandoDados;
     private string? _erro;
 
     /// <summary>Causa técnica, quando o motivo da recusa não basta para resolver.</summary>
@@ -191,6 +210,15 @@
         {
             if (await Session.SignInAsync(_modelo.UserName, _modelo.Password))
             {
+                // Traz TUDO de uma vez, antes de mostrar o painel: setores, leitos, tipos,
+                // horários, marcadores e a sessão do plantão. Sem isto o painel abria vazio e
+                // exigia que a pessoa descobrisse sozinha que precisava tocar no indicador de
+                // sincronização — um passo invisível, no momento em que ela menos conhece o app.
+                _carregandoDados = true;
+                StateHasChanged();
+
+                await SyncStatus.SyncNowAsync();
+
                 Navigation.NavigateTo("/", replace: true);
                 return;
             }

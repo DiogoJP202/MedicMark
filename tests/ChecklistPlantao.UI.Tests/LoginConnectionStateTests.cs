@@ -37,13 +37,35 @@ public sealed class LoginConnectionStateTests : BunitContext
         Assert.DoesNotContain("Sem servidor no momento", cut.Markup, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Alcançar o servidor **não** é o mesmo que estar sincronizado.
+    ///
+    /// O aparelho recém-instalado tem a fila vazia porque nunca fez nada, e a tela dizia
+    /// "Tudo sincronizado" — afirmando o que ninguém mediu, com o painel vazio logo em seguida.
+    /// Relatado em campo.
+    /// </summary>
     [Fact]
-    public void Servidor_respondendo_mostra_conectado()
+    public void Servidor_respondendo_sem_nunca_ter_sincronizado_nao_diz_que_esta_sincronizado()
     {
         RegistrarServicos();
 
         var cut = Render<LoginPage>();
         Sync.Concluir(ConnectivityState.Online);
+
+        cut.WaitForAssertion(() =>
+            Assert.Contains("Ainda não sincronizado", cut.Markup, StringComparison.Ordinal));
+
+        Assert.DoesNotContain("Tudo sincronizado", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Sem servidor no momento", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Servidor_respondendo_e_ja_sincronizado_mostra_conectado()
+    {
+        RegistrarServicos();
+
+        var cut = Render<LoginPage>();
+        Sync.Concluir(ConnectivityState.Online, DateTime.UtcNow.AddMinutes(-2));
 
         cut.WaitForAssertion(() =>
             Assert.Contains("Tudo sincronizado", cut.Markup, StringComparison.Ordinal));
@@ -94,9 +116,9 @@ public sealed class LoginConnectionStateTests : BunitContext
             return _porta.Task;
         }
 
-        public void Concluir(ConnectivityState estado)
+        public void Concluir(ConnectivityState estado, DateTime? ultimaSincronizacao = null)
         {
-            Current = Current with { Connectivity = estado };
+            Current = Current with { Connectivity = estado, LastSyncAtUtc = ultimaSincronizacao };
             Changed?.Invoke(Current);
             _porta.SetResult();
         }

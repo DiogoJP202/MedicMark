@@ -30,10 +30,20 @@ public sealed record SyncStatus(
 
     public bool HasPendingWork => PendingOperations > 0;
 
+    /// <summary>
+    /// Este aparelho já concluiu ao menos uma sincronização.
+    ///
+    /// Fila vazia **não** significa sincronizado: um aparelho recém-instalado tem zero pendências
+    /// justamente porque nunca fez nada. Dizer "Tudo sincronizado" nesse estado é afirmar o que
+    /// não foi medido — a mesma regra que vale para a saúde das notificações.
+    /// </summary>
+    public bool HasSynced => LastSyncAtUtc is not null;
+
     /// <summary>Texto principal da faixa. Sem jargão: o plantão não precisa saber o que é cursor.</summary>
     public string Headline => Connectivity switch
     {
         ConnectivityState.Online or ConnectivityState.LocalNetwork when IsSyncing => "Sincronizando…",
+        ConnectivityState.Online or ConnectivityState.LocalNetwork when !HasSynced => "Ainda não sincronizado",
         ConnectivityState.Online or ConnectivityState.LocalNetwork when !HasPendingWork => "Tudo sincronizado",
         ConnectivityState.Online or ConnectivityState.LocalNetwork => $"{PendingOperations} alteração(ões) sendo enviada(s)",
         ConnectivityState.ServerUnreachable => "Servidor indisponível",
@@ -42,6 +52,8 @@ public sealed record SyncStatus(
 
     public string Detail => Connectivity switch
     {
+        ConnectivityState.Online or ConnectivityState.LocalNetwork when !HasSynced =>
+            "Toque para buscar os dados do servidor.",
         ConnectivityState.Online => "Conectado ao servidor.",
         ConnectivityState.LocalNetwork => "Conectado pela rede local.",
         ConnectivityState.ServerUnreachable when HasPendingWork =>
