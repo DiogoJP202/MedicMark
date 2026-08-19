@@ -16,6 +16,34 @@ Toda marcação segue o mesmo caminho:
 O passo 2 é o que sustenta tudo: não existe momento em que a tela mostre a marcação e a fila não
 tenha o item, nem o contrário. Ver `OutboxWriter`.
 
+```mermaid
+sequenceDiagram
+    autonumber
+    actor P as Plantão
+    participant T as Tela
+    participant L as Banco local
+    participant F as Fila (Outbox)
+    participant S as Servidor
+
+    P->>T: toca na célula
+    T-->>P: X aparece na hora
+    Note over T,F: mesma transação — nunca um sem o outro
+    T->>L: grava a marcação
+    T->>F: enfileira a operação (OperationId + BaseVersion)
+
+    rect rgba(220,235,245,0.5)
+        Note over F,S: quando houver servidor
+        F->>S: push do lote
+        S-->>F: por operação: Applied · Duplicate · Conflict · Rejected
+        F->>L: adota o estado do servidor quando houver conflito
+        F->>S: pull desde o cursor
+        S-->>F: mudanças + novo cursor
+    end
+```
+
+Sem servidor, o ciclo da caixa simplesmente não acontece — e nada no bloco de cima muda. É por isso
+que marcar funciona igual com ou sem rede.
+
 ## Fila de envio (Outbox)
 
 Cada item carrega:

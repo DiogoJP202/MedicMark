@@ -112,6 +112,29 @@ tests/                             5 projetos, 373 testes
 deploy/                            Dockerfile, compose, backup e restore
 ```
 
+### Onde procurar o quê
+
+| Se você quer… | Vá para |
+|---|---|
+| entender **uma regra de negócio** | `ChecklistPlantao.Domain` — turno, permissões, retenção e conflito ficam todos aqui, e nada mais |
+| mudar **o que uma tela mostra** | `ChecklistPlantao.UI/Pages` e `/Components` |
+| mudar **o visual** | `ChecklistPlantao.UI/wwwroot/css/design-system.css`, arquivo único |
+| mexer em **marcar, fila ou sincronização** | `ChecklistPlantao.Client.Core` — `OutboxWriter` e `SyncEngine` |
+| acrescentar **um endpoint** | `ChecklistPlantao.Server/Controllers` + o caso de uso em `Application` |
+| entender **por que algo é assim** | [DECISIONS.md](docs/DECISIONS.md) — toda decisão tem contexto e consequência |
+| mexer em **algo específico de Android ou Windows** | `ChecklistPlantao.Client/Platforms` |
+
+O head MAUI (`ChecklistPlantao.Client`) tem **muito pouco código**, e isso é intencional: só duas
+interfaces são realmente diferentes entre plataformas — `ILocalNotificationScheduler` e
+`INotificationPermissionService`. Todo o resto, inclusive a interface inteira, é compartilhado.
+
+Duas fronteiras que valem conhecer antes de mexer:
+
+- **`Client.Abstractions` define o contrato entre a interface e o núcleo do cliente.** Mudar uma
+  assinatura ali afeta os dois lados de uma vez.
+- **`Domain` não referencia nada.** Se você precisar de EF Core, HttpClient ou MAUI dentro dele, a
+  regra provavelmente está no lugar errado.
+
 ## Documentação
 
 | Documento | Conteúdo |
