@@ -1,4 +1,4 @@
-using ChecklistPlantao.UI.Abstractions;
+using ChecklistPlantao.Client.Abstractions;
 
 namespace ChecklistPlantao.UI.Components.Checklist;
 

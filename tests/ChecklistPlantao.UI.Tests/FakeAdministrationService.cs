@@ -1,7 +1,7 @@
 using ChecklistPlantao.Contracts.Administration;
 using ChecklistPlantao.Contracts.Configuration;
 using ChecklistPlantao.Contracts.Devices;
-using ChecklistPlantao.UI.Abstractions;
+using ChecklistPlantao.Client.Abstractions;
 
 namespace ChecklistPlantao.UI.Tests;
 

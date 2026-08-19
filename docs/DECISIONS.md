@@ -440,6 +440,45 @@ lá é poder criar dublês menores quando fizer sentido, não uma reescrita obri
 
 ---
 
+## D-023 — Contratos do cliente fora da camada de apresentação
+
+**Contexto.** `IAppSession`, `IChecklistStore` e os modelos de visão moravam em
+`src/ChecklistPlantao.UI/Abstractions/`. Como `ChecklistPlantao.Client.Core` os implementa, ele
+precisava **referenciar a biblioteca de componentes Razor** — o núcleo do cliente, que não tem nada
+de visual, carregava a RCL inteira só para enxergar as interfaces.
+
+Não havia ciclo e funcionava. Mas a seta apontava para o lado errado: quem define o contrato não
+deveria ser a camada de apresentação. Um teste do núcleo arrastava componentes visuais junto, e a
+leitura do grafo sugeria uma dependência que não existia de fato.
+
+**Decisão.** Novo projeto `src/ChecklistPlantao.Client.Abstractions` (net10.0), dependendo apenas de
+`Domain` e `Contracts`. As duas classes de abstração mudaram para lá, e o namespace acompanhou:
+`ChecklistPlantao.UI.Abstractions` virou `ChecklistPlantao.Client.Abstractions`.
+
+`UI` e `Client.Core` passam a depender dele. `Client.Core → UI` **deixou de existir**.
+
+**Sobre renomear o namespace.** Manter `UI.Abstractions` dentro de um projeto `Client.Abstractions`
+custaria zero em churn — nenhum dos 30 arquivos precisaria mudar. Foi recusado: o nome passaria a
+mentir sobre onde a coisa mora, e o objetivo desta rodada é justamente que o projeto seja legível
+por quem chega. A substituição foi mecânica e o compilador cobriu o resto.
+
+**Consequências.** O grafo passou a ser:
+
+```
+Client.Abstractions  → Domain, Contracts
+UI                   → Domain, Contracts, Client.Abstractions
+Client.Core          → Domain, Application, Contracts, Client.Abstractions
+Client               → UI, Client.Core
+```
+
+Três lugares na RCL qualificavam o tipo como `Abstractions.SyncStatus` para desambiguar de uma
+propriedade injetada de mesmo nome. Passaram a usar o nome completo, que é mais claro e não depende
+de o namespace ser alcançável por sufixo.
+
+**Status.** Aceita.
+
+---
+
 ## D-012 — Administrador inicial sem senha no repositório
 
 **Contexto.** O enunciado proíbe senha padrão no código.

@@ -4,7 +4,7 @@ using ChecklistPlantao.Contracts.Devices;
 using ChecklistPlantao.Contracts.Operations;
 using ChecklistPlantao.Domain.Access;
 
-namespace ChecklistPlantao.UI.Abstractions;
+namespace ChecklistPlantao.Client.Abstractions;
 
 /// <summary>
 /// Contratos que a interface precisa. São declarados aqui, na camada de apresentação, e

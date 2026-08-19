@@ -1,6 +1,6 @@
 using ChecklistPlantao.Contracts.Configuration;
 using ChecklistPlantao.Domain.Access;
-using ChecklistPlantao.UI.Abstractions;
+using ChecklistPlantao.Client.Abstractions;
 
 namespace ChecklistPlantao.UI.Tests;
 

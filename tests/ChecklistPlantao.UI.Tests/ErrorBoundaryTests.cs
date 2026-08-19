@@ -2,7 +2,7 @@ using AngleSharp.Dom;
 using Bunit;
 using ChecklistPlantao.Contracts.Devices;
 using ChecklistPlantao.Domain.Access;
-using ChecklistPlantao.UI.Abstractions;
+using ChecklistPlantao.Client.Abstractions;
 using ChecklistPlantao.UI.Layout;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;

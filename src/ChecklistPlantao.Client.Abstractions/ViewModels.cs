@@ -1,6 +1,6 @@
 using ChecklistPlantao.Contracts.Configuration;
 
-namespace ChecklistPlantao.UI.Abstractions;
+namespace ChecklistPlantao.Client.Abstractions;
 
 /// <summary>Como o dispositivo enxerga a rede. São três estados distintos, não um só.</summary>
 public enum ConnectivityState

@@ -6,7 +6,7 @@ using ChecklistPlantao.Client.Core.Persistence;
 using ChecklistPlantao.Client.Core.Services;
 using ChecklistPlantao.Client.Core.Sync;
 using ChecklistPlantao.Domain.Sync;
-using ChecklistPlantao.UI.Abstractions;
+using ChecklistPlantao.Client.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

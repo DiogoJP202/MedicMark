@@ -188,7 +188,7 @@ else
     });
 
     // Qualificado porque a propriedade injetada SyncStatus sombreia o tipo de mesmo nome.
-    private void AoMudarSync(Abstractions.SyncStatus status) => _ = InvokeAsync(StateHasChanged);
+    private void AoMudarSync(ChecklistPlantao.Client.Abstractions.SyncStatus status) => _ = InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {

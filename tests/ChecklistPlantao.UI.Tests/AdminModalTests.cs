@@ -1,6 +1,6 @@
 using Bunit;
 using ChecklistPlantao.Contracts.Configuration;
-using ChecklistPlantao.UI.Abstractions;
+using ChecklistPlantao.Client.Abstractions;
 using ChecklistPlantao.UI.Pages.Admin;
 using Microsoft.Extensions.DependencyInjection;
 

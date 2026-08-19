@@ -103,6 +103,8 @@ src/
   ChecklistPlantao.Application     casos de uso do servidor
   ChecklistPlantao.Infrastructure  EF Core, Identity, migrations, log de alterações
   ChecklistPlantao.Server          API, JWT, SignalR, health, manutenção
+  ChecklistPlantao.Client.Abstractions
+                                   contratos entre a interface e o núcleo do cliente
   ChecklistPlantao.UI              RCL: design system, componentes e páginas
   ChecklistPlantao.Client.Core     SQLite local, Outbox, sincronização, auth offline
   ChecklistPlantao.Client          MAUI Blazor Hybrid (Android + Windows)

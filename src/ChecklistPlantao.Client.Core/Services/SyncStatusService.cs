@@ -9,11 +9,11 @@ using ChecklistPlantao.Contracts.Auth;
 using ChecklistPlantao.Contracts.Configuration;
 using ChecklistPlantao.Contracts.Devices;
 using ChecklistPlantao.Domain.Notifications;
-using ChecklistPlantao.UI.Abstractions;
+using ChecklistPlantao.Client.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using UiResult = ChecklistPlantao.UI.Abstractions.Result;
+using UiResult = ChecklistPlantao.Client.Abstractions.Result;
 
 namespace ChecklistPlantao.Client.Core.Services;
 

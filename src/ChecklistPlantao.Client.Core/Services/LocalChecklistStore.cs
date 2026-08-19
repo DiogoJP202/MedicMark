@@ -8,7 +8,7 @@ using ChecklistPlantao.Domain.Operations;
 using ChecklistPlantao.Domain.Scheduling;
 using ChecklistPlantao.Domain.Settings;
 using ChecklistPlantao.Domain.Structure;
-using ChecklistPlantao.UI.Abstractions;
+using ChecklistPlantao.Client.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

@@ -1,5 +1,5 @@
 using Bunit;
-using ChecklistPlantao.UI.Abstractions;
+using ChecklistPlantao.Client.Abstractions;
 using ChecklistPlantao.UI.Components.Status;
 
 namespace ChecklistPlantao.UI.Tests;

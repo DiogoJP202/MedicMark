@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Contratos entre a interface e o núcleo do cliente, e os modelos de visão que trafegam
+    entre os dois.
+
+    Existe porque estes contratos moravam em ChecklistPlantao.UI, o que obrigava
+    ChecklistPlantao.Client.Core — o núcleo, sem nada de visual — a depender da biblioteca de
+    componentes Razor só para implementá-los. Não havia ciclo, mas a seta apontava para o lado
+    errado: quem define o contrato não deveria ser a camada de apresentação.
+
+    Depende apenas de Domain e Contracts. Ver docs/DECISIONS.md (D-023).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>ChecklistPlantao.Client.Abstractions</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ChecklistPlantao.Domain\ChecklistPlantao.Domain.csproj" />
+    <ProjectReference Include="..\ChecklistPlantao.Contracts\ChecklistPlantao.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

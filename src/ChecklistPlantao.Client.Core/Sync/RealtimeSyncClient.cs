@@ -1,6 +1,6 @@
 using ChecklistPlantao.Client.Core.Services;
 using ChecklistPlantao.Contracts.Sync;
-using ChecklistPlantao.UI.Abstractions;
+using ChecklistPlantao.Client.Abstractions;
 using Microsoft.AspNetCore.Http.Connections.Client;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;

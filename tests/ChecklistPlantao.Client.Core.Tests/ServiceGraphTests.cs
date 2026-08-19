@@ -4,7 +4,7 @@ using ChecklistPlantao.Client.Core.Services;
 using ChecklistPlantao.Client.Core.Sync;
 using ChecklistPlantao.Domain.Access;
 using ChecklistPlantao.Domain.Settings;
-using ChecklistPlantao.UI.Abstractions;
+using ChecklistPlantao.Client.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 

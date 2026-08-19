@@ -19,6 +19,9 @@
   <ItemGroup>
     <ProjectReference Include="..\ChecklistPlantao.Contracts\ChecklistPlantao.Contracts.csproj" />
     <ProjectReference Include="..\ChecklistPlantao.Domain\ChecklistPlantao.Domain.csproj" />
+    <!-- Os contratos que a RCL consome vivem fora dela, para o núcleo do cliente poder
+         implementá-los sem depender de componentes visuais. Ver docs/DECISIONS.md (D-023). -->
+    <ProjectReference Include="..\ChecklistPlantao.Client.Abstractions\ChecklistPlantao.Client.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>
