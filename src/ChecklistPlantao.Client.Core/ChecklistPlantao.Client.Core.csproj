@@ -16,6 +16,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Mesmo padrão do servidor: a verificação de esquema local é detalhe interno, e precisa ser
+         exercitada diretamente pelos testes sem virar API pública. -->
+    <InternalsVisibleTo Include="ChecklistPlantao.Client.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\ChecklistPlantao.Domain\ChecklistPlantao.Domain.csproj" />
     <ProjectReference Include="..\ChecklistPlantao.Application\ChecklistPlantao.Application.csproj" />
     <ProjectReference Include="..\ChecklistPlantao.Contracts\ChecklistPlantao.Contracts.csproj" />

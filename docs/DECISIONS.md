@@ -272,10 +272,24 @@ histórico de migrations dentro do aplicativo.
 **Decisão.** O banco local usa `EnsureCreated`. Quando o esquema mudar entre versões do aplicativo,
 o banco é recriado e repovoado pelo bootstrap.
 
+**Como a mudança é detectada.** `EnsureCreated` cria o esquema se o arquivo não existir e **não faz
+nada** se ele já existir — sozinho, deixaria o aparelho já instalado com a tabela velha, falhando em
+uso com erro obscuro. A detecção usa `PRAGMA user_version`, que mora no cabeçalho do arquivo SQLite
+e não numa tabela, evitando o problema circular de guardar a versão dentro do esquema que se quer
+versionar. A constante é `LocalDbContext.LocalSchemaVersion`, **incrementada à mão** a cada mudança
+nas entidades locais; a subida compara e recria quando divergem.
+
 **Consequências.** Aplicativo menor e mais simples. O custo é que uma atualização com mudança de
 esquema descarta o que ainda estiver na fila de envio — por isso a atualização deve ser feita com
 os aparelhos sincronizados, o que está registrado em `docs/DEPLOYMENT.md`. Cadastros e marcações
-já sincronizados voltam do servidor.
+já sincronizados voltam do servidor. Quantas alterações se perderam vai para o log, em nível de
+aviso.
+
+**O que foi considerado e recusado.** Tentar enviar a fila antes de descartar. A subida do cliente é
+deliberadamente síncrona — bloquear nela para esperar rede contraria a própria regra do projeto
+sobre `.Result`/`.Wait()`, e um aplicativo que demora para abrir por causa de um servidor lento é
+pior que a perda registrada. O caminho seguro continua sendo atualizar com os aparelhos
+sincronizados.
 
 **Status.** Aceita.
 

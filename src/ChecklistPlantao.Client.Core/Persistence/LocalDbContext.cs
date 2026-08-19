@@ -18,6 +18,19 @@ namespace ChecklistPlantao.Client.Core.Persistence;
 /// </summary>
 public sealed class LocalDbContext(DbContextOptions<LocalDbContext> options) : DbContext(options)
 {
+    /// <summary>
+    /// Versão do esquema deste banco. **Incremente à mão a cada mudança nas entidades locais.**
+    ///
+    /// O banco do aparelho não usa migrations (D-017): ele é reconstituível a partir do bootstrap,
+    /// e carregar histórico de migrations num arquivo descartável não se paga. O preço é que
+    /// <c>EnsureCreated</c> não faz nada quando o arquivo já existe — um aparelho já instalado
+    /// ficaria com a tabela velha e falharia em execução, com erro obscuro.
+    ///
+    /// Esta constante é o que fecha esse buraco: a subida compara com a versão gravada no arquivo
+    /// e recria o banco quando elas divergem. Ver <c>DependencyInjection.InitializeChecklistClient</c>.
+    /// </summary>
+    public const int LocalSchemaVersion = 1;
+
     public DbSet<Sector> Sectors => Set<Sector>();
 
     public DbSet<Bed> Beds => Set<Bed>();

@@ -1,9 +1,11 @@
+using System.Globalization;
 using ChecklistPlantao.Application.Abstractions;
 using ChecklistPlantao.Client.Core.Auth;
 using ChecklistPlantao.Client.Core.Notifications;
 using ChecklistPlantao.Client.Core.Persistence;
 using ChecklistPlantao.Client.Core.Services;
 using ChecklistPlantao.Client.Core.Sync;
+using ChecklistPlantao.Domain.Sync;
 using ChecklistPlantao.UI.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -123,7 +125,7 @@ public static class DependencyInjection
         // EnsureCreated e não Migrate: o esquema local é recriado a partir do bootstrap quando
         // a versão muda, e um banco que é reconstituível do servidor não justifica carregar
         // histórico de migrations no aparelho. Ver docs/DECISIONS.md (D-017).
-        db.Database.EnsureCreated();
+        EnsureLocalSchema(db, services.GetService<ILogger<LocalDbContext>>());
 
         if (db.DeviceState.FirstOrDefault() is null)
         {
@@ -140,5 +142,116 @@ public static class DependencyInjection
         // Liga o acompanhamento do hub. Só assina o evento de sessão aqui — a conexão em si
         // acontece quando houver usuário autenticado e endereço de servidor.
         services.GetRequiredService<RealtimeSyncClient>().Start();
+    }
+
+    /// <summary>
+    /// Garante que o esquema em disco corresponde ao modelo desta versão do aplicativo.
+    ///
+    /// Três caminhos:
+    /// <list type="bullet">
+    ///   <item>arquivo novo — o esquema é criado e a versão gravada;</item>
+    ///   <item>versão igual — nada a fazer, que é o caso de toda abertura normal;</item>
+    ///   <item>versão diferente — o banco é DESCARTADO e recriado.</item>
+    /// </list>
+    ///
+    /// Descartar custa os itens da fila que ainda não subiram, e isso é registrado no log. É o
+    /// preço aceito em D-017: o banco local é reconstituível a partir do servidor, e um aplicativo
+    /// que não abre é pior que uma fila perdida. A alternativa silenciosa — seguir com o esquema
+    /// velho — é a pior das três, porque falha depois, em uso, com erro que não se explica.
+    /// </summary>
+    internal static void EnsureLocalSchema(LocalDbContext db, ILogger? logger)
+    {
+        var noDisco = ReadSchemaVersion(db);
+
+        if (db.Database.EnsureCreated())
+        {
+            WriteSchemaVersion(db, LocalDbContext.LocalSchemaVersion);
+            return;
+        }
+
+        if (noDisco == LocalDbContext.LocalSchemaVersion)
+        {
+            return;
+        }
+
+        var pendentes = db.Outbox.Count(o => o.Status != OutboxItemStatus.Done);
+
+        logger?.LogWarning(
+            "Esquema local na versão {Antiga}, esperado {Nova}. O banco do aparelho será recriado e "
+            + "a configuração virá do servidor. {Pendentes} alteração(ões) ainda não enviada(s) serão perdidas.",
+            noDisco,
+            LocalDbContext.LocalSchemaVersion,
+            pendentes);
+
+        // Fechar antes de apagar: o SQLite mantém o arquivo travado enquanto houver conexão aberta,
+        // e o EnsureDeleted apaga o arquivo, não as tabelas.
+        db.Database.CloseConnection();
+
+        db.Database.EnsureDeleted();
+        db.Database.EnsureCreated();
+
+        WriteSchemaVersion(db, LocalDbContext.LocalSchemaVersion);
+    }
+
+    /// <summary>
+    /// <c>PRAGMA user_version</c> mora no cabeçalho do arquivo SQLite, e não numa tabela — o que
+    /// evita o problema circular de guardar a versão dentro do esquema que se quer versionar.
+    /// Num arquivo recém-criado ele vale zero.
+    /// </summary>
+    private static int ReadSchemaVersion(LocalDbContext db)
+    {
+        // Devolve a conexão ao estado em que estava: deixá-la aberta travaria o arquivo, e o
+        // caminho de recriação precisa apagá-lo logo em seguida.
+        var jaEstavaAberta = db.Database.GetDbConnection().State == System.Data.ConnectionState.Open;
+
+        if (!jaEstavaAberta)
+        {
+            db.Database.OpenConnection();
+        }
+
+        try
+        {
+            using var comando = db.Database.GetDbConnection().CreateCommand();
+            comando.CommandText = "PRAGMA user_version";
+
+            return Convert.ToInt32(comando.ExecuteScalar(), CultureInfo.InvariantCulture);
+        }
+        finally
+        {
+            if (!jaEstavaAberta)
+            {
+                db.Database.CloseConnection();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gravada pela conexão direta, e não por <c>ExecuteSqlRaw</c>: <c>PRAGMA</c> não aceita
+    /// parâmetro, e montar a instrução por interpolação dispararia o alerta de injeção de SQL —
+    /// corretamente, ainda que aqui o valor seja uma constante do próprio código.
+    /// </summary>
+    private static void WriteSchemaVersion(LocalDbContext db, int versao)
+    {
+        var jaEstavaAberta = db.Database.GetDbConnection().State == System.Data.ConnectionState.Open;
+
+        if (!jaEstavaAberta)
+        {
+            db.Database.OpenConnection();
+        }
+
+        try
+        {
+            using var comando = db.Database.GetDbConnection().CreateCommand();
+            comando.CommandText = "PRAGMA user_version = " + versao.ToString(CultureInfo.InvariantCulture);
+
+            comando.ExecuteNonQuery();
+        }
+        finally
+        {
+            if (!jaEstavaAberta)
+            {
+                db.Database.CloseConnection();
+            }
+        }
     }
 }
