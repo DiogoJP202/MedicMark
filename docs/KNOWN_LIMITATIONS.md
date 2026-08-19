@@ -153,12 +153,41 @@ diferentes.
 
 ---
 
-## 11. Limitações do ambiente de desenvolvimento atual
+## 11. Trocar o aparelho de servidor deixa dados do anterior no banco local
+
+Apontar o mesmo aparelho para **outro servidor** — outra máquina de desenvolvimento, uma
+reinstalação, um banco restaurado — funciona para entrar: a credencial local é substituída pela do
+servidor que autenticou, sem exigir reinstalação do aplicativo.
+
+O que **não** é resolvido é o resto do banco local. Plantão, marcações, classificações e a fila de
+envio continuam lá, referindo-se a entidades que **não existem** no servidor novo. Os efeitos:
+
+- itens da fila apontam para leitos e colunas desconhecidos, e o servidor os recusa;
+- o checklist pode mostrar a configuração antiga até o bootstrap seguinte concluir;
+- contagens de pendência ficam incoerentes enquanto isso.
+
+**Como evitar.** Antes de apontar um aparelho para um servidor diferente, limpe os dados do
+aplicativo: Ajustes → Apps → Checklist de Plantão → Armazenamento → **Limpar dados**. O bootstrap
+traz tudo do servidor certo na primeira sincronização.
+
+**Por que não é tratado automaticamente.** Apagar o banco local ao detectar troca de servidor
+descartaria marcações que ainda não subiram — e não há como saber se elas pertencem ao servidor
+antigo ou se são trabalho legítimo a enviar. Descartar trabalho do plantão sem que ninguém peça é
+pior do que a incoerência temporária. Um tratamento correto exigiria identificar a instalação do
+servidor e conciliar a fila por origem.
+
+Na prática isso é um cenário de desenvolvimento e demonstração: em produção o aparelho aponta para
+um servidor só.
+
+---
+
+## 12. Limitações do ambiente de desenvolvimento atual
 
 Registradas em [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md):
 
-- o **agendamento** de notificações em aparelho real ainda não foi validado. O aparelho existe e o
-  aplicativo roda nele — o que falta é observar um alerta chegando no horário, com o app fechado;
+- o **aviso em tempo real entre dois aparelhos** está implementado e coberto por teste de
+  integração ligando o cliente real ao hub real, mas nunca foi visto acontecer entre dois
+  aparelhos de verdade;
 - o Windows 10 SDK não está instalado, então o empacotamento MSIX não foi exercitado;
 - Docker não foi executado neste ambiente: o `Dockerfile` e o `docker-compose.yml` **não foram
   testados**;

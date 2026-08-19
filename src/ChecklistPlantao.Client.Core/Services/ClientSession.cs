@@ -273,6 +273,30 @@ public sealed class ClientSession : IAppSession
 
         if (credencial is null)
         {
+            // Mesmo nome de usuário, outro identificador: o aparelho já entrou em OUTRO servidor
+            // — outra máquina de desenvolvimento, um servidor reinstalado, um banco restaurado de
+            // backup. Cada servidor gera o seu próprio Id para "admin".
+            //
+            // O nome é único no banco local, então inserir por cima estourava a restrição e a
+            // pessoa ficava trancada para fora, sem outra saída além de reinstalar o aplicativo.
+            // O servidor que acabou de autenticar é a autoridade: a credencial antiga sai.
+            var homonima = await db.Credentials
+                .FirstOrDefaultAsync(c => c.UserName == resposta.User.UserName, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (homonima is not null)
+            {
+                db.Credentials.Remove(homonima);
+
+                // Gravação separada, antes de inserir: o índice único é verificado a cada comando,
+                // e remover e inserir no mesmo lote colidiria do mesmo jeito.
+                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+                logger.LogInformation(
+                    "Credencial local de {UserName} substituída: o servidor passou a usar outro identificador.",
+                    resposta.User.UserName);
+            }
+
             credencial = new LocalCredential(
                 resposta.User.UserId, resposta.User.UserName, resposta.User.DisplayName,
                 salt, verifier, iteracoes, snapshot, clock.UtcNow);

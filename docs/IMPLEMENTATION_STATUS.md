@@ -22,7 +22,7 @@
 |---|---|
 | `dotnet build ChecklistPlantao.sln -c Release` | ✅ 0 erros, **0 avisos** — inclui os dois heads MAUI |
 | `dotnet build ChecklistPlantao.NoMaui.slnf -c Release` | ✅ 0 erros, 0 avisos |
-| `dotnet test ChecklistPlantao.NoMaui.slnf -c Release` | ✅ **358 testes, 0 falhas** |
+| `dotnet test ChecklistPlantao.NoMaui.slnf -c Release` | ✅ **361 testes, 0 falhas** |
 | `dotnet build -f net10.0-android` | ✅ compila |
 | `dotnet build -f net10.0-windows10.0.19041.0` | ✅ compila |
 | `dotnet restore` | ✅ sem avisos de vulnerabilidade |
@@ -33,8 +33,8 @@
 |---|---|---|
 | Domain.Tests | 114 | Turno, permissões, retenção, conflito, agendamento, seeds, **nome único de coluna** |
 | UI.Tests (bUnit) | 98 | Componentes, filtros, faixas, desvio da primeira execução, estado da conexão no login, contenção de falha de tela, **modais de cadastro e hierarquia da administração** |
-| Client.Core.Tests | 62 | Persistência offline, fila, idempotência, conflito, auth offline, recusa do servidor, grafo de dependências real e sessão entre escopos |
-| Server.IntegrationTests | 51 | API de ponta a ponta com servidor e SQLite reais, lote com repetição na mesma célula, cadastro de estrutura, o cliente HTTP real contra o servidor real e **o aviso em tempo real do hub até o cliente** |
+| Client.Core.Tests | 64 | Persistência offline, fila, idempotência, conflito, auth offline, recusa do servidor, grafo de dependências real e sessão entre escopos |
+| Server.IntegrationTests | 52 | API de ponta a ponta com servidor e SQLite reais, lote com repetição na mesma célula, cadastro de estrutura, o cliente HTTP real contra o servidor real e **o aviso em tempo real do hub até o cliente** |
 | Application.Tests | 33 | Casos de uso, sessão, retenção, administração, **criação de coluna e restrição de tipo a setor** |
 
 O `Server.IntegrationTests` passou a referenciar o `Client.Core`. Era o último ponto cego da
@@ -139,6 +139,29 @@ A armadilha que o desenho escondia: `OnConnectedAsync` inscreve a conexão apena
 `RealtimeSyncTests` liga o cliente real ao hub real. O teste da armadilha foi conferido por
 mutação: desativando a chamada a `SubscribeSector`, ele falha.
 
+### Trocar de servidor trancava o aparelho para fora
+
+Relatado em campo: o mesmo celular apontado para o servidor de **outra máquina**, e a entrada
+passou a falhar com
+
+```
+SQLite Error 19: 'UNIQUE constraint failed: CredenciaisLocais.UserName'  [LocalCredential/Added]
+```
+
+Cada servidor gera o seu próprio identificador para `admin`. O aparelho procurava a credencial
+local **por identificador**, não encontrava a do servidor novo, e inseria — colidindo com o índice
+único de nome de usuário. Sem outra saída além de reinstalar o aplicativo.
+
+A contenção funcionou como projetada: em vez de derrubar a tela, a entrada recusou e mostrou a
+causa no detalhe técnico. Foi ela que permitiu diagnosticar em uma mensagem.
+
+**Correção.** Quando não há credencial com aquele identificador, o aplicativo procura pelo **nome
+de usuário**. Se existir uma, o servidor que acabou de autenticar é a autoridade: a antiga sai e a
+nova entra. As credenciais de outros usuários não são tocadas.
+
+Coberto por `LoginStorageFailureTests`, que passou a exercitar a falha de gravação por outro
+caminho — um gatilho no banco — justamente porque a colisão de nome deixou de ser um erro.
+
 ### Defeitos encontrados depois da entrega inicial
 
 Três falhas que os testes originais não pegavam, porque todos registravam os serviços à mão e
@@ -222,7 +245,7 @@ Servidor executado de verdade, com estas verificações feitas:
 | 27 | Não existe histórico de usuário por marcação | Implementado · Validado por teste automatizado (inspeciona o modelo do EF) |
 | 28 | Não existem dados de paciente | Implementado · Verificável por inspeção do modelo |
 | 29 | Build dos projetos compatíveis passa | ✅ **Toda a solução, 0 avisos** |
-| 30 | Testes compatíveis passam | ✅ **358 testes** |
+| 30 | Testes compatíveis passam | ✅ **361 testes** |
 
 ---
 
