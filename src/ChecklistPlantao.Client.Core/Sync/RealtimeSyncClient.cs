@@ -43,6 +43,16 @@ public sealed class RealtimeSyncClient(
     public bool IsConnected => _conexao?.State == HubConnectionState.Connected;
 
     /// <summary>
+    /// Setor em que esta conexão está inscrita no servidor, ou nulo se nenhum.
+    ///
+    /// Conectado NÃO é o mesmo que inscrito: a inscrição é uma chamada ao hub que acontece depois,
+    /// e só vale quando o servidor a processou. Sem distinguir as duas coisas, quem espera
+    /// "conectado" para então provocar um aviso de setor corre uma corrida — foi assim que um
+    /// teste ficou intermitente, falhando só quando a máquina estava mais lenta.
+    /// </summary>
+    public Guid? SubscribedSectorId => _setorInscrito;
+
+    /// <summary>
     /// Costura para os testes ligarem a conexão ao servidor em memória, que não tem socket.
     /// Em produção fica nula e o SignalR usa a pilha HTTP normal.
     ///
