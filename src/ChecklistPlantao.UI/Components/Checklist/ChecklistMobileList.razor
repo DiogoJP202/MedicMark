@@ -17,11 +17,25 @@
             <button type="button"
                     class="leito-botao @(celula.IsCompleted ? "leito-botao--marcado" : "") @(celula.IsOverdue && !celula.IsCompleted ? "leito-botao--atrasado" : "")"
                     aria-pressed="@celula.IsCompleted.ToString().ToLowerInvariant()"
-                    aria-label="@($"Leito {linha.BedCode}: {(celula.IsCompleted ? "realizado" : "não realizado")}")"
+                    aria-label="@RotuloAcessivel(linha.BedCode, celula)"
                     data-testid="@($"bed-{linha.BedId}")"
                     disabled="@(ReadOnly || _bloqueadas.Contains(linha.BedId))"
                     @onclick="() => AlternarAsync(linha.BedId, celula)">
-                <span class="leito-botao__caixa" aria-hidden="true">@(celula.IsCompleted ? "✕" : "")</span>
+                <span class="leito-botao__caixa" aria-hidden="true">
+                    @if (celula.IsCompleted)
+                    {
+                        <span>✕</span>
+                    }
+                    else if (celula.IsOverdue)
+                    {
+                        @*
+                            O atraso precisa de FORMA. A caixa do leito atrasado e a do leito
+                            pendente eram idênticas — 34 por 34, mesma borda, mesmo fundo — e só
+                            o tom da linha as separava.
+                        *@
+                        <Icone Nome="alerta" />
+                    }
+                </span>
                 <span class="leito-botao__codigo">@linha.BedCode</span>
                 @if (linha.MarkerNames.Count > 0)
                 {
@@ -72,6 +86,18 @@
     public int CooldownMilliseconds { get; set; } = 1000;
 
     private IReadOnlyList<ChecklistRow> LinhasVisiveis { get; set; } = [];
+
+    /// <summary>
+    /// O rótulo dizia só "realizado" ou "não realizado" — o atraso não chegava a quem usa leitor
+    /// de tela. A grade do computador já anunciava; o celular, que é onde o plantão trabalha, não.
+    /// </summary>
+    private static string RotuloAcessivel(string bedCode, ChecklistCell celula)
+    {
+        var estado = celula.IsCompleted ? "realizado" : "não realizado";
+        var atraso = celula.IsOverdue && !celula.IsCompleted ? ", atrasado" : string.Empty;
+
+        return $"Leito {bedCode}: {estado}{atraso}";
+    }
 
     private readonly HashSet<Guid> _bloqueadas = [];
 

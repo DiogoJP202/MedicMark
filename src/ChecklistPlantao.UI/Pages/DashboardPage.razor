@@ -26,7 +26,12 @@ else
 
         <PendingTasksBanner Groups="_pendencias" OnOpen="@(() => Navigation.NavigateTo("/pendencias"))" />
 
-        <div class="cartao">
+        @*
+            O cartão do progresso é a informação central desta tela, e era o mais fraco dela:
+            um `.cartao` comum, com borda mais fraca que a dos atalhos ao redor — que, por serem
+            controles, usam a borda de 3:1. O destaque corrige essa inversão.
+        *@
+        <div class="cartao cartao--destaque">
             <h2 class="cartao__titulo">@Session.CurrentSectorName</h2>
             <p class="faixa__texto">Olá, @Session.DisplayName.</p>
             <ChecklistProgress Label="Progresso do plantão" Total="_total" Completed="_concluidas" />
@@ -46,11 +51,11 @@ else
                     <span class="linha">
                         @if (pendentes == 0)
                         {
-                            <span class="distintivo distintivo--sucesso">✓ Tudo feito</span>
+                            <span class="distintivo distintivo--sucesso"><Icone Nome="check" /> Tudo feito</span>
                         }
                         else
                         {
-                            <span class="distintivo distintivo--alerta">@pendentes pendente@(pendentes == 1 ? "" : "s")</span>
+                            <span class="distintivo distintivo--alerta"><Icone Nome="alerta" /> @pendentes pendente@(pendentes == 1 ? "" : "s")</span>
                         }
                         <span class="distintivo">@template.Columns.Count(c => c.IsActive) horário(s)</span>
                     </span>
@@ -58,7 +63,11 @@ else
             }
         </div>
 
-        <div class="grade-cartoes">
+        @*
+            Atalhos utilitários, e não trabalho: pesam menos que os cartões de checklist acima,
+            que são o que a pessoa veio fazer.
+        *@
+        <div class="grade-cartoes grade-cartoes--compacta">
             <button type="button" class="cartao cartao--acionavel" @onclick="@(() => Navigation.NavigateTo("/classificacoes"))">
                 <span class="cartao__titulo">Classificações</span>
                 <span class="faixa__texto">C.I., Sondas, Drenos e outros marcadores do plantão.</span>
@@ -75,11 +84,11 @@ else
                     Notificações:
                     @if (NotificationStatus.Current.IsHealthy)
                     {
-                        <span class="distintivo distintivo--sucesso">✓ em ordem</span>
+                        <span class="distintivo distintivo--sucesso"><Icone Nome="check" /> em ordem</span>
                     }
                     else
                     {
-                        <span class="distintivo distintivo--erro">▲ atenção</span>
+                        <span class="distintivo distintivo--erro"><Icone Nome="alerta" /> atenção</span>
                     }
                 </span>
             </button>

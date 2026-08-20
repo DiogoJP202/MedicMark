@@ -17,6 +17,15 @@
     {
         <span aria-hidden="true">✕</span>
     }
+    else if (Cell.IsOverdue)
+    {
+        @*
+            Atraso tem FORMA própria, e não só o fundo âmbar. Uma célula atrasada e uma célula
+            pendente tinham exatamente o mesmo desenho — nada — e se distinguiam apenas pelo tom.
+            Numa tela lida de relance, no corredor, isso é pouco.
+        *@
+        <Icone Nome="alerta" Class="celula__atraso" />
+    }
     else
     {
         <span aria-hidden="true" class="visualmente-oculto">vazio</span>
