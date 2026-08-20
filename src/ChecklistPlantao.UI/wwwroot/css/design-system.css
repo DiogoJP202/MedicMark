@@ -14,8 +14,18 @@
     --cor-fundo: #f4f6f8;
     --cor-superficie: #ffffff;
     --cor-superficie-alt: #eef2f5;
+    /* Agrupa conteúdo. Não delimita controle, então 3:1 não se aplica. */
     --cor-borda: #cfd8de;
-    --cor-borda-forte: #9aa8b2;
+
+    /*
+        Borda de CONTROLE — campo, botão de contorno, caixa de marcação, cartão clicável.
+
+        Era #9aa8b2, que dá 2,44:1 contra a superfície. O WCAG pede 3:1 para o contorno que
+        identifica um componente, e a borda era a única coisa delimitando esses controles.
+        Este valor é o mais claro que passa nos DOIS fundos: 3,37:1 na superfície, 3,11:1 na
+        página. Medido, não estimado.
+    */
+    --cor-borda-forte: #76858f;
 
     --cor-texto: #16232c;
     --cor-texto-suave: #4b5b66;
@@ -32,6 +42,46 @@
     --cor-erro: #8f1d1d;
     --cor-erro-suave: #fbe3e3;
     --cor-neutro-suave: #e6ebef;
+
+    /*
+        Três papéis que hoje cabem numa cor só, e no escuro deixam de caber.
+
+        A primária clara faz tudo ao mesmo tempo: pinta a barra do topo, preenche o botão que
+        carrega texto branco, e escreve texto sobre fundo claro. No escuro isso é impossível —
+        para o branco ler sobre um preenchimento, ele precisa ser escuro; para o traço ler sobre
+        a página, ele precisa ser claro. Uma cor não pode ser as duas. Daí a separação:
+
+          --cor-chrome         superfície GRANDE (barra do topo, ilha). Fica escura nos dois
+                               temas: uma faixa azul-média acesa às 3h é exatamente o que este
+                               tema existe para evitar.
+          --cor-primaria       preenchimento INTERATIVO pequeno (botão, caixa marcada, aba
+                               ativa). Carrega texto branco e precisa aparecer sobre o cartão.
+          --cor-primaria-texto TRAÇO: texto, barra de progresso, roda de carregamento, borda de
+                               destaque. Precisa aparecer sobre o fundo, não carregar texto.
+
+        No tema claro os três valem #0f3d5c — nada muda de aparência. A separação só cobra
+        sentido no escuro.
+    */
+    --cor-chrome: #0f3d5c;
+    --cor-primaria-texto: #0f3d5c;
+
+    /* O anel de foco. Separado porque no escuro ele precisa ser claro, e a primária não é. */
+    --cor-foco: #17587f;
+
+    /*
+        Estados: -suave é FUNDO, o nome puro é TRAÇO sobre esse fundo, e -forte é
+        PREENCHIMENTO sólido que carrega texto branco. No claro, traço e preenchimento
+        coincidem; no escuro, não.
+    */
+    --cor-alerta-forte: #8a5300;
+    --cor-erro-forte: #8f1d1d;
+
+    /*
+        O toast tinha o fundo da COR DO TEXTO. Invertendo o tema, ele viraria um retângulo
+        claro com texto branco por cima — ilegível. Tem cor própria por isso.
+    */
+    --cor-toast-fundo: #16232c;
+    --cor-toast-texto: #ffffff;
 
     /* Espaçamento — escala de 4px */
     --esp-1: 0.25rem;
@@ -55,8 +105,37 @@
     --raio-sm: 4px;
     --raio-md: 8px;
     --raio-lg: 14px;
-    --sombra-1: 0 1px 2px rgba(22, 35, 44, 0.10);
-    --sombra-2: 0 4px 12px rgba(22, 35, 44, 0.14);
+    /* A ilha expandida. Estava fixo no código, fora da escala. */
+    --raio-ilha: 26px;
+
+    /*
+        Elevação nomeada por INTENÇÃO, e não por número.
+
+        "--sombra-2" não dizia onde usar, e o resultado foi a ilha e o botão de sincronizar
+        nascerem com sombras próprias, fora da escala — duas linguagens visuais no mesmo produto.
+        Com o nome dizendo a função, a escolha na hora de escrever um componente novo é óbvia.
+    */
+    --elev-repouso: 0 1px 2px rgb(22 35 44 / 10%);
+    --elev-flutuante: 0 6px 18px rgb(22 35 44 / 28%);
+    --elev-sobreposto: 0 18px 44px rgb(22 35 44 / 42%);
+
+    /*
+        Véus e realces.
+
+        Cobrir a tela e clarear um botão sobre fundo escuro eram valores soltos espalhados. Como
+        token, o tema noturno os inverte num lugar só — do contrário seria caça a valor fixo.
+    */
+    --veu-leve: rgb(22 35 44 / 28%);
+    --veu-medio: rgb(22 35 44 / 55%);
+    --realce-sutil: rgb(255 255 255 / 14%);
+    --realce-medio: rgb(255 255 255 / 22%);
+    --contorno-claro: rgb(255 255 255 / 55%);
+
+    /*
+        Realce de toque em botão sem preenchimento. No claro, escurece; no escuro, clareia —
+        um véu preto sobre uma superfície escura não existe.
+    */
+    --veu-toque: rgb(0 0 0 / 8%);
 
     /* Alvos de toque: 48px é o mínimo confortável para uso com uma mão. */
     --toque-min: 48px;
@@ -67,11 +146,151 @@
     --z-modal: 100;
 
     /*
+        Acima do modal: a sobreposição de carregamento também cobre o diálogo de cadastro, que
+        faz requisição ao salvar. Se ficasse abaixo, o botão "Salvar" continuaria clicável
+        durante a gravação — e clicar duas vezes é justamente o que ela impede.
+    */
+    --z-carregando: 120;
+
+    /*
         Altura da barra do topo. A navegação e as faixas fixas se ancoram nela, então o valor
         precisa existir num lugar só — e acompanhar a área segura do sistema, que no Android é
         onde fica a barra de status.
     */
     --altura-topo: calc(3.25rem + env(safe-area-inset-top, 0px));
+
+    /* Diz ao motor qual é o tema: campos, barras de rolagem e menus nativos seguem daqui. */
+    color-scheme: light;
+}
+
+/* ------------------------------------------------------------------ tema noturno
+
+   O plantão vai das 19h às 7h. A tela padrão é #f4f6f8 — branca. Às 3h, numa enfermaria de luz
+   baixa, isso ofusca e desfaz a visão adaptada ao escuro de quem está trabalhando. É o único
+   item deste tema que nasce do domínio, e não de preferência.
+
+   São DOIS seletores com o mesmo corpo, de propósito:
+
+     - o @media atende quem não escolheu nada e deixou o aparelho decidir;
+     - o [data-tema="escuro"] atende quem escolheu à mão, em Dispositivo.
+
+   O :not([data-tema="claro"]) é o que faz a escolha explícita por "claro" vencer o aparelho.
+
+   A duplicação incomoda, e a alternativa incomodaria mais: em CSS puro não há como aplicar um
+   mesmo bloco a dois seletores em contextos diferentes sem repetir, e resolver isso em
+   JavaScript tornaria o tema refém de o script ter rodado. Há teste comparando os dois blocos
+   declaração por declaração — se um mudar sem o outro, o build reprova.                       */
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-tema="claro"]) {
+        color-scheme: dark;
+
+        /*
+            Não é inverter. Preto puro com branco puro cansa a vista e faz o texto "vibrar"; o alvo
+            é uma página quase preta e um texto quase branco, com a mesma folga de contraste que o
+            tema claro entrega. Todos os pares foram MEDIDOS — o teste ContrasteTests reprova o build
+            se algum cair abaixo do mínimo.
+        */
+        --cor-fundo: #10161b;
+        --cor-superficie: #19222a;
+        --cor-superficie-alt: #222d37;
+        --cor-borda: #2f3b46;
+        --cor-borda-forte: #7d8f9c;
+
+        --cor-texto: #dde6ed;
+        --cor-texto-suave: #a7b6c1;
+        /* Continua branco: só aparece sobre preenchimento escuro, nos dois temas. */
+        --cor-texto-inverso: #ffffff;
+
+        --cor-chrome: #152430;
+        --cor-primaria: #35719b;
+        /* O passo do hover aqui é para BAIXO: acima disto o branco em cima dele cai de 4,5:1. */
+        --cor-primaria-clara: #2b6288;
+        --cor-primaria-suave: #16303f;
+        --cor-primaria-texto: #7cc2ea;
+        --cor-foco: #5cb0e8;
+
+        /*
+            Os fundos tingidos são os que mais mudam: #dff2e6 é um verde claro que, no escuro,
+            vira um borrão iluminado. Cada estado ganha um fundo profundo e um traço claro.
+        */
+        --cor-sucesso: #6fd39b;
+        --cor-sucesso-suave: #13301f;
+        --cor-alerta: #e5b263;
+        --cor-alerta-suave: #33260f;
+        --cor-alerta-forte: #9a682d;
+        --cor-erro: #f08c8c;
+        --cor-erro-suave: #3a1a1a;
+        --cor-erro-forte: #c04a4a;
+        --cor-neutro-suave: #26313b;
+
+        /* Mais claro que a página, e não mais escuro: aqui o toast sobe, no claro ele desce. */
+        --cor-toast-fundo: #2b3743;
+        --cor-toast-texto: #eaf1f6;
+
+        /* Sombra escura sobre fundo escuro não separa nada. No escuro ela é quase preta. */
+        --elev-repouso: 0 1px 2px rgb(0 0 0 / 45%);
+        --elev-flutuante: 0 6px 18px rgb(0 0 0 / 55%);
+        --elev-sobreposto: 0 18px 44px rgb(0 0 0 / 70%);
+        --veu-leve: rgb(0 0 0 / 55%);
+        --veu-medio: rgb(0 0 0 / 72%);
+        --veu-toque: rgb(255 255 255 / 10%);
+    }
+}
+
+:root[data-tema="escuro"] {
+    color-scheme: dark;
+
+    /*
+        Não é inverter. Preto puro com branco puro cansa a vista e faz o texto "vibrar"; o alvo
+        é uma página quase preta e um texto quase branco, com a mesma folga de contraste que o
+        tema claro entrega. Todos os pares foram MEDIDOS — o teste ContrasteTests reprova o build
+        se algum cair abaixo do mínimo.
+    */
+    --cor-fundo: #10161b;
+    --cor-superficie: #19222a;
+    --cor-superficie-alt: #222d37;
+    --cor-borda: #2f3b46;
+    --cor-borda-forte: #7d8f9c;
+
+    --cor-texto: #dde6ed;
+    --cor-texto-suave: #a7b6c1;
+    /* Continua branco: só aparece sobre preenchimento escuro, nos dois temas. */
+    --cor-texto-inverso: #ffffff;
+
+    --cor-chrome: #152430;
+    --cor-primaria: #35719b;
+    /* O passo do hover aqui é para BAIXO: acima disto o branco em cima dele cai de 4,5:1. */
+    --cor-primaria-clara: #2b6288;
+    --cor-primaria-suave: #16303f;
+    --cor-primaria-texto: #7cc2ea;
+    --cor-foco: #5cb0e8;
+
+    /*
+        Os fundos tingidos são os que mais mudam: #dff2e6 é um verde claro que, no escuro,
+        vira um borrão iluminado. Cada estado ganha um fundo profundo e um traço claro.
+    */
+    --cor-sucesso: #6fd39b;
+    --cor-sucesso-suave: #13301f;
+    --cor-alerta: #e5b263;
+    --cor-alerta-suave: #33260f;
+    --cor-alerta-forte: #9a682d;
+    --cor-erro: #f08c8c;
+    --cor-erro-suave: #3a1a1a;
+    --cor-erro-forte: #c04a4a;
+    --cor-neutro-suave: #26313b;
+
+    /* Mais claro que a página, e não mais escuro: aqui o toast sobe, no claro ele desce. */
+    --cor-toast-fundo: #2b3743;
+    --cor-toast-texto: #eaf1f6;
+
+    /* Sombra escura sobre fundo escuro não separa nada. No escuro ela é quase preta. */
+    --elev-repouso: 0 1px 2px rgb(0 0 0 / 45%);
+    --elev-flutuante: 0 6px 18px rgb(0 0 0 / 55%);
+    --elev-sobreposto: 0 18px 44px rgb(0 0 0 / 70%);
+    --veu-leve: rgb(0 0 0 / 55%);
+    --veu-medio: rgb(0 0 0 / 72%);
+    --veu-toque: rgb(255 255 255 / 10%);
 }
 
 /* ------------------------------------------------------------------ base */
@@ -113,8 +332,22 @@ p { margin: 0 0 var(--esp-3); }
 
 /* Foco sempre visível — a navegação por teclado no Windows depende disso. */
 :focus-visible {
-    outline: 3px solid var(--cor-primaria-clara);
+    outline: 3px solid var(--cor-foco);
     outline-offset: 2px;
+}
+
+/*
+    Sobre a barra do topo e a ilha, o anel de foco vira branco.
+
+    O anel padrão é azul-escuro, e a barra também: 1,49:1 um contra o outro. Quem navega por
+    teclado no Windows — que é como o computador da sala é usado — perdia o foco de vista no
+    botão de sincronizar e no gatilho da ilha. Os links da ilha já resolviam isso por conta
+    própria; agora a regra vale para tudo que pousa sobre o chrome. Achado pelo teste de
+    contraste.
+*/
+.app-topo :focus-visible,
+.ilha :focus-visible {
+    outline-color: var(--cor-texto-inverso);
 }
 
 .visualmente-oculto {
@@ -141,7 +374,7 @@ p { margin: 0 0 var(--esp-3); }
     position: sticky;
     top: 0;
     z-index: var(--z-banner);
-    background: var(--cor-primaria);
+    background: var(--cor-chrome);
     color: var(--cor-texto-inverso);
     padding: var(--esp-2) var(--esp-4);
     display: flex;
@@ -154,17 +387,22 @@ p { margin: 0 0 var(--esp-3); }
     font-size: var(--texto-md);
     font-weight: 650;
     margin: 0;
-    flex: 1 1 auto;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    /*
+        Sem `overflow: hidden` aqui: o corte agora é do texto lá dentro. No título ele aparava o
+        anel de foco do botão de setor, que passa 2px para fora da caixa.
+    */
 }
 
 .app-conteudo {
     flex: 1 1 auto;
     padding: var(--esp-4);
-    padding-bottom: var(--esp-7);
+    /*
+        O rodapé reserva a ilha. Era um espaçador no fluxo, dentro do próprio componente; com a
+        ilha embaixo isso somaria altura DEPOIS do conteúdo já esticado, e uma tela vazia ganharia
+        70px de rolagem sem ter nada para rolar.
+    */
+    padding-bottom: calc(var(--ilha-reserva) + var(--esp-4));
 }
 
 .app-rodape-acoes {
@@ -193,6 +431,136 @@ p { margin: 0 0 var(--esp-3); }
 .linha--fim { justify-content: flex-end; }
 .linha--entre { justify-content: space-between; }
 
+
+/* ------------------------------------------------------------------ menu de setor
+
+   O setor no canto superior esquerdo. Era rótulo; virou controle, sem deixar de ser o <h1>.
+
+   O painel é posicionado em relação a este bloco, e não à barra: a barra tem altura variável
+   quando o nome do setor quebra em duas linhas, e o painel ficaria descolado.                  */
+
+.setor-menu {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+    /* Alinha o TEXTO com a margem da barra, e não a caixa do botão que o envolve. */
+    margin-left: calc(-1 * var(--esp-2));
+}
+
+.setor-gatilho {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--esp-2);
+    max-width: 100%;
+    min-height: var(--toque-min);
+    padding: var(--esp-1) var(--esp-2);
+    border: 0;
+    border-radius: var(--raio-md);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: inherit;
+    cursor: pointer;
+}
+
+.setor-gatilho:hover { background: var(--realce-sutil); }
+
+/* Também usado sem botão, quando não há permissão para trocar. */
+.setor-menu__texto,
+.setor-gatilho__nome {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.setor-gatilho__seta {
+    flex: 0 0 auto;
+    opacity: 0.85;
+    transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.setor-gatilho__seta > svg { width: 18px; height: 18px; }
+
+.setor-gatilho[aria-expanded="true"] .setor-gatilho__seta { transform: rotate(180deg); }
+
+.setor-menu__fundo {
+    position: fixed;
+    inset: 0;
+    background: var(--veu-leve);
+}
+
+.setor-menu__painel {
+    position: absolute;
+    top: calc(100% + var(--esp-2));
+    left: 0;
+    z-index: 1;
+    min-width: min(84vw, 300px);
+    max-width: min(92vw, 380px);
+    padding: var(--esp-2);
+    border-radius: var(--raio-md);
+    /* Fundo de SUPERFÍCIE, e não do chrome: o painel pertence ao conteúdo, não à barra. */
+    background: var(--cor-superficie);
+    color: var(--cor-texto);
+    border: 1px solid var(--cor-borda-forte);
+    box-shadow: var(--elev-sobreposto);
+}
+
+.setor-menu__aviso {
+    margin: 0;
+    padding: var(--esp-2);
+    font-size: var(--texto-sm);
+    color: var(--cor-texto-suave);
+}
+
+.setor-menu__lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.setor-menu__item {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-2);
+    width: 100%;
+    min-height: var(--toque-min);
+    padding: var(--esp-2) var(--esp-3);
+    border: 0;
+    border-radius: var(--raio-sm);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: var(--texto-sm);
+    text-align: left;
+    cursor: pointer;
+}
+
+.setor-menu__item:hover { background: var(--cor-superficie-alt); }
+
+/* O atual: fundo, peso e a marca de conferido — nunca só a cor. */
+.setor-menu__item--atual {
+    background: var(--cor-superficie-alt);
+    font-weight: 700;
+}
+
+.setor-menu__nome {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.setor-menu__marca {
+    flex: 0 0 auto;
+    color: var(--cor-primaria-texto);
+}
+
+.setor-menu__marca > svg { width: 18px; height: 18px; }
+
 /* ------------------------------------------------------------------ cartões */
 
 .cartao {
@@ -200,7 +568,7 @@ p { margin: 0 0 var(--esp-3); }
     border: 1px solid var(--cor-borda);
     border-radius: var(--raio-md);
     padding: var(--esp-4);
-    box-shadow: var(--sombra-1);
+    box-shadow: var(--elev-repouso);
 }
 
 .cartao__titulo {
@@ -209,6 +577,10 @@ p { margin: 0 0 var(--esp-3); }
     margin: 0 0 var(--esp-2);
 }
 
+/*
+    Cartão clicável é CONTROLE, e não um agrupamento de conteúdo. A borda é o que o identifica
+    como algo tocável, então segue a regra dos 3:1 — o cartão comum, que só agrupa, não precisa.
+*/
 .cartao--acionavel {
     display: block;
     width: 100%;
@@ -217,15 +589,58 @@ p { margin: 0 0 var(--esp-3); }
     font: inherit;
     color: inherit;
     min-height: var(--toque-grande);
+    border-color: var(--cor-borda-forte);
 }
 
-.cartao--acionavel:hover { border-color: var(--cor-primaria-clara); }
+.cartao--acionavel:hover { border-color: var(--cor-primaria-texto); }
 .cartao--acionavel:active { background: var(--cor-superficie-alt); }
 
 .grade-cartoes {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: var(--esp-4);
+}
+
+
+/*
+    Cartão de destaque — o progresso do plantão, no Painel.
+
+    Antes ele era um `.cartao` igual aos outros, e com a borda MAIS FRACA da tela: os atalhos são
+    controles e por isso usam --cor-borda-forte, enquanto ele, que só agrupa, usava --cor-borda.
+    A informação central da tela tinha a moldura mais fraca dela. A hierarquia estava invertida.
+
+    O destaque é uma faixa de acento e um número maior — e não sombra ou fundo colorido, que
+    competiriam com as faixas de estado logo acima.
+*/
+.cartao--destaque {
+    border-left: 4px solid var(--cor-primaria-texto);
+}
+
+.cartao--destaque .cartao__titulo { font-size: var(--texto-xl); }
+
+.cartao--destaque .progresso__rotulo {
+    font-size: var(--texto-md);
+    font-weight: 650;
+}
+
+/*
+    Atalhos utilitários: continuam com a borda de controle — são tocáveis, e a regra dos 3:1 não
+    se negocia — mas com menos peso tipográfico que os cartões de checklist, que são o trabalho.
+*/
+.grade-cartoes--compacta {
+    /*
+        Só o espaçamento e a tipografia mudam. Estreitar a coluna foi a primeira tentativa, e
+        deu o contrário do pretendido: com 210px a descrição quebrava em mais linhas e o cartão
+        utilitário ficava MAIS ALTO que o de trabalho — 101px contra 88px. Medido.
+    */
+    gap: var(--esp-3);
+}
+
+.grade-cartoes--compacta .cartao { padding: var(--esp-3); }
+
+.grade-cartoes--compacta .cartao__titulo {
+    font-size: var(--texto-md);
+    margin-bottom: var(--esp-1);
 }
 
 /* ------------------------------------------------------------------ botões */
@@ -265,14 +680,14 @@ p { margin: 0 0 var(--esp-3); }
 }
 
 .botao--perigo {
-    background: var(--cor-erro);
+    background: var(--cor-erro-forte);
     color: var(--cor-texto-inverso);
 }
 
 .botao--texto {
     background: transparent;
     border-color: transparent;
-    color: var(--cor-primaria);
+    color: var(--cor-primaria-texto);
     text-decoration: underline;
 }
 
@@ -328,6 +743,278 @@ p { margin: 0 0 var(--esp-3); }
     gap: var(--esp-3);
 }
 
+/* ------------------------------------------------------------------ ícones
+
+   Tamanho vem do contexto, e não do ícone: ele preenche o espaço que o elemento ao redor der.
+   Assim a faixa, o botão e a ilha usam o mesmo desenho em escalas diferentes sem variantes.    */
+
+.icone {
+    display: inline-flex;
+    flex: 0 0 auto;
+    line-height: 0;
+}
+
+.icone > svg {
+    width: 1.25em;
+    height: 1.25em;
+}
+
+/* ------------------------------------------------------------------ caixa de marcação
+
+   A caixa desenhada tem 24px; a ÁREA QUE RESPONDE ao toque tem 48px de altura. Desenhar pequeno
+   e deixar o alvo do mesmo tamanho é o erro clássico em celular — e aqui a tela é usada com uma
+   mão, de madrugada.                                                                           */
+
+.caixa {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--esp-3);
+    min-height: var(--toque-min);
+    padding: var(--esp-1) 0;
+    cursor: pointer;
+    /* Sem isto, um toque um pouco demorado seleciona o rótulo em vez de marcar. */
+    user-select: none;
+}
+
+/*
+    A caixa nativa continua no DOM e continua sendo quem o leitor de tela anuncia e o teclado
+    opera. Ela só não é vista — `display: none` a tiraria da ordem de tabulação.
+*/
+.caixa__entrada {
+    position: absolute;
+    opacity: 0;
+    width: 24px;
+    height: 24px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.caixa__marca {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--cor-borda-forte);
+    border-radius: var(--raio-sm);
+    background: var(--cor-superficie);
+    color: var(--cor-texto-inverso);
+}
+
+.caixa__marca > svg {
+    width: 18px;
+    height: 18px;
+    /* Escondido enquanto desmarcada: o estado é o sinal, não só o fundo. */
+    opacity: 0;
+}
+
+.caixa__entrada:checked + .caixa__marca {
+    background: var(--cor-primaria);
+    border-color: var(--cor-primaria);
+}
+
+.caixa__entrada:checked + .caixa__marca > svg { opacity: 1; }
+
+/* O foco da caixa nativa some ao estilizar; redesenhado aqui para não perder o teclado. */
+.caixa__entrada:focus-visible + .caixa__marca {
+    outline: 3px solid var(--cor-foco);
+    outline-offset: 2px;
+}
+
+.caixa__rotulo {
+    font-size: var(--texto-sm);
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+}
+
+.caixa--desabilitada { cursor: not-allowed; opacity: 0.55; }
+
+.caixa--desabilitada .caixa__entrada { cursor: not-allowed; }
+
+
+/* ------------------------------------------------------------------ escolha entre poucas opções
+
+   Três cartões lado a lado, um rádio nativo escondido dentro de cada. Mesma ideia da caixa de
+   marcação: quem opera é o controle nativo, quem aparece é o rótulo — e o rótulo INTEIRO é o
+   alvo de toque.                                                                               */
+
+.opcoes {
+    border: 0;
+    margin: 0;
+    /* fieldset tem largura mínima intrínseca; sem isto ele estoura o cartão em telas estreitas. */
+    min-width: 0;
+    padding: 0;
+}
+
+.opcoes__titulo {
+    padding: 0;
+    font-size: var(--texto-md);
+    font-weight: 650;
+}
+
+.opcoes__ajuda {
+    margin: var(--esp-1) 0 var(--esp-3);
+    font-size: var(--texto-sm);
+    color: var(--cor-texto-suave);
+}
+
+.opcoes__lista {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--esp-2);
+}
+
+.opcao {
+    flex: 1 1 7rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--esp-1);
+    min-height: var(--toque-grande);
+    padding: var(--esp-3) var(--esp-2);
+    border: 2px solid var(--cor-borda-forte);
+    border-radius: var(--raio-md);
+    background: var(--cor-superficie);
+    color: var(--cor-texto);
+    font-size: var(--texto-sm);
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.opcao__entrada {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    cursor: pointer;
+}
+
+/* O foco vive no rótulo porque o rádio está invisível — sem isto o teclado se perde aqui. */
+.opcao:focus-within {
+    outline: 3px solid var(--cor-foco);
+    outline-offset: 2px;
+}
+
+.opcao__icone { font-size: var(--texto-xl); }
+
+/* A escolhida: fundo, peso e a marca de conferido — nunca só a cor. */
+.opcao--ativa {
+    background: var(--cor-primaria);
+    border-color: var(--cor-primaria);
+    color: var(--cor-texto-inverso);
+    font-weight: 700;
+}
+
+.opcao__marca { font-size: var(--texto-sm); }
+
+/* ------------------------------------------------------------------ interruptor
+
+   Duas posições, agindo na hora — diferente da caixa de marcação, que espera um "salvar".
+   O sinal do estado é a POSIÇÃO do botão, e não a cor do trilho.                               */
+
+.interruptor {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--esp-3);
+    min-height: var(--toque-min);
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Nativo e presente no DOM, só invisível: `display: none` o tiraria da tabulação. */
+.interruptor__entrada {
+    position: absolute;
+    opacity: 0;
+    width: 44px;
+    height: 26px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.interruptor__trilho {
+    flex: 0 0 auto;
+    position: relative;
+    width: 44px;
+    height: 26px;
+    border-radius: 999px;
+    border: 2px solid var(--cor-borda-forte);
+    background: var(--cor-neutro-suave);
+    transition: background 160ms ease, border-color 160ms ease;
+}
+
+.interruptor__botao {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--cor-borda-forte);
+    transition:
+        transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+        background 160ms ease;
+}
+
+.interruptor__entrada:checked + .interruptor__trilho {
+    background: var(--cor-primaria);
+    border-color: var(--cor-primaria);
+}
+
+.interruptor__entrada:checked + .interruptor__trilho .interruptor__botao {
+    background: var(--cor-texto-inverso);
+    /* 20px = largura interna (40) menos o botão (18) menos a folga inicial (2). */
+    transform: translateX(20px);
+}
+
+/* O foco do controle nativo some ao escondê-lo; redesenhado no trilho. */
+.interruptor__entrada:focus-visible + .interruptor__trilho {
+    outline: 3px solid var(--cor-foco);
+    outline-offset: 2px;
+}
+
+.interruptor__rotulo {
+    font-size: var(--texto-sm);
+    font-weight: 600;
+}
+
+.interruptor--desabilitado { cursor: not-allowed; opacity: 0.55; }
+
+.interruptor--desabilitado .interruptor__entrada { cursor: not-allowed; }
+
+/*
+    Sobre o chrome escuro da ilha o interruptor inverte: desligado é um trilho vazado com botão
+    claro; ligado é um trilho cheio com botão escuro. A primária, que serve na superfície clara,
+    aqui ficaria azul-escuro sobre azul-escuro.
+*/
+.ilha .interruptor__trilho {
+    border-color: var(--contorno-claro);
+    background: var(--realce-sutil);
+}
+
+.ilha .interruptor__botao { background: var(--cor-texto-inverso); }
+
+.ilha .interruptor__entrada:checked + .interruptor__trilho {
+    background: var(--cor-texto-inverso);
+    border-color: var(--cor-texto-inverso);
+}
+
+.ilha .interruptor__entrada:checked + .interruptor__trilho .interruptor__botao {
+    background: var(--cor-chrome);
+}
+
+/*
+    O anel de foco desenhado no trilho não é alcançado pela regra geral do chrome, que muda a cor
+    do elemento FOCADO — e aqui o focado é a entrada invisível.
+*/
+.ilha .interruptor__entrada:focus-visible + .interruptor__trilho {
+    outline-color: var(--cor-texto-inverso);
+}
+
 /* ------------------------------------------------------------------ faixas e distintivos */
 
 .faixa {
@@ -381,7 +1068,7 @@ p { margin: 0 0 var(--esp-3); }
     white-space: pre-wrap;
 }
 
-.faixa--info { background: var(--cor-primaria-suave); border-color: var(--cor-primaria-clara); }
+.faixa--info { background: var(--cor-primaria-suave); border-color: var(--cor-primaria-texto); }
 .faixa--sucesso { background: var(--cor-sucesso-suave); border-color: var(--cor-sucesso); }
 .faixa--alerta { background: var(--cor-alerta-suave); border-color: var(--cor-alerta); }
 .faixa--erro { background: var(--cor-erro-suave); border-color: var(--cor-erro); }
@@ -437,7 +1124,7 @@ p { margin: 0 0 var(--esp-3); }
 }
 
 .faixa__fechar:hover,
-.modal__fechar:hover { background: rgb(0 0 0 / 8%); }
+.modal__fechar:hover { background: var(--veu-toque); }
 
 .faixa__fechar:focus-visible,
 .modal__fechar:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
@@ -462,6 +1149,61 @@ p { margin: 0 0 var(--esp-3); }
 .distintivo--alerta { background: var(--cor-alerta-suave); border-color: var(--cor-alerta); color: var(--cor-alerta); }
 .distintivo--erro { background: var(--cor-erro-suave); border-color: var(--cor-erro); color: var(--cor-erro); }
 
+/* ------------------------------------------------------------------ botão de sincronizar
+
+   Fica na barra do topo, sobre fundo escuro. Precisa LER como botão: enquanto usava a aparência
+   de distintivo, era interpretado como rótulo de estado, e sincronizar à mão — a saída quando
+   algo trava — ficava escondido atrás de um elemento que ninguém pensava em tocar.            */
+
+.sync-botao {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--esp-2);
+    min-height: 44px;
+    padding: var(--esp-1) var(--esp-3);
+    border-radius: var(--raio-md);
+    border: 1px solid var(--contorno-claro);
+    background: var(--realce-sutil);
+    color: var(--cor-texto-inverso);
+    font: inherit;
+    font-size: var(--texto-sm);
+    cursor: pointer;
+    text-align: left;
+}
+
+.sync-botao:hover:not(:disabled) {
+    background: var(--realce-medio);
+    border-color: var(--cor-texto-inverso);
+}
+
+.sync-botao:active:not(:disabled) { transform: translateY(1px); }
+
+.sync-botao:disabled { opacity: 0.7; cursor: progress; }
+
+.sync-botao__icone { font-size: var(--texto-lg); line-height: 1; }
+
+.sync-botao__icone--girando { animation: sync-girar 1.1s linear infinite; }
+
+@keyframes sync-girar {
+    to { transform: rotate(360deg); }
+}
+
+.sync-botao__textos { display: flex; flex-direction: column; line-height: 1.15; }
+
+.sync-botao__estado { font-weight: 650; }
+
+/* O verbo, menor, é o que transforma um rótulo em convite. */
+.sync-botao__acao {
+    font-size: var(--texto-xs);
+    opacity: 0.9;
+    text-decoration: underline;
+}
+
+/* A cor reforça o estado, nunca o transmite sozinha — o texto ao lado já o diz. */
+.sync-botao--ok { border-color: var(--contorno-claro); }
+.sync-botao--atencao { background: var(--cor-alerta-forte); border-color: var(--cor-alerta-suave); }
+.sync-botao--pendente { background: var(--cor-primaria-clara); border-color: var(--cor-texto-inverso); }
+
 /* ------------------------------------------------------------------ progresso */
 
 .progresso { display: flex; flex-direction: column; gap: var(--esp-1); }
@@ -483,7 +1225,7 @@ p { margin: 0 0 var(--esp-3); }
 
 .progresso__barra {
     height: 100%;
-    background: var(--cor-primaria);
+    background: var(--cor-primaria-texto);
     transition: width 120ms linear;
 }
 
@@ -532,6 +1274,15 @@ p { margin: 0 0 var(--esp-3); }
     text-align: left;
     padding: var(--esp-2) var(--esp-3);
     font-weight: 700;
+    /*
+        Encolhe até o conteúdo, e o resto da largura vai para as células.
+
+        Sem isto a tabela reparte a largura por igual e a coluna do leito ficava com 400px para
+        escrever "101", enquanto o alvo TOCÁVEL de cada horário ficava com 203px. A coluna que
+        carrega menos informação era a mais larga da linha.
+    */
+    width: 1%;
+    white-space: nowrap;
     min-width: 96px;
     border-right: 2px solid var(--cor-borda-forte);
 }
@@ -582,6 +1333,22 @@ p { margin: 0 0 var(--esp-3); }
 .celula--atrasada:not(.celula--marcada) {
     background: var(--cor-alerta-suave);
     box-shadow: inset 0 0 0 2px var(--cor-alerta);
+}
+
+/*
+    O sinal de atraso.
+
+    Célula atrasada e célula pendente tinham o mesmo desenho — nenhum — e se distinguiam só pelo
+    tom do fundo. A regra transversal do projeto diz que nenhuma informação é transmitida apenas
+    por cor, e esta era a exceção que ninguém tinha visto.
+
+    Não substitui o "X": o X é a notação da folha de papel, e marca o que foi FEITO. O triângulo
+    marca o que passou da hora — um estado que a folha de papel não tinha.
+*/
+.celula__atraso,
+.leito-botao__caixa > .icone {
+    color: var(--cor-alerta);
+    font-size: var(--texto-md);
 }
 
 /* ------------------------------------------------------------------ lista mobile */
@@ -702,7 +1469,7 @@ p { margin: 0 0 var(--esp-3); }
 .modal-fundo {
     position: fixed;
     inset: 0;
-    background: rgba(22, 35, 44, 0.55);
+    background: var(--veu-medio);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -713,7 +1480,7 @@ p { margin: 0 0 var(--esp-3); }
 .modal {
     background: var(--cor-superficie);
     border-radius: var(--raio-lg);
-    box-shadow: var(--sombra-2);
+    box-shadow: var(--elev-sobreposto);
     max-width: 560px;
     width: 100%;
     max-height: 85vh;
@@ -737,23 +1504,29 @@ p { margin: 0 0 var(--esp-3); }
 .toast-desfazer {
     position: fixed;
     left: 50%;
-    bottom: var(--esp-5);
+    /* Acima da ilha, que também mora no rodapé — sem isto os dois se sobrepõem. */
+    bottom: calc(var(--ilha-reserva) + var(--esp-2));
     transform: translateX(-50%);
     z-index: var(--z-toast);
     display: flex;
     align-items: center;
     gap: var(--esp-4);
-    background: var(--cor-texto);
-    color: var(--cor-texto-inverso);
+    background: var(--cor-toast-fundo);
+    color: var(--cor-toast-texto);
     padding: var(--esp-3) var(--esp-4);
     border-radius: var(--raio-lg);
-    box-shadow: var(--sombra-2);
+    /*
+        A sombra é o que separa o toast da página — e sombra não aparece sobre fundo escuro.
+        O contorno faz esse trabalho nos dois temas, com 3:1 medido contra os dois fundos.
+    */
+    border: 1px solid var(--cor-borda-forte);
+    box-shadow: var(--elev-sobreposto);
     max-width: calc(100vw - 2 * var(--esp-4));
 }
 
 .toast-desfazer__acao {
     background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.6);
+    border: 1px solid var(--contorno-claro);
     color: var(--cor-texto-inverso);
     border-radius: var(--raio-sm);
     padding: var(--esp-1) var(--esp-3);
@@ -761,6 +1534,56 @@ p { margin: 0 0 var(--esp-3); }
     font: inherit;
     font-weight: 700;
     cursor: pointer;
+}
+
+/* ------------------------------------------------------------------ sobreposição de carregamento
+
+   Escurece a tela e BLOQUEIA o toque enquanto a requisição corre. O bloqueio não é enfeite: sem
+   ele dava para tocar nos botões durante a busca e disparar a mesma operação duas vezes.        */
+
+.carregando-fundo {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-carregando);
+    background: var(--veu-medio);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--esp-4);
+    /* Redundante com o inset fixo, mas explícito: nada atrás recebe toque. */
+    touch-action: none;
+}
+
+.carregando-caixa {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--esp-3);
+    background: var(--cor-superficie);
+    border-radius: var(--raio-lg);
+    box-shadow: var(--elev-sobreposto);
+    padding: var(--esp-5) var(--esp-6);
+    max-width: 320px;
+    text-align: center;
+}
+
+.carregando-roda {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 4px solid var(--cor-neutro-suave);
+    border-top-color: var(--cor-primaria-texto);
+    animation: carregando-girar 900ms linear infinite;
+}
+
+@keyframes carregando-girar {
+    to { transform: rotate(360deg); }
+}
+
+.carregando-texto {
+    margin: 0;
+    font-weight: 600;
+    color: var(--cor-texto);
 }
 
 /* ------------------------------------------------------------------ estados */
@@ -814,42 +1637,256 @@ p { margin: 0 0 var(--esp-3); }
 
 .tabela__area { overflow-x: auto; }
 
-/* ------------------------------------------------------------------ navegação */
+/* ------------------------------------------------------------------ navegação em ilha
 
-/*
-    A navegação acompanha a rolagem, colada logo abaixo da barra do topo.
+   A ilha É o componente de navegação, e não uma cápsula com um menu dentro. O mesmo elemento
+   transita entre compacto e expandido: largura, altura e raio da borda mudam juntos, o que dá a
+   sensação de a forma crescer em vez de um painel aparecer embaixo.
 
-    Sem isto ela some assim que a página rola — e em telas longas (administração, pendências) o
-    usuário perde a única saída visível e precisa rolar todo o caminho de volta para trocar de
-    tela. O deslocamento usa a altura real da barra do topo mais a área segura do sistema.
-*/
-.nav-principal {
-    position: sticky;
-    top: var(--altura-topo);
-    z-index: calc(var(--z-banner) - 1);
-    display: flex;
-    gap: var(--esp-1);
-    overflow-x: auto;
-    background: var(--cor-primaria-clara);
-    padding: var(--esp-1) var(--esp-2);
-    scrollbar-width: thin;
+   Por isso as duas larguras são EXPLÍCITAS: `width: auto` não anima, e sem animar a largura o
+   efeito vira dropdown.
+
+   FICA NO RODAPÉ, e não sob a barra do topo, por dois motivos:
+
+     - alcance. Este aplicativo é usado com uma mão, de madrugada, andando pelo corredor. A
+       navegação principal precisa estar onde o polegar chega — que é exatamente onde a barra de
+       abas que a ilha substituiu já ficava.
+     - leitura. Embaixo da barra do topo ela criava um segundo cabeçalho: duas faixas empilhadas
+       e uma cápsula solta entre o cabeçalho e o conteúdo.
+
+   Ancorada por `bottom`, ela cresce PARA CIMA ao abrir, e o gatilho não sai do lugar — o dedo
+   continua onde estava quando a lista aparece.                                                 */
+
+:root {
+    --ilha-altura: 52px;
+    --ilha-largura-fechada: min(76vw, 260px);
+    --ilha-largura-aberta: min(92vw, 360px);
+
+    /* Distância do rodapé, respeitando a barra de gestos do Android. */
+    --ilha-folga: calc(var(--esp-4) + env(safe-area-inset-bottom, 0px));
+
+    /* O espaço total que a ilha ocupa embaixo. O espaçador e o toast se apoiam neste valor. */
+    --ilha-reserva: calc(var(--ilha-altura) + var(--ilha-folga));
 }
 
-.nav-principal__item {
-    flex: 0 0 auto;
-    min-height: var(--toque-min);
+.ilha-fundo {
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-banner) + 1);
+    /* Escurece de leve: separa a ilha da página sem esconder onde a pessoa estava. */
+    background: var(--veu-leve);
+}
+
+.ilha {
+    position: fixed;
+    bottom: var(--ilha-folga);
+    left: 50%;
+
+    /*
+        column-reverse: o gatilho fica embaixo e a lista cresce ACIMA dele. A ordem do DOM
+        continua gatilho -> lista, então quem navega por teclado alcança os itens logo depois
+        de abrir; só a ordem VISUAL é invertida.
+    */
+    display: flex;
+    flex-direction: column-reverse;
+    z-index: calc(var(--z-banner) + 2);
+
+    width: var(--ilha-largura-fechada);
+    border-radius: 999px;
+    background: var(--cor-chrome);
+    color: var(--cor-texto-inverso);
+    box-shadow: var(--elev-flutuante);
+    overflow: hidden;
+
+    /* translateX(-50%) fica no transform para o centro não depender de cálculo de largura. */
+    transform: translateX(-50%);
+
+    transition:
+        width 260ms cubic-bezier(0.22, 1, 0.36, 1),
+        border-radius 260ms cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 260ms ease;
+}
+
+.ilha--aberta {
+    width: var(--ilha-largura-aberta);
+    border-radius: var(--raio-ilha);
+    box-shadow: var(--elev-sobreposto);
+}
+
+/* ---- estado fechado: o gatilho ---- */
+
+.ilha__gatilho {
     display: flex;
     align-items: center;
-    padding: 0 var(--esp-3);
-    color: var(--cor-texto-inverso);
-    text-decoration: none;
-    border-radius: var(--raio-sm);
-    font-weight: 600;
-    font-size: var(--texto-sm);
+    gap: var(--esp-2);
+    width: 100%;
+    height: var(--ilha-altura);
+    padding: 0 var(--esp-4);
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
 }
 
-.nav-principal__item:hover { background: rgba(255, 255, 255, 0.15); }
-.nav-principal__item.active { background: rgba(255, 255, 255, 0.25); }
+.ilha__titulo {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+}
+
+.ilha__icone {
+    flex: 0 0 auto;
+    display: inline-flex;
+}
+
+.ilha__icone > svg { width: 22px; height: 22px; }
+
+/* Aponta sempre para onde a lista está ou vai aparecer: para cima fechada, para baixo aberta. */
+.ilha__seta {
+    flex: 0 0 auto;
+    display: inline-flex;
+    opacity: 0.85;
+    transform: rotate(180deg);
+    transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ilha__seta > svg { width: 18px; height: 18px; }
+
+.ilha--aberta .ilha__seta { transform: rotate(0deg); }
+
+/* ---- estado aberto: a lista ---- */
+
+.ilha__lista {
+    list-style: none;
+    margin: 0;
+    padding: 0 var(--esp-2);
+    max-height: 0;
+    opacity: 0;
+    /* Fechada não recebe toque nem tabulação; sem isto haveria alvos invisíveis. */
+    visibility: hidden;
+    transition:
+        max-height 260ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 180ms ease,
+        padding-bottom 260ms cubic-bezier(0.22, 1, 0.36, 1),
+        visibility 0s linear 260ms;
+}
+
+.ilha--aberta .ilha__lista {
+    max-height: 60vh;
+    overflow-y: auto;
+    opacity: 1;
+    visibility: visible;
+    padding-bottom: var(--esp-2);
+    transition:
+        max-height 300ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 200ms ease 80ms,
+        padding-bottom 300ms cubic-bezier(0.22, 1, 0.36, 1),
+        visibility 0s;
+}
+
+.ilha__item { margin: 0; }
+
+.ilha__link {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-3);
+    width: 100%;
+    min-height: var(--toque-min);
+    padding: var(--esp-2) var(--esp-3);
+    border: 0;
+    border-radius: var(--raio-md);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: var(--texto-sm);
+    text-align: left;
+    cursor: pointer;
+}
+
+.ilha__link:hover { background: var(--realce-sutil); }
+
+.ilha__nome { flex: 1 1 auto; }
+
+/* O item atual: fundo, peso e a marca de conferido — nunca só a cor. */
+.ilha__link--atual {
+    background: var(--realce-medio);
+    font-weight: 700;
+}
+
+.ilha__marca { display: inline-flex; }
+
+.ilha__marca > svg { width: 18px; height: 18px; }
+
+.ilha__link:focus-visible {
+    outline: 2px solid var(--cor-texto-inverso);
+    outline-offset: -2px;
+}
+
+/* ---- faixa extra: acompanha a lista, e some junto com ela ---- */
+
+.ilha__extra {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    /* Fechada não recebe toque nem tabulação. */
+    visibility: hidden;
+    transition:
+        max-height 260ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 180ms ease,
+        visibility 0s linear 260ms;
+}
+
+.ilha--aberta .ilha__extra {
+    max-height: 80px;
+    opacity: 1;
+    visibility: visible;
+    transition:
+        max-height 300ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 200ms ease 80ms,
+        visibility 0s;
+}
+
+.ilha__ajuste {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-3);
+    padding: var(--esp-2) var(--esp-4);
+    /*
+        A linha fica embaixo porque, com column-reverse, esta faixa aparece ACIMA da lista. Ela
+        separa ajuste de destino: uma coisa muda a tela, a outra leva para outra tela.
+    */
+    border-bottom: 1px solid var(--realce-medio);
+}
+
+/*
+    Em tela larga a ilha pode ser um pouco maior sem competir com o conteúdo — e o alvo de toque
+    continua o mesmo, porque quem usa mouse também erra menos com alvo grande.
+*/
+@media (min-width: 900px) {
+    :root {
+        --ilha-largura-fechada: 300px;
+        --ilha-largura-aberta: 380px;
+    }
+}
+
+/*
+    Movimento reduzido: a ilha muda de estado sem transição. Aqui, diferente da roda de
+    carregamento, não se perde informação nenhuma — o estado final é o que importa, e ele
+    continua evidente.
+*/
+@media (prefers-reduced-motion: reduce) {
+    .ilha,
+    .ilha__lista,
+    .ilha--aberta .ilha__lista,
+    .ilha__seta {
+        transition: none;
+    }
+}
 
 /* ------------------------------------------------------------------ responsivo */
 
@@ -873,5 +1910,17 @@ p { margin: 0 0 var(--esp-3); }
     * {
         animation-duration: 0.01ms !important;
         transition-duration: 0.01ms !important;
+    }
+
+    /*
+        Uma exceção, e só uma: a roda de carregamento.
+
+        A regra acima existe para eliminar movimento decorativo. Esta roda não é decoração — é a
+        única evidência de que o aplicativo está trabalhando enquanto a tela está escura e
+        bloqueada. Parada, ela comunica "travou", que é pior para qualquer pessoa do que o
+        movimento que a regra tenta evitar. Fica mais lenta, em vez de imóvel.
+    */
+    .carregando-roda {
+        animation-duration: 2s !important;
     }
 }

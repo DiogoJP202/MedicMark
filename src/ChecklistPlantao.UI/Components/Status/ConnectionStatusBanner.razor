@@ -9,7 +9,7 @@
 @if (Mostrar)
 {
     <div class="faixa @CssFaixa" role="status" data-testid="connection-banner">
-        <span class="faixa__icone" aria-hidden="true">@Icone</span>
+        <Icone Nome="@Icone" Class="faixa__icone" />
         <div class="faixa__conteudo">
             <p class="faixa__titulo">@Status.Headline</p>
             <p class="faixa__texto">@Status.Detail</p>
@@ -42,11 +42,12 @@
         Status.Connectivity is ConnectivityState.Offline or ConnectivityState.ServerUnreachable
         || Status.HasPendingWork;
 
+    /// <summary>Cada estado tem FORMA própria, e não só cor — a faixa é lida de relance.</summary>
     private string Icone => Status.Connectivity switch
     {
-        ConnectivityState.ServerUnreachable => "▲",
-        ConnectivityState.Offline => "○",
-        _ => "⟳",
+        ConnectivityState.ServerUnreachable => "sem-servidor",
+        ConnectivityState.Offline => "offline",
+        _ => "sincronizando",
     };
 
     private string CssFaixa => Status.Connectivity switch

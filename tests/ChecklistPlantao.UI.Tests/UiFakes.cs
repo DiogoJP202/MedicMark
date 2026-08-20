@@ -1,5 +1,5 @@
 using ChecklistPlantao.Domain.Access;
-using ChecklistPlantao.UI.Abstractions;
+using ChecklistPlantao.Client.Abstractions;
 
 namespace ChecklistPlantao.UI.Tests;
 
@@ -69,4 +69,34 @@ internal sealed class StubNotificationStatus : INotificationStatusService
     public Task<bool> SendTestNotificationAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
 
     public Task OpenSystemSettingsAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+}
+
+/// <summary>
+/// Serviço de tema de mentira. <see cref="Efetivo"/> é separado de <see cref="Atual"/> de
+/// propósito: com "seguir o aparelho" escolhido, os dois são coisas diferentes, e é justamente
+/// nesse caso que o interruptor do menu erraria a posição.
+/// </summary>
+internal sealed class TemaFalso : ChecklistPlantao.UI.Services.IThemeService
+{
+    public ChecklistPlantao.UI.Services.ThemeChoice Atual { get; set; }
+        = ChecklistPlantao.UI.Services.ThemeChoice.Automatic;
+
+    public ChecklistPlantao.UI.Services.ThemeChoice Efetivo { get; set; }
+        = ChecklistPlantao.UI.Services.ThemeChoice.Light;
+
+    public ChecklistPlantao.UI.Services.ThemeChoice? Gravado { get; private set; }
+
+    public Task<ChecklistPlantao.UI.Services.ThemeChoice> GetAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult(Atual);
+
+    public Task<ChecklistPlantao.UI.Services.ThemeChoice> GetEffectiveAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult(Efetivo);
+
+    public Task SetAsync(ChecklistPlantao.UI.Services.ThemeChoice choice, CancellationToken cancellationToken = default)
+    {
+        Gravado = choice;
+        Atual = choice;
+        Efetivo = choice;
+        return Task.CompletedTask;
+    }
 }

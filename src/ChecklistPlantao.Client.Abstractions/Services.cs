@@ -4,7 +4,7 @@ using ChecklistPlantao.Contracts.Devices;
 using ChecklistPlantao.Contracts.Operations;
 using ChecklistPlantao.Domain.Access;
 
-namespace ChecklistPlantao.UI.Abstractions;
+namespace ChecklistPlantao.Client.Abstractions;
 
 /// <summary>
 /// Contratos que a interface precisa. São declarados aqui, na camada de apresentação, e
@@ -147,7 +147,13 @@ public interface IDeviceDiagnosticsService
 }
 
 /// <summary>Operações administrativas. Só funcionam com o servidor acessível.</summary>
-public interface IAdministrationService
+/// <summary>
+/// Cadastro de estrutura: setores, leitos, tipos de checklist, colunas e marcadores.
+///
+/// Separada de acessos e de sistema porque a tela que cadastra um leito não tem nada que ver com
+/// redefinição de senha — e, num contrato só, dependia dela. Ver docs/DECISIONS.md (D-022).
+/// </summary>
+public interface IStructureAdminService
 {
     Task<IReadOnlyList<SectorDto>> GetSectorsAsync(CancellationToken cancellationToken = default);
 
@@ -166,7 +172,11 @@ public interface IAdministrationService
     Task<IReadOnlyList<BedMarkerDefinitionDto>> GetMarkersAsync(CancellationToken cancellationToken = default);
 
     Task<Result> SaveMarkerAsync(Guid? id, SaveMarkerRequest request, CancellationToken cancellationToken = default);
+}
 
+/// <summary>Grupos, usuários e permissões. A tela de acessos é a única que precisa disto.</summary>
+public interface IAccessAdminService
+{
     Task<IReadOnlyList<AccessGroupDto>> GetGroupsAsync(CancellationToken cancellationToken = default);
 
     Task<Result> SaveGroupAsync(Guid? id, SaveGroupRequest request, CancellationToken cancellationToken = default);
@@ -180,7 +190,16 @@ public interface IAdministrationService
     Task<Result> ResetPasswordAsync(Guid id, ResetPasswordRequest request, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<PermissionDto>> GetPermissionsAsync(CancellationToken cancellationToken = default);
+}
 
+/// <summary>
+/// Configuração do sistema: notificações, ajustes institucionais e a lista de dispositivos.
+///
+/// O nome é "sistema", e não "configurações", porque a lista de dispositivos é diagnóstico e não
+/// ajuste — chamar de configurações seria mentir sobre o que há aqui dentro.
+/// </summary>
+public interface ISystemAdminService
+{
     Task<NotificationConfigurationDto> GetNotificationConfigurationAsync(CancellationToken cancellationToken = default);
 
     Task<Result> SaveNotificationConfigurationAsync(SaveNotificationConfigurationRequest request, CancellationToken cancellationToken = default);

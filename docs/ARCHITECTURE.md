@@ -27,16 +27,54 @@ Os aparelhos **nunca** tocam o arquivo SQLite central: todo acesso passa pela AP
 
 ## Camadas e dependências
 
+Todas as setas apontam para dentro. `Domain` não conhece ninguém — é o que permite testar turno,
+permissões e conflito sem banco, sem HTTP e sem MAUI.
+
+```mermaid
+flowchart BT
+    subgraph nucleo["Núcleo — sem dependência de infraestrutura"]
+        Domain["Domain<br/><i>regras de turno, permissões,<br/>retenção, conflito</i>"]
+        Contracts["Contracts<br/><i>DTOs e contratos de sincronização</i>"]
+    end
+
+    Application["Application<br/><i>casos de uso do servidor</i>"]
+    Infrastructure["Infrastructure<br/><i>EF Core, Identity, migrations</i>"]
+    Server["Server<br/><i>API, JWT, SignalR, manutenção</i>"]
+
+    ClientAbs["Client.Abstractions<br/><i>contratos entre interface e núcleo</i>"]
+    UI["UI (RCL)<br/><i>design system, componentes, páginas</i>"]
+    ClientCore["Client.Core<br/><i>SQLite local, Outbox,<br/>sincronização, auth offline</i>"]
+    Client["Client (MAUI)<br/><i>Android e Windows</i>"]
+
+    Application --> Domain
+    Application --> Contracts
+    Infrastructure --> Application
+    Server --> Infrastructure
+    ClientAbs --> Domain
+    ClientAbs --> Contracts
+    UI --> ClientAbs
+    ClientCore --> ClientAbs
+    ClientCore --> Application
+    Client --> UI
+    Client --> ClientCore
+
+    classDef puro fill:#dcebf5,stroke:#17587f,color:#16232c
+    classDef servidor fill:#e6ebef,stroke:#4b5b66,color:#16232c
+    classDef cliente fill:#dff2e6,stroke:#14663a,color:#16232c
+    class Domain,Contracts,ClientAbs puro
+    class Application,Infrastructure,Server servidor
+    class UI,ClientCore,Client cliente
 ```
-Domain          ← nada
-Contracts       ← nada
-Application     → Domain, Contracts, EF Core (sem provedor)
-Infrastructure  → Domain, Application, Contracts, EF Core Sqlite, Identity
-Server          → Domain, Application, Contracts, Infrastructure
-UI (RCL)        → Domain, Contracts          (nada de EF Core, HttpClient ou MAUI)
-Client.Core     → Domain, Application, Contracts, UI
-Client (MAUI)   → UI, Client.Core
-```
+
+Três consequências que o diagrama torna visíveis:
+
+- **`Identity` para em `Infrastructure`.** O aplicativo nunca carrega
+  `Microsoft.AspNetCore.Identity`, e o hash de senha do servidor não tem como chegar ao aparelho
+  (D-005).
+- **A RCL não conhece EF Core, HttpClient nem MAUI.** É o que permite testá-la com bUnit contra
+  duplos simples.
+- **`Client.Core` não depende da `UI`.** Os contratos que ele implementa vivem em
+  `Client.Abstractions`, fora da camada de apresentação (D-023). Só o head MAUI junta os dois lados.
 
 Três escolhas merecem explicação:
 

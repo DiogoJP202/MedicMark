@@ -5,7 +5,7 @@ using ChecklistPlantao.Contracts.Configuration;
 using ChecklistPlantao.Contracts.Devices;
 using ChecklistPlantao.Contracts.Operations;
 using ChecklistPlantao.Domain.Access;
-using ChecklistPlantao.UI.Abstractions;
+using ChecklistPlantao.Client.Abstractions;
 using ChecklistPlantao.UI.Pages;
 using Microsoft.Extensions.DependencyInjection;
 

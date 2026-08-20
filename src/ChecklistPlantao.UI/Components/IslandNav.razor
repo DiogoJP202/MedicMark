@@ -1,0 +1,138 @@
+@implements IDisposable
+@inject NavigationManager Navigation
+
+@*
+    Navegação em ilha.
+
+    A ilha É o componente de navegação, não uma cápsula com um menu dentro: o mesmo elemento
+    muda de forma entre compacto e expandido — largura, altura e raio da borda transitam juntos.
+    Fechada mostra onde você está; aberta, para onde pode ir.
+
+    Fica fixa no RODAPÉ e flutua sobre o conteúdo — onde o polegar chega, que é o que a barra de
+    abas substituída já fazia certo. Expandida, ela cresce para cima e cobre o conteúdo de
+    propósito: é um estado momentâneo, com fundo capturando o toque de fora.
+
+    Quem reserva o espaço embaixo é o `padding-bottom` de `.app-conteudo`, e não um espaçador no
+    fluxo. O espaçador funcionava com a ilha no topo; embaixo, dentro de uma coluna flexível que
+    já se estica, ele passaria a somar altura DEPOIS do conteúdo esticado — e uma tela vazia
+    ganharia 70px de rolagem sem ter nada para rolar.
+*@
+
+@if (_aberta)
+{
+    @* Captura o toque fora. Sem isto, sair do menu exigiria acertar a própria ilha. *@
+    <div class="ilha-fundo" data-testid="island-backdrop" @onclick="Fechar"></div>
+}
+
+<nav class="ilha @(_aberta ? "ilha--aberta" : "")"
+     aria-label="Navegação principal"
+     data-testid="island-nav">
+
+    <button type="button"
+            class="ilha__gatilho"
+            data-testid="island-toggle"
+            aria-expanded="@_aberta.ToString().ToLowerInvariant()"
+            aria-controls="ilha-lista"
+            @onclick="Alternar">
+        <Icone Nome="@Atual.Icone" Class="ilha__icone" />
+        <span class="ilha__titulo" data-testid="island-current">@Atual.Titulo</span>
+        @* O símbolo gira ao abrir: é o indicador discreto de que há mais. *@
+        <Icone Nome="seta" Class="ilha__seta" />
+    </button>
+
+    <ul class="ilha__lista" id="ilha-lista" data-testid="island-list">
+        @foreach (var item in Items)
+        {
+            var atual = item.Rota == Atual.Rota;
+
+            <li class="ilha__item">
+                <button type="button"
+                        class="ilha__link @(atual ? "ilha__link--atual" : "")"
+                        data-testid="@($"island-link-{item.Rota.Trim('/')}")"
+                        aria-current="@(atual ? "page" : null)"
+                        @onclick="() => Ir(item)">
+                    <Icone Nome="@item.Icone" Class="ilha__icone" />
+                    <span class="ilha__nome">@item.Titulo</span>
+                    @*
+                        A marca do item atual não é só a cor de fundo: quem não distingue cores, ou
+                        está com a tela no sol, continua vendo qual é.
+                    *@
+                    @if (atual)
+                    {
+                        <Icone Nome="check" Class="ilha__marca" />
+                    }
+                </button>
+            </li>
+        }
+    </ul>
+
+    @*
+        Faixa extra do menu. A ilha não sabe o que vai aqui — quem decide é o layout. Sem isto ela
+        precisaria conhecer o serviço de tema, e navegação não tem nada com aparência.
+
+        Aparece no TOPO do painel aberto, e não embaixo: por causa do column-reverse, o último
+        filho do DOM é o primeiro na tela. É onde ela deve ficar de qualquer forma — longe do
+        polegar, que pousa no gatilho e não pode esbarrar num ajuste ao mirar "Painel". Em ordem
+        de tabulação ela continua depois dos destinos, que é o que o teclado espera.
+    *@
+    @if (Extra is not null)
+    {
+        <div class="ilha__extra">
+            @Extra
+        </div>
+    }
+</nav>
+
+@code {
+    /// <summary>Um destino da navegação. O ícone é a chave de um dos desenhos abaixo.</summary>
+    public sealed record ItemDaIlha(string Rota, string Titulo, string Icone);
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<ItemDaIlha> Items { get; set; } = [];
+
+    /// <summary>Conteúdo extra do painel aberto. Nulo não desenha nada.</summary>
+    [Parameter]
+    public RenderFragment? Extra { get; set; }
+
+    private bool _aberta;
+
+    /// <summary>
+    /// O item que corresponde à rota atual. Sem correspondência — uma tela fora do menu, como
+    /// "Estado do dispositivo" — a ilha mostra o primeiro item em vez de ficar vazia.
+    /// </summary>
+    private ItemDaIlha Atual
+    {
+        get
+        {
+            var rota = "/" + Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0].TrimEnd('/');
+
+            // A mais específica primeiro: "/checklist/{id}" precisa casar com "/checklist", e não
+            // com "/", que é prefixo de tudo.
+            return Items.Where(i => i.Rota != "/")
+                       .OrderByDescending(i => i.Rota.Length)
+                       .FirstOrDefault(i => rota.StartsWith(i.Rota, StringComparison.OrdinalIgnoreCase))
+                ?? Items.FirstOrDefault(i => i.Rota == "/")
+                ?? Items.FirstOrDefault()
+                ?? new ItemDaIlha("/", "Menu", "painel");
+        }
+    }
+
+    protected override void OnInitialized() => Navigation.LocationChanged += AoNavegar;
+
+    // Fecha ao navegar por qualquer caminho — o botão voltar do Android, um link do conteúdo,
+    // um deep link de notificação. A ilha aberta sobre uma tela nova seria um estado órfão.
+    private void AoNavegar(object? remetente, LocationChangedEventArgs argumentos) =>
+        _ = InvokeAsync(() => { _aberta = false; StateHasChanged(); });
+
+    private void Alternar() => _aberta = !_aberta;
+
+    private void Fechar() => _aberta = false;
+
+    private void Ir(ItemDaIlha item)
+    {
+        _aberta = false;
+        Navigation.NavigateTo(item.Rota);
+    }
+
+    public void Dispose() => Navigation.LocationChanged -= AoNavegar;
+}

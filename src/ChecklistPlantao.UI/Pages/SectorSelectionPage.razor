@@ -9,14 +9,43 @@
 
 <SectorSelector Sectors="_setores" SelectedSectorId="Session.CurrentSectorId" OnSelect="SelecionarAsync" />
 
+<LoadingOverlay Visible="_carregando" Message="@_mensagem" />
+
 @code {
     private IReadOnlyList<SectorSummary> _setores = [];
+    private bool _carregando;
+    private string _mensagem = "Carregando os setores…";
 
-    protected override async Task OnInitializedAsync() => _setores = await Session.GetAvailableSectorsAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _carregando = true;
+
+        try
+        {
+            _setores = await Session.GetAvailableSectorsAsync();
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
 
     private async Task SelecionarAsync(Guid sectorId)
     {
-        await Session.SelectSectorAsync(sectorId);
+        // Trocar de setor recarrega o plantão inteiro. Sem a sobreposição, dava para tocar em
+        // outro setor no meio da troca.
+        _mensagem = "Trocando de setor…";
+        _carregando = true;
+
+        try
+        {
+            await Session.SelectSectorAsync(sectorId);
+        }
+        finally
+        {
+            _carregando = false;
+        }
+
         Navigation.NavigateTo("/");
     }
 }

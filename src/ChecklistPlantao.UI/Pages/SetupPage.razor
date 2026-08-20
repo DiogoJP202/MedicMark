@@ -69,7 +69,7 @@
     @if (_resultado is not null)
     {
         <div class="faixa @(_sucesso ? "faixa--sucesso" : "faixa--erro")" role="status" data-testid="setup-result">
-            <span class="faixa__icone" aria-hidden="true">@(_sucesso ? "✓" : "✕")</span>
+            <Icone Nome="@(_sucesso ? "check" : "erro")" Class="faixa__icone" />
             <div class="faixa__conteudo">
                 <p class="faixa__texto">@_resultado</p>
             </div>

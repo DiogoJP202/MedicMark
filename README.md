@@ -103,12 +103,38 @@ src/
   ChecklistPlantao.Application     casos de uso do servidor
   ChecklistPlantao.Infrastructure  EF Core, Identity, migrations, log de alterações
   ChecklistPlantao.Server          API, JWT, SignalR, health, manutenção
+  ChecklistPlantao.Client.Abstractions
+                                   contratos entre a interface e o núcleo do cliente
   ChecklistPlantao.UI              RCL: design system, componentes e páginas
   ChecklistPlantao.Client.Core     SQLite local, Outbox, sincronização, auth offline
   ChecklistPlantao.Client          MAUI Blazor Hybrid (Android + Windows)
-tests/                             5 projetos, 361 testes
+tests/                             5 projetos, 564 testes
 deploy/                            Dockerfile, compose, backup e restore
 ```
+
+### Onde procurar o quê
+
+| Se você quer… | Vá para |
+|---|---|
+| entender **uma regra de negócio** | `ChecklistPlantao.Domain` — turno, permissões, retenção e conflito ficam todos aqui, e nada mais |
+| mudar **o que uma tela mostra** | `ChecklistPlantao.UI/Pages` e `/Components` |
+| mudar **o visual** | `ChecklistPlantao.UI/wwwroot/css/design-system.css`, arquivo único — toda cor é token, e `ContrasteTests` reprova o build se um par cair abaixo do mínimo |
+| mexer no **tema claro/escuro** | os tokens em `design-system.css`, mais `wwwroot/js/tema.js` e `UI/Services/ThemeService.cs` |
+| mexer em **marcar, fila ou sincronização** | `ChecklistPlantao.Client.Core` — `OutboxWriter` e `SyncEngine` |
+| acrescentar **um endpoint** | `ChecklistPlantao.Server/Controllers` + o caso de uso em `Application` |
+| entender **por que algo é assim** | [DECISIONS.md](docs/DECISIONS.md) — toda decisão tem contexto e consequência |
+| mexer em **algo específico de Android ou Windows** | `ChecklistPlantao.Client/Platforms` |
+
+O head MAUI (`ChecklistPlantao.Client`) tem **muito pouco código**, e isso é intencional: só duas
+interfaces são realmente diferentes entre plataformas — `ILocalNotificationScheduler` e
+`INotificationPermissionService`. Todo o resto, inclusive a interface inteira, é compartilhado.
+
+Duas fronteiras que valem conhecer antes de mexer:
+
+- **`Client.Abstractions` define o contrato entre a interface e o núcleo do cliente.** Mudar uma
+  assinatura ali afeta os dois lados de uma vez.
+- **`Domain` não referencia nada.** Se você precisar de EF Core, HttpClient ou MAUI dentro dele, a
+  regra provavelmente está no lugar errado.
 
 ## Documentação
 
@@ -118,6 +144,7 @@ deploy/                            Dockerfile, compose, backup e restore
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Camadas, dependências e por quê |
 | [DECISIONS.md](docs/DECISIONS.md) | Decisões arquiteturais com contexto e consequências |
 | [DOMAIN.md](docs/DOMAIN.md) | Regras de negócio, turno, permissões, retenção |
+| [CONFIGURATION.md](docs/CONFIGURATION.md) | **Toda opção de configuração**: chave, padrão, efeito e quando mexer |
 | [DATA_MODEL.md](docs/DATA_MODEL.md) | Tabelas, índices e restrições |
 | [OFFLINE_SYNC.md](docs/OFFLINE_SYNC.md) | Outbox, cursor, idempotência e conflitos |
 | [NOTIFICATIONS.md](docs/NOTIFICATIONS.md) | Agendamento, repetição e o que cada plataforma entrega |

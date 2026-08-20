@@ -272,10 +272,24 @@ histórico de migrations dentro do aplicativo.
 **Decisão.** O banco local usa `EnsureCreated`. Quando o esquema mudar entre versões do aplicativo,
 o banco é recriado e repovoado pelo bootstrap.
 
+**Como a mudança é detectada.** `EnsureCreated` cria o esquema se o arquivo não existir e **não faz
+nada** se ele já existir — sozinho, deixaria o aparelho já instalado com a tabela velha, falhando em
+uso com erro obscuro. A detecção usa `PRAGMA user_version`, que mora no cabeçalho do arquivo SQLite
+e não numa tabela, evitando o problema circular de guardar a versão dentro do esquema que se quer
+versionar. A constante é `LocalDbContext.LocalSchemaVersion`, **incrementada à mão** a cada mudança
+nas entidades locais; a subida compara e recria quando divergem.
+
 **Consequências.** Aplicativo menor e mais simples. O custo é que uma atualização com mudança de
 esquema descarta o que ainda estiver na fila de envio — por isso a atualização deve ser feita com
 os aparelhos sincronizados, o que está registrado em `docs/DEPLOYMENT.md`. Cadastros e marcações
-já sincronizados voltam do servidor.
+já sincronizados voltam do servidor. Quantas alterações se perderam vai para o log, em nível de
+aviso.
+
+**O que foi considerado e recusado.** Tentar enviar a fila antes de descartar. A subida do cliente é
+deliberadamente síncrona — bloquear nela para esperar rede contraria a própria regra do projeto
+sobre `.Result`/`.Wait()`, e um aplicativo que demora para abrir por causa de um servidor lento é
+pior que a perda registrada. O caminho seguro continua sendo atualizar com os aparelhos
+sincronizados.
 
 **Status.** Aceita.
 
@@ -386,6 +400,204 @@ compartilham mais a mesma instância — que nunca foi segura para isso, e era a
 Um cuidado que veio junto: entidades **não podem ser guardadas em campo** entre operações, porque
 pertencem ao contexto que as leu. `ClientSession` deixou de cachear o `DeviceState`, e
 `ServerConfigurationService` passou a cachear um registro de valores em vez da entidade.
+
+**Status.** Aceita.
+
+---
+
+## D-022 — Administração em três contratos, não em um
+
+**Contexto.** `IAdministrationService` tinha **21 membros**: setores, leitos, tipos de checklist,
+colunas, marcadores, grupos, usuários, permissões, notificações, ajustes institucionais e a lista de
+dispositivos. A tela que cadastra um leito dependia de `ResetPasswordAsync`.
+
+Era a pior violação de segregação de interface do projeto, e o custo aparecia nos testes: um único
+dublê de 128 linhas para exercitar qualquer tela de administração.
+
+**Decisão.** Três contratos, recortados pelo que as telas de fato usam — não por simetria:
+
+| Contrato | Membros | Quem usa |
+|---|---|---|
+| `IStructureAdminService` | 9 | Setores, Marcadores, Tipos de checklist |
+| `IAccessAdminService` | 7 | Acessos |
+| `ISystemAdminService` | 5 | Notificações, Configurações, Dispositivos |
+
+`AdministrationService` implementa os três — uma classe, três contratos —, e o registro em
+`DependencyInjection` aponta as três interfaces para a mesma instância com escopo.
+
+**Sobre o nome do terceiro.** "Sistema", e não "Configurações", porque a lista de dispositivos é
+diagnóstico e não ajuste. Chamar de configurações seria mentir sobre o que há dentro.
+
+**A única travessia.** `AdminAccessPage` injeta os dois primeiros: um grupo é associado a setores, e
+a lista de setores é estrutura. A dependência é real e ficou explícita, em vez de escondida atrás de
+um contrato que continha tudo.
+
+**Consequências.** Cada tela declara o que usa. `ServiceGraphTests` passou a exigir que os três
+resolvam. O dublê único continua servindo aos testes por implementar as três interfaces — o ganho
+lá é poder criar dublês menores quando fizer sentido, não uma reescrita obrigatória.
+
+**Status.** Aceita.
+
+---
+
+## D-023 — Contratos do cliente fora da camada de apresentação
+
+**Contexto.** `IAppSession`, `IChecklistStore` e os modelos de visão moravam em
+`src/ChecklistPlantao.UI/Abstractions/`. Como `ChecklistPlantao.Client.Core` os implementa, ele
+precisava **referenciar a biblioteca de componentes Razor** — o núcleo do cliente, que não tem nada
+de visual, carregava a RCL inteira só para enxergar as interfaces.
+
+Não havia ciclo e funcionava. Mas a seta apontava para o lado errado: quem define o contrato não
+deveria ser a camada de apresentação. Um teste do núcleo arrastava componentes visuais junto, e a
+leitura do grafo sugeria uma dependência que não existia de fato.
+
+**Decisão.** Novo projeto `src/ChecklistPlantao.Client.Abstractions` (net10.0), dependendo apenas de
+`Domain` e `Contracts`. As duas classes de abstração mudaram para lá, e o namespace acompanhou:
+`ChecklistPlantao.UI.Abstractions` virou `ChecklistPlantao.Client.Abstractions`.
+
+`UI` e `Client.Core` passam a depender dele. `Client.Core → UI` **deixou de existir**.
+
+**Sobre renomear o namespace.** Manter `UI.Abstractions` dentro de um projeto `Client.Abstractions`
+custaria zero em churn — nenhum dos 30 arquivos precisaria mudar. Foi recusado: o nome passaria a
+mentir sobre onde a coisa mora, e o objetivo desta rodada é justamente que o projeto seja legível
+por quem chega. A substituição foi mecânica e o compilador cobriu o resto.
+
+**Consequências.** O grafo passou a ser:
+
+```
+Client.Abstractions  → Domain, Contracts
+UI                   → Domain, Contracts, Client.Abstractions
+Client.Core          → Domain, Application, Contracts, Client.Abstractions
+Client               → UI, Client.Core
+```
+
+Três lugares na RCL qualificavam o tipo como `Abstractions.SyncStatus` para desambiguar de uma
+propriedade injetada de mesmo nome. Passaram a usar o nome completo, que é mais claro e não depende
+de o namespace ser alcançável por sufixo.
+
+**Status.** Aceita.
+
+---
+
+## D-024 — A preferência de tema mora no WebView, e não no banco local
+
+**Contexto.** O plano previa guardar a escolha de tema em `DeviceState`, no banco local, e subir
+`LocalDbContext.LocalSchemaVersion` para o esquema acompanhar.
+
+Só que subir essa versão **apaga o banco**: `EnsureLocalSchema` faz `EnsureDeleted` + `EnsureCreated`
+quando a versão no disco não bate, porque não há migrations no aparelho (D-017). Junto com o banco vai
+a fila de envio — as marcações que ainda não chegaram ao servidor.
+
+**Decisão.** A escolha fica no `localStorage` do WebView, sob `checklistplantao.tema`, aplicada por
+`wwwroot/js/tema.js` antes do primeiro pixel. `IThemeService` é a ponte, e devolve "seguir o aparelho"
+sempre que o JavaScript não responde.
+
+**Consequências.** Uma preferência de aparência não custa as marcações de um plantão — que é a única
+coisa neste aplicativo que não pode ser perdida. Em troca, a escolha some se os dados do aplicativo
+forem limpos; nesse caso ela volta a ser "seguir o aparelho", que é o padrão de qualquer forma.
+
+O script roda no `<head>`, sem `defer`, de propósito: aplicado depois que o Blazor sobe, a tela
+apareceria branca por um instante — exatamente o que dói às 3h.
+
+Continua valendo: quando um campo novo de verdade precisar entrar no `DeviceState`, a versão sobe e o
+banco é recriado. O que esta decisão diz é que **aparência não é um motivo suficiente** para isso.
+
+**Status.** Aceita.
+
+---
+
+## D-025 — Uma cor não é um papel: a primária virou três
+
+**Contexto.** No tema claro, `--cor-primaria` (#0f3d5c) fazia três trabalhos ao mesmo tempo: pintava a
+barra do topo, preenchia o botão que carrega texto branco, e escrevia texto sobre fundo claro.
+
+No escuro isso é aritmeticamente impossível. Para o branco ler sobre um preenchimento, o
+preenchimento precisa ser escuro; para um traço ler sobre a página escura, ele precisa ser claro. Uma
+cor não pode ser as duas.
+
+**Decisão.** Três tokens, nomeados pelo papel:
+
+| Token | Papel | Precisa de |
+|---|---|---|
+| `--cor-chrome` | superfície grande (barra do topo, ilha) | carregar texto branco |
+| `--cor-primaria` | preenchimento interativo (botão, caixa marcada, aba ativa) | carregar branco **e** aparecer sobre o cartão |
+| `--cor-primaria-texto` | traço (texto, barra de progresso, roda, borda de destaque) | aparecer sobre o fundo |
+
+O mesmo corte vale para os estados: `-suave` é fundo, o nome puro é traço, `-forte` é preenchimento
+sólido. No tema claro os pares coincidem — a separação não muda um pixel do que existia.
+
+**Consequências.** O tema escuro passou a ser uma redeclaração de valores, sem tocar em nenhuma regra
+de componente. E a barra do topo ficou escura nos dois temas de propósito: uma faixa azul-média acesa
+às 3h é o que este tema existe para evitar.
+
+`ContrasteTests` mede a folha de estilo real e aplica **a mesma tabela de pares aos dois temas** — é o
+que impede o escuro de ser julgado por um critério mais frouxo. Ele já pagou o custo na estreia:
+encontrou o anel de foco a 1,49:1 sobre a barra do topo (tema claro, desde sempre) e a borda de
+controle a 3,00:1 sobre a superfície alternativa.
+
+**Status.** Aceita.
+
+---
+
+## D-026 — A navegação principal mora no rodapé
+
+**Contexto.** A ilha nasceu logo abaixo da barra do topo, centralizada. Em uso, duas coisas
+apareceram: ela criava um segundo cabeçalho — duas faixas empilhadas e uma cápsula solta entre o
+cabeçalho e o conteúdo — e punha a navegação principal fora do alcance do polegar.
+
+Este aplicativo é usado com uma mão, de madrugada, andando pelo corredor. A barra de abas que a
+ilha substituiu ficava embaixo, e nisso ela estava certa.
+
+**Decisão.** A ilha é ancorada por `bottom` e cresce **para cima** ao abrir, com
+`flex-direction: column-reverse`. O gatilho não sai do lugar quando a lista aparece.
+
+A ordem do DOM continua gatilho → lista, então quem navega por teclado alcança os destinos logo
+depois de abrir. Só a ordem visual é invertida.
+
+**Consequências.** Duas, que precisaram de conserto:
+
+- o toast de desfazer também mora no rodapé centralizado, e os dois se sobreporiam. Ele passou a se
+  apoiar em `--ilha-reserva`;
+- o espaçador de fluxo saiu. Ele funcionava com a ilha no topo; embaixo, dentro de uma coluna
+  flexível que já se estica, passaria a somar altura DEPOIS do conteúdo esticado, e uma tela vazia
+  ganharia 70px de rolagem sem ter nada para rolar. A reserva virou `padding-bottom` de
+  `.app-conteudo`.
+
+A faixa de ajustes do menu — hoje o interruptor de tema — aparece no TOPO do painel aberto, porque
+com `column-reverse` o último filho do DOM é o primeiro na tela. É onde ela deve ficar de qualquer
+forma: longe do polegar, que pousa no gatilho e não pode esbarrar num ajuste ao mirar "Painel".
+
+**Status.** Aceita.
+
+---
+
+## D-027 — O que identifica o contexto também deve deixar mudá-lo
+
+**Contexto.** O nome do setor no canto superior esquerdo era a informação mais visível do
+aplicativo, e a única que responde "onde eu estou". Mas trocar de setor exigia ir ao Painel, achar
+o cartão "Trocar de setor" e abrir outra tela.
+
+**Decisão.** O nome virou controle, com a lista de setores em um painel logo abaixo. Continua sendo
+o `<h1>`: o botão vive DENTRO do cabeçalho, e não no lugar dele, porque o título é o ponto de
+referência de quem navega por leitor de tela.
+
+Volta a ser texto puro em dois casos — sem a permissão `sector.select`, e sem setor escolhido
+ainda. Um botão que não leva a lugar nenhum é pior que nenhum botão.
+
+**Consequências.** A lista é buscada a cada abertura, e não uma vez só: as pendências de cada setor
+mudam, e uma lista velha aqui faria escolher pelo motivo errado.
+
+Trocar volta ao Painel, como já fazia a tela `/setores` — o checklist aberto é de um modelo do setor
+anterior, e ficar nele mostraria uma tela que não existe mais.
+
+Dois detalhes que só apareceram na medição:
+
+- o título tinha `overflow: hidden` para o nome longo caber com reticências, e isso aparava o anel
+  de foco do botão novo, que passa 2px para fora da caixa. O corte passou para o texto lá dentro;
+- o painel se ancora ao bloco, e não a `--altura-topo`: a barra tem 64px de altura real contra os
+  52px do token, e o painel ficaria descolado.
+
+A tela `/setores` continua existindo — é para onde vai quem ainda não escolheu setor nenhum.
 
 **Status.** Aceita.
 

@@ -21,7 +21,7 @@
 }
 else if (_board.SessionId == Guid.Empty)
 {
-    <EmptyState Icon="—" Title="Nenhum plantão aberto" Message="Abra um plantão para começar o checklist." />
+    <EmptyState Icon="vazio" Title="Nenhum plantão aberto" Message="Abra um plantão para começar o checklist." />
 }
 else
 {
@@ -40,7 +40,7 @@ else
                 @if (_resumo.HasPending)
                 {
                     <div class="faixa faixa--alerta" style="margin-top:var(--esp-3)" role="status">
-                        <span class="faixa__icone" aria-hidden="true">▲</span>
+                        <Icone Nome="alerta" Class="faixa__icone" />
                         <div class="faixa__conteudo">
                             <p class="faixa__titulo">@_resumo.Overall.Pending tarefa(s) pendente(s)</p>
                             <p class="faixa__texto">Encerrar assim mesmo exige confirmação.</p>

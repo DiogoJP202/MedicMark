@@ -125,6 +125,18 @@ Legenda: ✅ passou · ❌ falhou · ⏳ não executado
 | 9.7 | Em escala de cinza | Estados continuam distinguíveis (X, borda, texto) | ⏳ |
 | 9.8 | Marcar C.I., Sondas e Drenos no mesmo leito | Os três coexistem | ⏳ |
 | 9.9 | Filtrar por "Sondas" | Só os leitos com Sondas | ⏳ |
+| 9.10 | Menu do rodapé, aberto e fechado | Cresce para cima; o gatilho não sai do lugar; toque fora fecha | ⏳ |
+| 9.11 | Rolar qualquer tela até o fim | O último cartão não fica atrás do menu; tela curta não rola à toa | ⏳ |
+| 9.12 | Desfazer com o menu visível | A faixa fica acima do menu, sem sobrepor | ⏳ |
+| 9.13 | Interruptor "Tema escuro" no menu | Troca na hora e sobrevive a fechar e abrir o aplicativo | ⏳ |
+| 9.14 | "Seguir o aparelho" + modo noturno do sistema | O aplicativo acompanha; o interruptor mostra o tema em vigor | ⏳ |
+| 9.15 | Abrir no escuro | A tela não pisca branca antes de escurecer | ⏳ |
+| 9.16 | Tocar no nome do setor | Abre a lista com as pendências de cada setor | ⏳ |
+| 9.17 | Trocar de setor a partir de um checklist aberto | Mostra "Trocando de setor…" e volta ao Painel | ⏳ |
+| 9.18 | Tocar no setor em que já se está | Nada acontece; o menu fecha | ⏳ |
+| 9.19 | Nome de setor longo no topo | Corta com reticências, sem empurrar o botão de sincronizar | ⏳ |
+| 9.20 | Tab a partir do topo, no Windows | Anel de foco branco visível no setor e no botão de sincronizar | ⏳ |
+| 9.21 | Leito atrasado, em escala de cinza | O triângulo distingue de pendente sem depender da cor | ⏳ |
 
 ## 10. Administração
 

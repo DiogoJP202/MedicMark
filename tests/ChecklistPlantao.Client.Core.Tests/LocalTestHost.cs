@@ -116,8 +116,15 @@ internal sealed class FakeServerApi : IServerApi
             new SyncPullResponse(mudancas, Cursor, false, DateTime.UtcNow, RequiresBootstrapOnPull));
     }
 
+    /// <summary>
+    /// Estado da sessão que o servidor devolve. Nulo era o único comportamento possível, e por
+    /// isso o caminho de adoção da sessão do servidor nunca foi exercitado por teste nenhum —
+    /// foi ali que apareceu, em campo, a violação de unicidade ao reiniciar o plantão.
+    /// </summary>
+    public SessionStateDto? SessionState { get; set; }
+
     public Task<SessionStateDto?> GetCurrentSessionAsync(Guid sectorId, CancellationToken cancellationToken = default) =>
-        Task.FromResult<SessionStateDto?>(null);
+        Task.FromResult(SessionState);
 
     public Task<SessionSummaryDto?> GetSummaryAsync(Guid sessionId, CancellationToken cancellationToken = default) =>
         Task.FromResult<SessionSummaryDto?>(null);

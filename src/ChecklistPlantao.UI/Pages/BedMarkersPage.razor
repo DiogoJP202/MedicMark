@@ -21,7 +21,7 @@
 }
 else if (_leitos.Count == 0)
 {
-    <EmptyState Icon="—" Title="Nenhum leito no plantão" Message="Abra um plantão para classificar os leitos." />
+    <EmptyState Icon="vazio" Title="Nenhum leito no plantão" Message="Abra um plantão para classificar os leitos." />
 }
 else
 {
@@ -53,15 +53,11 @@ else
                 <div class="linha">
                     @foreach (var marcador in leito.Markers)
                     {
-                        <label class="campo campo--horizontal" style="margin:0;min-height:var(--toque-min)">
-                            <input type="checkbox"
-                                   style="width:26px;height:26px"
-                                   data-testid="@($"marker-{leito.BedId}-{marcador.MarkerDefinitionId}")"
-                                   checked="@marcador.IsSelected"
-                                   disabled="@(!_podeEditar)"
-                                   @onchange="args => AlternarAsync(leito, marcador, args.Value is true)" />
-                            <span>@marcador.Name</span>
-                        </label>
+                        <Caixa Value="@marcador.IsSelected"
+                               ValueChanged="marcada => AlternarAsync(leito, marcador, marcada)"
+                               Disabled="@(!_podeEditar)"
+                               Label="@marcador.Name"
+                               TestId="@($"marker-{leito.BedId}-{marcador.MarkerDefinitionId}")" />
                     }
                 </div>
             </div>
@@ -71,7 +67,7 @@ else
     @if (_mensagem is not null)
     {
         <div class="faixa faixa--alerta" role="status" data-testid="markers-message">
-            <span class="faixa__icone" aria-hidden="true">▲</span>
+            <Icone Nome="alerta" Class="faixa__icone" />
             <div class="faixa__conteudo"><p class="faixa__texto">@_mensagem</p></div>
         </div>
     }

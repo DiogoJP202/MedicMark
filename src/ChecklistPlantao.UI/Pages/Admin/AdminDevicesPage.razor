@@ -1,13 +1,13 @@
 @page "/admin/dispositivos"
 
-@inject IAdministrationService Admin
+@inject ISystemAdminService Admin
 
 <PageTitle>Dispositivos</PageTitle>
 
 <h2>Dispositivos</h2>
 
 <div class="faixa faixa--info">
-    <span class="faixa__icone" aria-hidden="true">i</span>
+    <Icone Nome="info" Class="faixa__icone" />
     <div class="faixa__conteudo">
         <p class="faixa__texto">
             Os dados abaixo são o <strong>último estado sincronizado</strong> de cada aparelho.
@@ -45,8 +45,23 @@
                 Message="Os dispositivos aparecem aqui depois da primeira sincronização com este servidor." />
 }
 
+<LoadingOverlay Visible="_carregando" Message="Carregando os dispositivos…" />
+
 @code {
     private IReadOnlyList<DeviceDto> _dispositivos = [];
+    private bool _carregando;
 
-    protected override async Task OnInitializedAsync() => _dispositivos = await Admin.GetDevicesAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _carregando = true;
+
+        try
+        {
+            _dispositivos = await Admin.GetDevicesAsync();
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
 }

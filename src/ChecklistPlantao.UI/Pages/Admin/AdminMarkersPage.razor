@@ -1,6 +1,6 @@
 @page "/admin/marcadores"
 
-@inject IAdministrationService Admin
+@inject IStructureAdminService Admin
 
 <PageTitle>Marcadores</PageTitle>
 
@@ -52,14 +52,16 @@
             <label class="campo__rotulo" for="marcador-ordem">Ordem</label>
             <input id="marcador-ordem" class="campo__controle" type="number" @bind="_ordem" />
         </div>
-        <label class="campo campo--horizontal">
-            <input type="checkbox" style="width:24px;height:24px" @bind="_ativo" />
-            <span class="campo__rotulo">Ativo</span>
-        </label>
+        <Caixa @bind-Value="_ativo" Label="Ativo" />
     </div>
 </FormDialog>
 
+<LoadingOverlay Visible="_carregando" Message="@_mensagemDeEspera" />
+
 @code {
+    private bool _carregando;
+    private string _mensagemDeEspera = "Carregando os marcadores…";
+
     private IReadOnlyList<BedMarkerDefinitionDto> _marcadores = [];
     private BedMarkerDefinitionDto? _editando;
     private string _nome = string.Empty;
@@ -73,7 +75,19 @@
 
     protected override async Task OnInitializedAsync() => await CarregarAsync();
 
-    private async Task CarregarAsync() => _marcadores = await Admin.GetMarkersAsync();
+    private async Task CarregarAsync()
+    {
+        _carregando = true;
+
+        try
+        {
+            _marcadores = await Admin.GetMarkersAsync();
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
 
     private void Novo()
     {

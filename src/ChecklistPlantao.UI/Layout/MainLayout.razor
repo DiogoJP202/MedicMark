@@ -17,29 +17,26 @@
 
 <div class="app-shell">
     <header class="app-topo">
-        <h1 class="app-topo__titulo">
-            @(Session.CurrentSectorName is { Length: > 0 } setor ? setor : "Checklist de Plantão")
-        </h1>
+        <MenuDeSetor />
         <SyncStatusIndicator Status="_sync" OnSyncNow="SincronizarAsync" />
     </header>
 
     @if (Session.IsAuthenticated)
     {
-        <nav class="nav-principal" aria-label="Navegação principal">
-            <NavLink class="nav-principal__item" href="/" Match="NavLinkMatch.All">Painel</NavLink>
-            <NavLink class="nav-principal__item" href="/checklist">Checklist</NavLink>
-            <NavLink class="nav-principal__item" href="/classificacoes">Classificações</NavLink>
-            <NavLink class="nav-principal__item" href="/pendencias">Pendências</NavLink>
-            <NavLink class="nav-principal__item" href="/sessao">Plantão</NavLink>
-            @*
-                "Dispositivo" saiu da barra a pedido: a tela continua existindo e é alcançada pelo
-                cartão "Estado do dispositivo" no painel, além da faixa de saúde no topo. A lista
-                administrativa de aparelhos é outra coisa, e mora em Configurações avançadas.
-            *@
-            <PermissionGuard Permission="@Permissions.AdminSettings" Access="Session.Access">
-                <NavLink class="nav-principal__item" href="/admin">Administração</NavLink>
-            </PermissionGuard>
-        </nav>
+        @*
+            "Dispositivo" não está na lista, a pedido: a tela continua existindo e é alcançada pelo
+            cartão "Estado do dispositivo" no painel, além da faixa de saúde no topo. A lista
+            administrativa de aparelhos é outra coisa, e mora em Configurações avançadas.
+        *@
+        <IslandNav Items="Destinos">
+            <Extra>
+                @*
+                    Trocar de tema com UM toque, sem sair da tela. As três opções — inclusive
+                    "seguir o aparelho" — continuam em Estado do dispositivo.
+                *@
+                <SeletorDeTemaCompacto />
+            </Extra>
+        </IslandNav>
     }
 
     <NotificationHealthBanner Status="_notificacoes"
@@ -50,7 +47,7 @@
         @if (Session.PermissionsAreStale)
         {
             <div class="faixa faixa--alerta" role="status">
-                <span class="faixa__icone" aria-hidden="true">▲</span>
+                <Icone Nome="alerta" Class="faixa__icone" />
                 <div class="faixa__conteudo">
                     <p class="faixa__titulo">Permissões podem estar desatualizadas</p>
                     <p class="faixa__texto">
@@ -106,6 +103,33 @@
 
 @code {
     /// <summary>
+    /// Destinos da ilha. A administração entra só para quem tem a permissão — a mesma regra que a
+    /// barra antiga aplicava com <c>PermissionGuard</c>, agora expressa na montagem da lista,
+    /// porque a ilha precisa da lista inteira para se dimensionar ao expandir.
+    /// </summary>
+    private IReadOnlyList<IslandNav.ItemDaIlha> Destinos
+    {
+        get
+        {
+            var destinos = new List<IslandNav.ItemDaIlha>
+            {
+                new("/", "Painel", "painel"),
+                new("/checklist", "Checklist", "checklist"),
+                new("/classificacoes", "Classificações", "classificacoes"),
+                new("/pendencias", "Pendências", "pendencias"),
+                new("/sessao", "Plantão", "plantao"),
+            };
+
+            if (Session.Access.Has(Permissions.AdminSettings))
+            {
+                destinos.Add(new("/admin", "Administração", "administracao"));
+            }
+
+            return destinos;
+        }
+    }
+
+    /// <summary>
     /// Mensagem de cada exceção da cadeia, e não só a de fora.
     ///
     /// A de fora costuma ser inútil para diagnosticar: "An error occurred while saving the entity
@@ -124,8 +148,8 @@
         return string.Join(" → ", partes);
     }
 
-    private SyncStatus _sync = Abstractions.SyncStatus.Unknown;
-    private NotificationStatus _notificacoes = Abstractions.NotificationStatus.Unknown;
+    private SyncStatus _sync = ChecklistPlantao.Client.Abstractions.SyncStatus.Unknown;
+    private NotificationStatus _notificacoes = ChecklistPlantao.Client.Abstractions.NotificationStatus.Unknown;
 
     private ErrorBoundary? _barreira;
 

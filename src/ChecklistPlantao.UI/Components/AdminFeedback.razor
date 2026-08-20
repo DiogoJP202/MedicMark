@@ -6,7 +6,7 @@
 @if (Result is { } resultado)
 {
     <div class="faixa @(resultado.Succeeded ? "faixa--sucesso" : "faixa--erro")" role="status" data-testid="admin-feedback">
-        <span class="faixa__icone" aria-hidden="true">@(resultado.Succeeded ? "✓" : "✕")</span>
+        <Icone Nome="@(resultado.Succeeded ? "check" : "erro")" Class="faixa__icone" />
         <div class="faixa__conteudo">
             @if (resultado.Succeeded)
             {

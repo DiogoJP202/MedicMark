@@ -3,6 +3,7 @@ using ChecklistPlantao.Client.Core;
 using ChecklistPlantao.Client.Core.Notifications;
 using ChecklistPlantao.Client.Core.Services;
 using ChecklistPlantao.Client.Services;
+using ChecklistPlantao.UI.Services;
 using Microsoft.Extensions.Logging;
 
 namespace ChecklistPlantao.Client;
@@ -37,6 +38,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<IPlatformInfo, MauiPlatformInfo>();
         builder.Services.AddSingleton<IInstitutionTimeZone, ClientInstitutionTimeZone>();
         builder.Services.AddScoped<INotificationHealthService, NotificationHealthService>();
+        // Escolha de aparência: vive no WebView, e não no banco local. Ver docs/DECISIONS.md (D-024).
+        builder.Services.AddScoped<IThemeService, WebViewThemeService>();
         builder.Services.AddSingleton<IInstitutionSettingsProvider, LocalInstitutionSettingsProvider>();
         builder.Services.AddSingleton<IDeviceStartupRescheduler, NotificationCoordinator>();
 

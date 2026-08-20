@@ -1,5 +1,5 @@
 <div class="estado-vazio" data-testid="empty-state">
-    <span class="estado-vazio__icone" aria-hidden="true">@Icon</span>
+    <Icone Nome="@Icon" Class="estado-vazio__icone" />
     <p class="estado-vazio__titulo">@Title</p>
     @if (!string.IsNullOrWhiteSpace(Message))
     {
@@ -10,7 +10,8 @@
 
 @code {
     [Parameter]
-    public string Icon { get; set; } = "—";
+    /// <summary>Nome de um dos desenhos de <c>Icone</c>. "vazio" é o neutro.</summary>
+    public string Icon { get; set; } = "vazio";
 
     [Parameter, EditorRequired]
     public string Title { get; set; } = string.Empty;

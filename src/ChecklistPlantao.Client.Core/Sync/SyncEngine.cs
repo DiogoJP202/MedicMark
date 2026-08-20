@@ -201,13 +201,13 @@ public sealed class SyncEngine
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            await FailAllAsync(db, itens,ex.Message, now, cancellationToken).ConfigureAwait(false);
+            await FailAllAsync(db, itens, ex.Message, now, cancellationToken).ConfigureAwait(false);
             return SyncOutcome.Unreachable(ex.Message);
         }
 
         if (resposta is null)
         {
-            await FailAllAsync(db, itens,"O servidor não respondeu.", now, cancellationToken).ConfigureAwait(false);
+            await FailAllAsync(db, itens, "O servidor não respondeu.", now, cancellationToken).ConfigureAwait(false);
             return SyncOutcome.Unreachable();
         }
 

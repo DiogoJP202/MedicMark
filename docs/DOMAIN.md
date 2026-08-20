@@ -43,7 +43,28 @@ Com a janela 19:00 → 07:00 e o plantão de 06/08:
 | SSVV PM | 20:00 | 06/08 20:00 |
 | SSVV AM | 06:00 | **07/08** 06:00 |
 
-A regra é genérica: vale para qualquer coluna criada depois, sem código específico por nome.
+O mesmo plantão, na linha do tempo — a data de serviço é **06/08 o tempo todo**, mesmo depois da
+meia-noite:
+
+```mermaid
+timeline
+    title Plantão de 06/08 — data de serviço 06/08 do início ao fim
+    section 06/08 (dia da sessão)
+        19:00 : abre a janela do turno
+        19:30 : Glicemia Jantar
+        20:00 : Gelo 20H · SSVV PM
+        22:00 : Gelo 22H
+    section 07/08 (mesma sessão, dia seguinte)
+        00:00 : Gelo 00H
+        02:00 : Gelo 02H
+        04:00 : Gelo 04H
+        06:00 : Gelo 06H · SSVV AM
+        07:00 : Glicemia Café : fecha a janela
+```
+
+A regra é genérica: vale para qualquer coluna criada depois, sem código específico por nome. O que
+decide não é o nome da coluna, e sim se o horário dela é **anterior ao início do turno** — nesse
+caso ela cai no dia seguinte.
 
 ## Permissões
 

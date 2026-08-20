@@ -16,11 +16,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Mesmo padrão do servidor: a verificação de esquema local é detalhe interno, e precisa ser
+         exercitada diretamente pelos testes sem virar API pública. -->
+    <InternalsVisibleTo Include="ChecklistPlantao.Client.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\ChecklistPlantao.Domain\ChecklistPlantao.Domain.csproj" />
     <ProjectReference Include="..\ChecklistPlantao.Application\ChecklistPlantao.Application.csproj" />
     <ProjectReference Include="..\ChecklistPlantao.Contracts\ChecklistPlantao.Contracts.csproj" />
-    <!-- Implementa as abstrações de apresentação declaradas pela RCL. -->
-    <ProjectReference Include="..\ChecklistPlantao.UI\ChecklistPlantao.UI.csproj" />
+    <!-- Implementa os contratos do cliente. NÃO referencia ChecklistPlantao.UI: o núcleo não
+         precisa da biblioteca de componentes Razor. Ver docs/DECISIONS.md (D-023). -->
+    <ProjectReference Include="..\ChecklistPlantao.Client.Abstractions\ChecklistPlantao.Client.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

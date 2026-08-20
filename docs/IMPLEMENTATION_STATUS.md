@@ -22,7 +22,7 @@
 |---|---|
 | `dotnet build ChecklistPlantao.sln -c Release` | ✅ 0 erros, **0 avisos** — inclui os dois heads MAUI |
 | `dotnet build ChecklistPlantao.NoMaui.slnf -c Release` | ✅ 0 erros, 0 avisos |
-| `dotnet test ChecklistPlantao.NoMaui.slnf -c Release` | ✅ **361 testes, 0 falhas** |
+| `dotnet test ChecklistPlantao.NoMaui.slnf -c Release` | ✅ **564 testes, 0 falhas** |
 | `dotnet build -f net10.0-android` | ✅ compila |
 | `dotnet build -f net10.0-windows10.0.19041.0` | ✅ compila |
 | `dotnet restore` | ✅ sem avisos de vulnerabilidade |
@@ -32,9 +32,9 @@
 | Projeto | Testes | O que cobre |
 |---|---|---|
 | Domain.Tests | 114 | Turno, permissões, retenção, conflito, agendamento, seeds, **nome único de coluna** |
-| UI.Tests (bUnit) | 98 | Componentes, filtros, faixas, desvio da primeira execução, estado da conexão no login, contenção de falha de tela, **modais de cadastro e hierarquia da administração** |
-| Client.Core.Tests | 64 | Persistência offline, fila, idempotência, conflito, auth offline, recusa do servidor, grafo de dependências real e sessão entre escopos |
-| Server.IntegrationTests | 52 | API de ponta a ponta com servidor e SQLite reais, lote com repetição na mesma célula, cadastro de estrutura, o cliente HTTP real contra o servidor real e **o aviso em tempo real do hub até o cliente** |
+| UI.Tests (bUnit) | 273 | Componentes, filtros, faixas, desvio da primeira execução, estado da conexão no login, contenção de falha de tela, modais de cadastro e hierarquia da administração, **contraste medido da folha de estilo nos dois temas** |
+| Client.Core.Tests | 86 | Persistência offline, fila, idempotência, conflito, auth offline, recusa do servidor, grafo de dependências real, sessão entre escopos e **versão do esquema local** |
+| Server.IntegrationTests | 58 | API de ponta a ponta com servidor e SQLite reais, lote com repetição na mesma célula, cadastro de estrutura, o cliente HTTP real contra o servidor real e **o aviso em tempo real do hub até o cliente** |
 | Application.Tests | 33 | Casos de uso, sessão, retenção, administração, **criação de coluna e restrição de tipo a setor** |
 
 O `Server.IntegrationTests` passou a referenciar o `Client.Core`. Era o último ponto cego da
@@ -245,7 +245,7 @@ Servidor executado de verdade, com estas verificações feitas:
 | 27 | Não existe histórico de usuário por marcação | Implementado · Validado por teste automatizado (inspeciona o modelo do EF) |
 | 28 | Não existem dados de paciente | Implementado · Verificável por inspeção do modelo |
 | 29 | Build dos projetos compatíveis passa | ✅ **Toda a solução, 0 avisos** |
-| 30 | Testes compatíveis passam | ✅ **361 testes** |
+| 30 | Testes compatíveis passam | ✅ **564 testes** |
 
 ---
 
@@ -264,6 +264,14 @@ sincronização, administração, dispositivos e health, hub SignalR, manutenç�
 Design system em CSS próprio sem CDN, todos os componentes pedidos pelo enunciado, matriz no
 desktop, lista por coluna no celular, telas de configuração, login, setor, painel, checklist,
 classificações, pendências, plantão, estado do dispositivo e administração.
+
+Navegação em ilha no **rodapé**, que cresce para cima sem o gatilho sair do lugar; troca de setor
+pelo nome no topo; **tema noturno** com escolha por aparelho.
+
+O contraste é **medido, não estimado**: `ContrasteTests` lê a folha de estilo embutida como recurso
+e aplica a mesma tabela de pares aos dois temas. Ele encontrou dois defeitos do tema claro que
+estavam lá desde o começo — o anel de foco a 1,49:1 sobre a barra do topo e a borda de controle a
+3,00:1 na superfície alternativa.
 
 ### Offline e sincronização — Implementado · Validado por teste automatizado
 Banco local, fila gravada na mesma transação do estado, push/pull, idempotência, adoção de

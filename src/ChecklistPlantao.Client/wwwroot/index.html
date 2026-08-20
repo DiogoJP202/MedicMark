@@ -7,6 +7,12 @@
     <title>Checklist de Plantão</title>
 
     <!--
+        Antes das folhas de estilo, e sem defer: aplica o tema escolhido enquanto o <head> é
+        lido. Carregado depois, a tela apareceria clara por um instante antes de escurecer.
+    -->
+    <script src="_content/ChecklistPlantao.UI/js/tema.js"></script>
+
+    <!--
         Todo asset é local. Nenhum CDN: o aplicativo precisa abrir com o aparelho sem internet.
     -->
     <link rel="stylesheet" href="_content/ChecklistPlantao.UI/css/design-system.css" />

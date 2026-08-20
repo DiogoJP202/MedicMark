@@ -113,6 +113,16 @@ else
     </div>
 }
 
+
+@*
+    Fora do @if de propósito: esta é a única coisa nesta tela que a pessoa vem AJUSTAR, e não
+    consultar. Se o diagnóstico demorar ou falhar, mudar o tema continua possível — e quem chega
+    aqui de madrugada pode ter vindo exatamente por causa da tela clara.
+*@
+<div class="cartao">
+    <SeletorDeTema />
+</div>
+
 @code {
     private static readonly CultureInfo Cultura = CultureInfo.GetCultureInfo("pt-BR");
 

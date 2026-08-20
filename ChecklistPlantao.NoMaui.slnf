@@ -3,6 +3,7 @@
     "path": "ChecklistPlantao.sln",
     "projects": [
       "src\\ChecklistPlantao.Application\\ChecklistPlantao.Application.csproj",
+      "src\\ChecklistPlantao.Client.Abstractions\\ChecklistPlantao.Client.Abstractions.csproj",
       "src\\ChecklistPlantao.Client.Core\\ChecklistPlantao.Client.Core.csproj",
       "src\\ChecklistPlantao.Contracts\\ChecklistPlantao.Contracts.csproj",
       "src\\ChecklistPlantao.Domain\\ChecklistPlantao.Domain.csproj",

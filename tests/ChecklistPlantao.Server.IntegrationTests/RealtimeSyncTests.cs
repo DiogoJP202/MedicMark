@@ -4,7 +4,7 @@ using ChecklistPlantao.Client.Core.Sync;
 using ChecklistPlantao.Contracts.Administration;
 using ChecklistPlantao.Contracts.Configuration;
 using ChecklistPlantao.Domain.Access;
-using ChecklistPlantao.UI.Abstractions;
+using ChecklistPlantao.Client.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -72,10 +72,15 @@ public sealed class RealtimeSyncTests(ChecklistServerFactory factory) : IClassFi
         var setor = bootstrap.Sectors[0].Id;
 
         await using var cliente = await MontarAsync(setorId: setor);
-        await EsperarAsync(() => cliente.Cliente.IsConnected);
 
-        // Dá tempo de a inscrição no setor chegar ao servidor antes de provocar o aviso.
-        await EsperarAsync(() => cliente.Cliente.IsConnected, TimeSpan.FromSeconds(2));
+        // Espera a INSCRIÇÃO, não a conexão. Antes esta linha verificava IsConnected — que já era
+        // verdadeiro — e retornava na hora, então o aviso era provocado antes de o servidor ter
+        // processado o SubscribeSector. O teste passava quase sempre e falhava quando a máquina
+        // estava mais lenta, por exemplo sob a instrumentação de cobertura.
+        await EsperarAsync(() => cliente.Cliente.SubscribedSectorId == setor);
+
+        Assert.Equal(setor, cliente.Cliente.SubscribedSectorId);
+
         cliente.Sincronizacao.Zerar();
 
         await admin.PostAsJsonAsync($"/api/sectors/{setor}/sessions", new { });

@@ -26,7 +26,12 @@ else
 
         <PendingTasksBanner Groups="_pendencias" OnOpen="@(() => Navigation.NavigateTo("/pendencias"))" />
 
-        <div class="cartao">
+        @*
+            O cartão do progresso é a informação central desta tela, e era o mais fraco dela:
+            um `.cartao` comum, com borda mais fraca que a dos atalhos ao redor — que, por serem
+            controles, usam a borda de 3:1. O destaque corrige essa inversão.
+        *@
+        <div class="cartao cartao--destaque">
             <h2 class="cartao__titulo">@Session.CurrentSectorName</h2>
             <p class="faixa__texto">Olá, @Session.DisplayName.</p>
             <ChecklistProgress Label="Progresso do plantão" Total="_total" Completed="_concluidas" />
@@ -46,11 +51,11 @@ else
                     <span class="linha">
                         @if (pendentes == 0)
                         {
-                            <span class="distintivo distintivo--sucesso">✓ Tudo feito</span>
+                            <span class="distintivo distintivo--sucesso"><Icone Nome="check" /> Tudo feito</span>
                         }
                         else
                         {
-                            <span class="distintivo distintivo--alerta">@pendentes pendente@(pendentes == 1 ? "" : "s")</span>
+                            <span class="distintivo distintivo--alerta"><Icone Nome="alerta" /> @pendentes pendente@(pendentes == 1 ? "" : "s")</span>
                         }
                         <span class="distintivo">@template.Columns.Count(c => c.IsActive) horário(s)</span>
                     </span>
@@ -58,7 +63,11 @@ else
             }
         </div>
 
-        <div class="grade-cartoes">
+        @*
+            Atalhos utilitários, e não trabalho: pesam menos que os cartões de checklist acima,
+            que são o que a pessoa veio fazer.
+        *@
+        <div class="grade-cartoes grade-cartoes--compacta">
             <button type="button" class="cartao cartao--acionavel" @onclick="@(() => Navigation.NavigateTo("/classificacoes"))">
                 <span class="cartao__titulo">Classificações</span>
                 <span class="faixa__texto">C.I., Sondas, Drenos e outros marcadores do plantão.</span>
@@ -75,11 +84,11 @@ else
                     Notificações:
                     @if (NotificationStatus.Current.IsHealthy)
                     {
-                        <span class="distintivo distintivo--sucesso">✓ em ordem</span>
+                        <span class="distintivo distintivo--sucesso"><Icone Nome="check" /> em ordem</span>
                     }
                     else
                     {
-                        <span class="distintivo distintivo--erro">▲ atenção</span>
+                        <span class="distintivo distintivo--erro"><Icone Nome="alerta" /> atenção</span>
                     }
                 </span>
             </button>
@@ -94,7 +103,11 @@ else
     </div>
 }
 
+<LoadingOverlay Visible="_carregando" Message="Carregando o plantão…" />
+
 @code {
+    private bool _carregando;
+
     private IReadOnlyList<SectorSummary> _setores = [];
     private IReadOnlyList<ChecklistTemplateDto> _templates = [];
     private IReadOnlyList<PendingGroup> _pendencias = [];
@@ -115,7 +128,7 @@ else
             return;
         }
 
-        await CarregarAsync();
+        await CarregarAsync(comEspera: true);
     }
 
     /// <summary>
@@ -139,13 +152,34 @@ else
         return true;
     }
 
-    private async Task CarregarAsync()
+    /// <summary>
+    /// Carrega o painel. <paramref name="comEspera"/> controla a sobreposição de carregamento.
+    ///
+    /// Ela aparece quando a PESSOA provocou a carga — abrir a tela, trocar de setor — e não quando
+    /// a recarga vem de um evento de fundo, como o aviso do hub. Piscar a tela escura no meio do
+    /// trabalho, sem ninguém ter pedido nada, seria pior que não mostrar nada.
+    /// </summary>
+    private async Task CarregarAsync(bool comEspera = false)
     {
         if (!Session.IsAuthenticated)
         {
             return;
         }
 
+        _carregando = comEspera;
+
+        try
+        {
+            await CarregarDadosAsync();
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private async Task CarregarDadosAsync()
+    {
         _setores = await Session.GetAvailableSectorsAsync();
 
         if (Session.CurrentSectorId is not { } sectorId)
@@ -170,7 +204,7 @@ else
     private async Task SelecionarSetorAsync(Guid sectorId)
     {
         await Session.SelectSectorAsync(sectorId);
-        await CarregarAsync();
+        await CarregarAsync(comEspera: true);
     }
 
     private Task SincronizarAsync() => SyncStatus.SyncNowAsync();
@@ -188,7 +222,7 @@ else
     });
 
     // Qualificado porque a propriedade injetada SyncStatus sombreia o tipo de mesmo nome.
-    private void AoMudarSync(Abstractions.SyncStatus status) => _ = InvokeAsync(StateHasChanged);
+    private void AoMudarSync(ChecklistPlantao.Client.Abstractions.SyncStatus status) => _ = InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {

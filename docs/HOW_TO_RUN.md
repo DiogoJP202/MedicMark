@@ -128,11 +128,15 @@ usuário para entrar.
 ## 3. Servidor
 
 ```bash
-dotnet run --project src/ChecklistPlantao.Server --urls "http://0.0.0.0:5136"
+dotnet run --project src/ChecklistPlantao.Server --urls "http://0.0.0.0:5000"
 ```
 
 `0.0.0.0` e não `localhost`: assim o servidor aceita conexões de outros aparelhos da rede. Com
 `localhost` só a própria máquina alcança.
+
+> A porta vem do `--urls`, e não do `launchSettings.json` — que traz 5136. Toda a documentação usa
+> 5000, inclusive o túnel do Android e os exemplos de implantação. Rodar sem `--urls` sobe em 5136
+> e o aplicativo deixa de sincronizar sem dizer por quê; ver [ANDROID_SETUP.md](ANDROID_SETUP.md).
 
 Na subida ele aplica as migrations, semeia setor Oeste, 16 leitos, os três checklists com horários,
 os marcadores e os grupos.
@@ -140,18 +144,18 @@ os marcadores e os grupos.
 Conferir, em outro terminal:
 
 ```bash
-curl http://localhost:5136/health/ready
+curl http://localhost:5000/health/ready
 ```
 
 ```bash
-curl http://localhost:5136/api/server-info
+curl http://localhost:5000/api/server-info
 ```
 
 O segundo é o endpoint que o aplicativo usa para medir se o servidor está no ar. Se ele responder
 200, o aplicativo consegue enxergar o servidor.
 
 **Não existe painel web.** O servidor é só API, SignalR e health — sem `wwwroot`, sem Razor Pages.
-Abrir `http://localhost:5136` no navegador não mostra tela nenhuma. A administração fica dentro do
+Abrir `http://localhost:5000` no navegador não mostra tela nenhuma. A administração fica dentro do
 aplicativo, em `/admin`.
 
 ---
@@ -166,7 +170,7 @@ Na primeira execução ele pede o endereço do servidor. **Aqui `localhost` est�
 aplicativo e o servidor rodam na mesma máquina:
 
 ```
-http://localhost:5136
+http://localhost:5000
 ```
 
 O `dotnet run` pode retornar com código 0 enquanto a janela continua aberta — ele destaca o
@@ -200,10 +204,10 @@ Precisa aparecer `device`. Se aparecer `unauthorized`, o diálogo do passo 4 nã
 **Opção A — pelo cabo (`adb reverse`).** Não mexe no firewall e é a mais simples para desenvolver:
 
 ```bash
-adb reverse tcp:5136 tcp:5136
+adb reverse tcp:5000 tcp:5000
 ```
 
-Com isso o endereço a informar no aplicativo é `http://localhost:5136` — o `localhost` do celular
+Com isso o endereço a informar no aplicativo é `http://localhost:5000` — o `localhost` do celular
 sai pelo cabo até a sua máquina. É a única situação em que `localhost` funciona no aparelho.
 
 O encaminhamento **cai quando o cabo é desconectado**; refaça o comando ao reconectar.
@@ -216,12 +220,12 @@ ipconfig
 ```
 
 Use o IP do adaptador Wi-Fi e confirme que o celular está na **mesma sub-rede**. O endereço a
-informar no aplicativo fica `http://SEU_IP:5136`.
+informar no aplicativo fica `http://SEU_IP:5000`.
 
 Exige liberar a porta no firewall, em terminal **como administrador**:
 
 ```bash
-netsh advfirewall firewall add rule name="ChecklistPlantao 5136" dir=in action=allow protocol=TCP localport=5136 profile=private
+netsh advfirewall firewall add rule name="ChecklistPlantao 5000" dir=in action=allow protocol=TCP localport=5000 profile=private
 ```
 
 `profile=private` de propósito: em rede pública essa porta não deve ficar aberta.
@@ -341,13 +345,13 @@ reenvia nada e o erro se repete. A flag força os assemblies para dentro do APK.
 
 Para zerar o aplicativo, prefira **desinstalar e reinstalar** em vez de "limpar dados".
 
-### `Failed to bind to address http://0.0.0.0:5136: address already in use`
+### `Failed to bind to address http://0.0.0.0:5000: address already in use`
 
 Já existe um servidor rodando nessa porta — possivelmente em outro terminal, minimizado. Encerre-o
 antes de subir outro:
 
 ```bash
-netstat -ano | findstr :5136
+netstat -ano | findstr :5000
 ```
 
 ### "Este usuário ainda não entrou neste dispositivo"
@@ -369,7 +373,7 @@ Em `Development`, o `appsettings.Development.json` liga `Default: Debug`, e o EF
 árvore de expressão de cada consulta — mais de 1.400 linhas só na subida. Para um log legível:
 
 ```bash
-dotnet run --project src/ChecklistPlantao.Server --urls "http://0.0.0.0:5136" --Logging:LogLevel:Default=Information --Logging:LogLevel:Microsoft.EntityFrameworkCore.Database.Command=Warning
+dotnet run --project src/ChecklistPlantao.Server --urls "http://0.0.0.0:5000" --Logging:LogLevel:Default=Information --Logging:LogLevel:Microsoft.EntityFrameworkCore.Database.Command=Warning
 ```
 
 ### `adb devices` mostra `unauthorized`

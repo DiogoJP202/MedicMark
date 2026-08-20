@@ -1,7 +1,7 @@
 using ChecklistPlantao.Contracts.Administration;
 using ChecklistPlantao.Contracts.Configuration;
 using ChecklistPlantao.Contracts.Devices;
-using ChecklistPlantao.UI.Abstractions;
+using ChecklistPlantao.Client.Abstractions;
 
 namespace ChecklistPlantao.UI.Tests;
 
@@ -12,7 +12,7 @@ namespace ChecklistPlantao.UI.Tests;
 /// que aparece, e sim no que é enviado ao servidor. Foi assim que "editar tipo" apagava os
 /// setores: a tela mandava lista vazia, e nada na aparência denunciava.
 /// </summary>
-internal sealed class FakeAdministrationService : IAdministrationService
+internal sealed class FakeAdministrationService : IStructureAdminService, IAccessAdminService, ISystemAdminService
 {
     public List<SectorDto> Sectors { get; } = [];
 

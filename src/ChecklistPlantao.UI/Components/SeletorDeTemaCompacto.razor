@@ -1,0 +1,35 @@
+@inject IThemeService Tema
+
+@*
+    Troca de tema dentro do menu de navegação.
+
+    Duas posições, e não as três de "Estado do dispositivo": aqui a troca precisa custar UM toque,
+    no meio do plantão, quando a tela está clara demais para a hora. As três opções continuam lá,
+    e é lá que mora "seguir o aparelho".
+
+    O interruptor mostra o tema EM VIGOR, não a preferência guardada: com "seguir o aparelho"
+    escolhido, quem decide é o aparelho, e um interruptor na posição errada seria pior que
+    nenhum. Em compensação, mexer nele vira uma escolha explícita — que é o que mexer num
+    interruptor significa.
+*@
+
+<div class="ilha__ajuste">
+    <Icone Nome="@(_escuro ? "lua" : "sol")" Class="ilha__icone" />
+    <Interruptor Value="_escuro"
+                 ValueChanged="AlternarAsync"
+                 Label="Tema escuro"
+                 TestId="island-theme" />
+</div>
+
+@code {
+    private bool _escuro;
+
+    protected override async Task OnInitializedAsync()
+        => _escuro = await Tema.GetEffectiveAsync() is ThemeChoice.Dark;
+
+    private async Task AlternarAsync(bool escuro)
+    {
+        _escuro = escuro;
+        await Tema.SetAsync(escuro ? ThemeChoice.Dark : ThemeChoice.Light);
+    }
+}

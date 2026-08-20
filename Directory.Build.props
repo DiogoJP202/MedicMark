@@ -31,7 +31,7 @@
     mas garantindo que nada entre com aviso na build oficial.
   -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release' and '$(TreatWarningsAsErrors)' == ''">
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
 </Project>

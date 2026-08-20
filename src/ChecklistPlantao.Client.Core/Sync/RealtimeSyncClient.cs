@@ -1,6 +1,6 @@
 using ChecklistPlantao.Client.Core.Services;
 using ChecklistPlantao.Contracts.Sync;
-using ChecklistPlantao.UI.Abstractions;
+using ChecklistPlantao.Client.Abstractions;
 using Microsoft.AspNetCore.Http.Connections.Client;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,6 +41,16 @@ public sealed class RealtimeSyncClient(
 
     /// <summary>Verdadeiro quando o aviso em tempo real está de fato chegando.</summary>
     public bool IsConnected => _conexao?.State == HubConnectionState.Connected;
+
+    /// <summary>
+    /// Setor em que esta conexão está inscrita no servidor, ou nulo se nenhum.
+    ///
+    /// Conectado NÃO é o mesmo que inscrito: a inscrição é uma chamada ao hub que acontece depois,
+    /// e só vale quando o servidor a processou. Sem distinguir as duas coisas, quem espera
+    /// "conectado" para então provocar um aviso de setor corre uma corrida — foi assim que um
+    /// teste ficou intermitente, falhando só quando a máquina estava mais lenta.
+    /// </summary>
+    public Guid? SubscribedSectorId => _setorInscrito;
 
     /// <summary>
     /// Costura para os testes ligarem a conexão ao servidor em memória, que não tem socket.

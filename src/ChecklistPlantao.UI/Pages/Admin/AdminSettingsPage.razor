@@ -1,6 +1,6 @@
 @page "/admin/configuracoes"
 
-@inject IAdministrationService Admin
+@inject ISystemAdminService Admin
 
 <PageTitle>Configurações gerais</PageTitle>
 
@@ -52,10 +52,7 @@ else
             </div>
         </div>
 
-        <label class="campo campo--horizontal">
-            <input type="checkbox" style="width:24px;height:24px" @bind="_abrirAutomaticamente" />
-            <span class="campo__rotulo">Abrir o plantão automaticamente ao entrar no setor</span>
-        </label>
+        <Caixa @bind-Value="_abrirAutomaticamente" Label="Abrir o plantão automaticamente ao entrar no setor" />
 
         <button type="button" class="botao botao--primario" data-testid="settings-save" @onclick="SalvarAsync">
             Salvar configurações

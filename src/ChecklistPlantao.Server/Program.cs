@@ -33,8 +33,20 @@ builder.Services.AddOptions<LoginLockoutOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
-builder.Services.Configure<BootstrapOptions>(builder.Configuration.GetSection(BootstrapOptions.SectionName));
-builder.Services.Configure<MaintenanceOptions>(builder.Configuration.GetSection(MaintenanceOptions.SectionName));
+// Preencher só metade do par cria o administrador em silêncio: nenhum usuário é criado, o servidor
+// sobe normalmente, e a pessoa descobre no primeiro login que não consegue entrar. Recusar na
+// subida transforma isso numa mensagem, e não numa investigação.
+builder.Services.AddOptions<BootstrapOptions>()
+    .Bind(builder.Configuration.GetSection(BootstrapOptions.SectionName))
+    .Validate(
+        opcoes => string.IsNullOrWhiteSpace(opcoes.AdminUserName) == string.IsNullOrWhiteSpace(opcoes.AdminPassword),
+        "Bootstrap:AdminUserName e Bootstrap:AdminPassword precisam ser informados juntos, ou nenhum dos dois.")
+    .ValidateOnStart();
+
+builder.Services.AddOptions<MaintenanceOptions>()
+    .Bind(builder.Configuration.GetSection(MaintenanceOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 
 // ---------------------------------------------------------------------------
 // Persistência, casos de uso e identidade

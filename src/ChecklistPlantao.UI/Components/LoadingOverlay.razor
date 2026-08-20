@@ -1,0 +1,34 @@
+@*
+    Sobreposição de carregamento: escurece a tela, bloqueia o toque e mostra a animação até os
+    dados chegarem.
+
+    Existe porque várias telas faziam requisição sem sinal nenhum — a pessoa via a tela antiga,
+    ou vazia, sem saber se o aplicativo estava trabalhando ou travado. Pior: dava para tocar nos
+    botões durante a busca, disparando a mesma operação duas vezes.
+
+    Diferente do LoadingState, que substitui o conteúdo: esta cobre o que já existe, e por isso
+    serve para RECARGA — quando a tela já tem dados e está buscando os próximos.
+*@
+
+@if (Visible)
+{
+    <div class="carregando-fundo"
+         role="alert"
+         aria-live="assertive"
+         aria-busy="true"
+         data-testid="loading-overlay">
+        <div class="carregando-caixa">
+            @* A animação é decorativa; quem usa leitor de tela recebe o texto abaixo. *@
+            <span class="carregando-roda" aria-hidden="true"></span>
+            <p class="carregando-texto">@Message</p>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool Visible { get; set; }
+
+    [Parameter]
+    public string Message { get; set; } = "Carregando…";
+}

@@ -1,16 +1,25 @@
 @*
-    Indicador compacto do estado de sincronização, para a barra do topo.
-    Nunca depende só de cor: sempre há ícone e texto.
+    Indicador do estado de sincronização na barra do topo. Nunca depende só de cor: sempre há
+    ícone e texto.
+
+    É um BOTÃO, e precisa parecer um. Enquanto usava só a aparência de distintivo, ele era lido
+    como rótulo de estado — e sincronizar à mão, que é a saída quando algo trava, ficava escondido
+    atrás de um elemento que ninguém pensava em tocar. Daí a borda, o relevo e o verbo explícito.
 *@
 
 <button type="button"
-        class="distintivo @CssEstado"
+        class="sync-botao @CssEstado"
         data-testid="sync-status"
         title="@Status.Detail"
+        aria-label="@($"{Status.Headline}. Toque para sincronizar agora.")"
         disabled="@(Status.IsSyncing || OnSyncNow.HasDelegate == false)"
         @onclick="SincronizarAsync">
-    <span aria-hidden="true">@Icone</span>
-    <span>@Status.Headline</span>
+    <Icone Nome="@Icone" Class="@($"sync-botao__icone {(Status.IsSyncing ? "sync-botao__icone--girando" : "")}")" />
+    <span class="sync-botao__textos">
+        <span class="sync-botao__estado">@Status.Headline</span>
+        @* O verbo é o que transforma um rótulo em convite. *@
+        <span class="sync-botao__acao">@(Status.IsSyncing ? "aguarde…" : "Sincronizar agora")</span>
+    </span>
 </button>
 
 @code {
@@ -20,21 +29,24 @@
     [Parameter]
     public EventCallback OnSyncNow { get; set; }
 
+    /// <summary>Cada estado tem FORMA própria, e não só cor — o botão fica na barra do topo.</summary>
     private string Icone => Status.Connectivity switch
     {
-        _ when Status.IsSyncing => "⟳",
-        ConnectivityState.Online => "●",
-        ConnectivityState.LocalNetwork => "◐",
-        ConnectivityState.ServerUnreachable => "▲",
-        _ => "○",
+        _ when Status.IsSyncing => "sincronizando",
+        ConnectivityState.Online => "conectado",
+        ConnectivityState.LocalNetwork => "rede-local",
+        ConnectivityState.ServerUnreachable => "sem-servidor",
+        _ => "offline",
     };
 
     private string CssEstado => Status.Connectivity switch
     {
-        ConnectivityState.Online or ConnectivityState.LocalNetwork when !Status.HasPendingWork => "distintivo--sucesso",
-        ConnectivityState.ServerUnreachable => "distintivo--alerta",
-        ConnectivityState.Offline => "distintivo--alerta",
-        _ => string.Empty,
+        // "Ainda não sincronizado" não é sucesso: com rede e sem nenhuma sincronização, o botão
+        // precisa chamar atenção, porque tocá-lo é exatamente o que falta fazer.
+        ConnectivityState.Online or ConnectivityState.LocalNetwork when !Status.HasSynced => "sync-botao--pendente",
+        ConnectivityState.Online or ConnectivityState.LocalNetwork when !Status.HasPendingWork => "sync-botao--ok",
+        ConnectivityState.ServerUnreachable or ConnectivityState.Offline => "sync-botao--atencao",
+        _ => "sync-botao--pendente",
     };
 
     private Task SincronizarAsync() => OnSyncNow.HasDelegate ? OnSyncNow.InvokeAsync() : Task.CompletedTask;

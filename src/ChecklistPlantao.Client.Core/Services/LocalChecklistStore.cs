@@ -8,7 +8,7 @@ using ChecklistPlantao.Domain.Operations;
 using ChecklistPlantao.Domain.Scheduling;
 using ChecklistPlantao.Domain.Settings;
 using ChecklistPlantao.Domain.Structure;
-using ChecklistPlantao.UI.Abstractions;
+using ChecklistPlantao.Client.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -586,12 +586,30 @@ public sealed class LocalChecklistStore : IChecklistStore
 
         foreach (var dto in estado.Entries)
         {
-            // O rastreador ANTES do banco. Uma entidade adicionada momentos atrás nesta mesma
-            // unidade de trabalho ainda não existe em disco: a consulta não a encontra, o código
-            // adiciona outra com a mesma chave, e o EF recusa com "cannot be tracked because
-            // another instance with the same key value is already being tracked".
+            // Procura por Id E pela CHAVE NATURAL (sessão + leito + tipo + coluna), sempre no
+            // rastreador antes do banco.
+            //
+            // Só por Id não basta: a mesma célula pode ter identificadores diferentes nos dois
+            // lados, quando o aparelho criou a marcação offline e o servidor criou a dele. O
+            // `INSERT` então colide com o índice único da chave natural — foi o erro que apareceu
+            // ao reiniciar o plantão. É a mesma busca que SyncEngine.ApplyEntryAsync já fazia;
+            // este caminho tinha ficado para trás.
+            //
+            // O rastreador vem antes porque uma entidade adicionada momentos atrás nesta mesma
+            // unidade de trabalho ainda não existe em disco.
             var entrada = db.ChecklistEntries.Local.FirstOrDefault(e => e.Id == dto.Id)
-                ?? await db.ChecklistEntries.FirstOrDefaultAsync(e => e.Id == dto.Id, cancellationToken).ConfigureAwait(false);
+                ?? db.ChecklistEntries.Local.FirstOrDefault(
+                    e => e.SessionId == dto.SessionId
+                        && e.BedId == dto.BedId
+                        && e.ChecklistTemplateId == dto.ChecklistTemplateId
+                        && e.ChecklistColumnId == dto.ChecklistColumnId)
+                ?? await db.ChecklistEntries.FirstOrDefaultAsync(e => e.Id == dto.Id, cancellationToken).ConfigureAwait(false)
+                ?? await db.ChecklistEntries.FirstOrDefaultAsync(
+                    e => e.SessionId == dto.SessionId
+                        && e.BedId == dto.BedId
+                        && e.ChecklistTemplateId == dto.ChecklistTemplateId
+                        && e.ChecklistColumnId == dto.ChecklistColumnId,
+                    cancellationToken).ConfigureAwait(false);
 
             if (entrada is null)
             {
@@ -607,8 +625,14 @@ public sealed class LocalChecklistStore : IChecklistStore
 
         foreach (var dto in estado.Markers)
         {
+            // Mesma regra da marcação acima: chave natural além do Id, rastreador antes do banco.
             var marcador = db.SessionBedMarkers.Local.FirstOrDefault(m => m.Id == dto.Id)
-                ?? await db.SessionBedMarkers.FirstOrDefaultAsync(m => m.Id == dto.Id, cancellationToken).ConfigureAwait(false);
+                ?? db.SessionBedMarkers.Local.FirstOrDefault(
+                    m => m.SessionId == dto.SessionId && m.BedId == dto.BedId && m.MarkerDefinitionId == dto.MarkerDefinitionId)
+                ?? await db.SessionBedMarkers.FirstOrDefaultAsync(m => m.Id == dto.Id, cancellationToken).ConfigureAwait(false)
+                ?? await db.SessionBedMarkers.FirstOrDefaultAsync(
+                    m => m.SessionId == dto.SessionId && m.BedId == dto.BedId && m.MarkerDefinitionId == dto.MarkerDefinitionId,
+                    cancellationToken).ConfigureAwait(false);
 
             if (marcador is null)
             {

@@ -1,0 +1,62 @@
+@inject IThemeService Tema
+
+@*
+    Escolha de aparência, em "Estado do dispositivo".
+
+    Três opções e não um interruptor de duas: "seguir o aparelho" é uma resposta diferente de
+    "claro". Quem deixa o celular no modo automático quer que a tela acompanhe o pôr do sol; um
+    interruptor de duas posições obrigaria essa pessoa a escolher um dos extremos para sempre.
+
+    Rádio nativo por baixo, escondido: o grupo continua navegável por teclado e anunciado como
+    "um de três" pelo leitor de tela. O que se vê é o rótulo, que é o alvo de toque inteiro.
+*@
+
+<fieldset class="opcoes" data-testid="seletor-tema">
+    <legend class="opcoes__titulo">Aparência</legend>
+    <p class="opcoes__ajuda">
+        O plantão vai das 19h às 7h. O tema escuro evita o ofuscamento de uma tela branca em
+        enfermaria de luz baixa.
+    </p>
+
+    <div class="opcoes__lista">
+        @foreach (var opcao in Disponiveis)
+        {
+            <label class="opcao @(_escolha == opcao.Valor ? "opcao--ativa" : string.Empty)">
+                <input type="radio"
+                       class="opcao__entrada"
+                       name="tema"
+                       checked="@(_escolha == opcao.Valor)"
+                       data-testid="@opcao.TestId"
+                       @onchange="() => EscolherAsync(opcao.Valor)" />
+                <Icone Nome="@opcao.Icone" Class="opcao__icone" />
+                <span class="opcao__rotulo">@opcao.Titulo</span>
+                @if (_escolha == opcao.Valor)
+                {
+                    <Icone Nome="check" Class="opcao__marca" />
+                }
+            </label>
+        }
+    </div>
+</fieldset>
+
+@code {
+    private sealed record Opcao(ThemeChoice Valor, string Titulo, string Icone, string TestId);
+
+    private static readonly Opcao[] Disponiveis =
+    [
+        new(ThemeChoice.Automatic, "Seguir o aparelho", "automatico", "tema-automatico"),
+        new(ThemeChoice.Light, "Claro", "sol", "tema-claro"),
+        new(ThemeChoice.Dark, "Escuro", "lua", "tema-escuro"),
+    ];
+
+    private ThemeChoice _escolha = ThemeChoice.Automatic;
+
+    protected override async Task OnInitializedAsync()
+        => _escolha = await Tema.GetAsync();
+
+    private async Task EscolherAsync(ThemeChoice escolha)
+    {
+        _escolha = escolha;
+        await Tema.SetAsync(escolha);
+    }
+}

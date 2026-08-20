@@ -2,7 +2,7 @@ using AngleSharp.Dom;
 using Bunit;
 using ChecklistPlantao.Contracts.Devices;
 using ChecklistPlantao.Domain.Access;
-using ChecklistPlantao.UI.Abstractions;
+using ChecklistPlantao.Client.Abstractions;
 using ChecklistPlantao.UI.Layout;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,6 +24,7 @@ public sealed class ErrorBoundaryTests : BunitContext
         Services.AddSingleton<IAppSession>(new FakeSession());
         Services.AddSingleton<ISyncStatusService>(new FakeSync());
         Services.AddSingleton<INotificationStatusService>(new FakeNotifications());
+        Services.AddSingleton<ChecklistPlantao.UI.Services.IThemeService>(new TemaFalso());
     }
 
     private IRenderedComponent<MainLayout> RenderComPaginaQuebrada()
@@ -96,8 +97,8 @@ public sealed class ErrorBoundaryTests : BunitContext
         AguardarTelaDeErro(cut);
 
         // A saída da tela quebrada precisa continuar visível — é o que faltava.
-        Assert.NotEmpty(cut.FindAll(".nav-principal"));
-        Assert.Contains("Painel", cut.Find(".nav-principal").TextContent, StringComparison.Ordinal);
+        Assert.NotEmpty(cut.FindAll("[data-testid=island-nav]"));
+        Assert.Contains("Painel", cut.Find("[data-testid=island-nav]").TextContent, StringComparison.Ordinal);
     }
 
     /// <summary>

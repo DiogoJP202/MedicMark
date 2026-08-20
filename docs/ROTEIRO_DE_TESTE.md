@@ -325,13 +325,47 @@ Esta seção existe por causa dos defeitos da segunda rodada em campo. Vale perc
 **Esperado:** o menu de navegação **nunca some**. "Painel" nunca leva de volta à tela de entrada
 com você logado. Nenhuma tela de "O aplicativo precisa ser reiniciado".
 
-2. Abra e feche telas por alguns minutos, observando o topo.
+O menu fica no **rodapé**. Ao abrir, a lista cresce **para cima** e o botão **não sai do lugar** —
+o dedo continua onde estava. Toque fora para fechar sem escolher.
+
+2. Role qualquer tela até o fim.
+
+**Esperado:** o último cartão **não fica escondido atrás do menu**. E numa tela curta — Pendências
+sem pendências, por exemplo — a página **não rola** sem ter o que rolar.
+
+3. Desfaça uma marcação e observe a faixa **Desfazer**, que também aparece no rodapé.
+
+**Esperado:** ela fica **acima** do menu, sem sobrepor.
+
+4. Abra o menu e use o interruptor **Tema escuro**. Feche o aplicativo por completo e abra de novo.
+
+**Esperado:** a troca é imediata, a tela **não pisca branca** ao reabrir, e o tema escolhido
+sobreviveu. Em **Estado do dispositivo → Aparência**, a opção marcada acompanha o que você
+escolheu no menu.
+
+5. Com **Seguir o aparelho** marcado em Aparência, mude o modo escuro do próprio celular.
+
+**Esperado:** o aplicativo acompanha, e o interruptor do menu mostra a posição **do tema em vigor**
+— não a de "automático".
+
+6. Toque no **nome do setor**, no canto superior esquerdo, e escolha outro.
+
+**Esperado:** a lista mostra as pendências de cada setor; o setor atual traz a marca de conferido;
+ao trocar aparece "Trocando de setor…" e o aplicativo volta ao Painel. Tocar no setor em que você
+já está **não faz nada**. Com um setor só, o painel explica em vez de listar.
+
+7. Navegue por teclado no Windows: `Tab` a partir do topo da tela.
+
+**Esperado:** o **anel de foco branco** aparece no nome do setor e no botão de sincronizar — os
+dois ficam sobre a barra escura. Nenhum controle recebe foco invisível.
+
+8. Abra e feche telas por alguns minutos, observando o topo.
 
 **Esperado:** o aviso *"O estado das notificações ainda não foi verificado"* **não aparece**. A
 faixa de notificações só surge quando existe um problema real e verificado — permissão negada,
 alarme exato indisponível. Quando aparecer, ela traz "Corrigir agora" e pode ser recolhida.
 
-3. Se alguma tela falhar mesmo assim:
+9. Se alguma tela falhar mesmo assim:
 
 **Esperado:** aparece "Esta tela não pôde ser aberta", com **"Tentar de novo"**, **"Voltar ao
 início"** e um detalhe técnico recolhido. O **menu continua ali** — dá para ir para outra tela sem
