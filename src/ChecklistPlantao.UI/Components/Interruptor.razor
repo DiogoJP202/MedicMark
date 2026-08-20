@@ -1,0 +1,50 @@
+@*
+    Interruptor de duas posições.
+
+    Mesma ideia da Caixa: quem opera é um controle nativo, escondido mas presente no DOM, para o
+    teclado e o leitor de tela continuarem funcionando sem código. O `role="switch"` é o que faz
+    o leitor anunciar "ativado/desativado" em vez de "marcado/desmarcado" — a diferença importa,
+    porque um interruptor age na hora e uma caixa espera um "salvar".
+
+    O sinal do estado é a POSIÇÃO do botão, não a cor do trilho: continua legível para quem não
+    distingue cores e para quem está com a tela no sol.
+*@
+
+<label class="interruptor @(Disabled ? "interruptor--desabilitado" : string.Empty)">
+    <input type="checkbox"
+           role="switch"
+           class="interruptor__entrada"
+           checked="@Value"
+           disabled="@Disabled"
+           data-testid="@TestId"
+           @onchange="AoMudarAsync" />
+    <span class="interruptor__trilho" aria-hidden="true">
+        <span class="interruptor__botao"></span>
+    </span>
+    <span class="interruptor__rotulo">@Label</span>
+</label>
+
+@code {
+    [Parameter]
+    public bool Value { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> ValueChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public string? TestId { get; set; }
+
+    private async Task AoMudarAsync(ChangeEventArgs argumentos)
+    {
+        var novo = argumentos.Value is true;
+
+        Value = novo;
+        await ValueChanged.InvokeAsync(novo);
+    }
+}

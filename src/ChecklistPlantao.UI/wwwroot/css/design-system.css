@@ -781,6 +781,110 @@ p { margin: 0 0 var(--esp-3); }
 }
 
 .opcao__marca { font-size: var(--texto-sm); }
+
+/* ------------------------------------------------------------------ interruptor
+
+   Duas posições, agindo na hora — diferente da caixa de marcação, que espera um "salvar".
+   O sinal do estado é a POSIÇÃO do botão, e não a cor do trilho.                               */
+
+.interruptor {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--esp-3);
+    min-height: var(--toque-min);
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Nativo e presente no DOM, só invisível: `display: none` o tiraria da tabulação. */
+.interruptor__entrada {
+    position: absolute;
+    opacity: 0;
+    width: 44px;
+    height: 26px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.interruptor__trilho {
+    flex: 0 0 auto;
+    position: relative;
+    width: 44px;
+    height: 26px;
+    border-radius: 999px;
+    border: 2px solid var(--cor-borda-forte);
+    background: var(--cor-neutro-suave);
+    transition: background 160ms ease, border-color 160ms ease;
+}
+
+.interruptor__botao {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--cor-borda-forte);
+    transition:
+        transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+        background 160ms ease;
+}
+
+.interruptor__entrada:checked + .interruptor__trilho {
+    background: var(--cor-primaria);
+    border-color: var(--cor-primaria);
+}
+
+.interruptor__entrada:checked + .interruptor__trilho .interruptor__botao {
+    background: var(--cor-texto-inverso);
+    /* 20px = largura interna (40) menos o botão (18) menos a folga inicial (2). */
+    transform: translateX(20px);
+}
+
+/* O foco do controle nativo some ao escondê-lo; redesenhado no trilho. */
+.interruptor__entrada:focus-visible + .interruptor__trilho {
+    outline: 3px solid var(--cor-foco);
+    outline-offset: 2px;
+}
+
+.interruptor__rotulo {
+    font-size: var(--texto-sm);
+    font-weight: 600;
+}
+
+.interruptor--desabilitado { cursor: not-allowed; opacity: 0.55; }
+
+.interruptor--desabilitado .interruptor__entrada { cursor: not-allowed; }
+
+/*
+    Sobre o chrome escuro da ilha o interruptor inverte: desligado é um trilho vazado com botão
+    claro; ligado é um trilho cheio com botão escuro. A primária, que serve na superfície clara,
+    aqui ficaria azul-escuro sobre azul-escuro.
+*/
+.ilha .interruptor__trilho {
+    border-color: var(--contorno-claro);
+    background: var(--realce-sutil);
+}
+
+.ilha .interruptor__botao { background: var(--cor-texto-inverso); }
+
+.ilha .interruptor__entrada:checked + .interruptor__trilho {
+    background: var(--cor-texto-inverso);
+    border-color: var(--cor-texto-inverso);
+}
+
+.ilha .interruptor__entrada:checked + .interruptor__trilho .interruptor__botao {
+    background: var(--cor-chrome);
+}
+
+/*
+    O anel de foco desenhado no trilho não é alcançado pela regra geral do chrome, que muda a cor
+    do elemento FOCADO — e aqui o focado é a entrada invisível.
+*/
+.ilha .interruptor__entrada:focus-visible + .interruptor__trilho {
+    outline-color: var(--cor-texto-inverso);
+}
+
 /* ------------------------------------------------------------------ faixas e distintivos */
 
 .faixa {
@@ -1591,6 +1695,42 @@ p { margin: 0 0 var(--esp-3); }
 .ilha__link:focus-visible {
     outline: 2px solid var(--cor-texto-inverso);
     outline-offset: -2px;
+}
+
+/* ---- faixa extra: acompanha a lista, e some junto com ela ---- */
+
+.ilha__extra {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    /* Fechada não recebe toque nem tabulação. */
+    visibility: hidden;
+    transition:
+        max-height 260ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 180ms ease,
+        visibility 0s linear 260ms;
+}
+
+.ilha--aberta .ilha__extra {
+    max-height: 80px;
+    opacity: 1;
+    visibility: visible;
+    transition:
+        max-height 300ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 200ms ease 80ms,
+        visibility 0s;
+}
+
+.ilha__ajuste {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-3);
+    padding: var(--esp-2) var(--esp-4);
+    /*
+        A linha fica embaixo porque, com column-reverse, esta faixa aparece ACIMA da lista. Ela
+        separa ajuste de destino: uma coisa muda a tela, a outra leva para outra tela.
+    */
+    border-bottom: 1px solid var(--realce-medio);
 }
 
 /*

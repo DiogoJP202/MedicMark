@@ -50,6 +50,27 @@
         /* Chamado ao abrir a tela, para marcar a opção que está valendo. */
         lido: function () {
             return guardado() || 'automatico';
+        },
+
+        /*
+            O tema que está VALENDO agora — nunca "automatico".
+
+            O interruptor do menu precisa disto, e não da preferência: com "seguir o aparelho"
+            escolhido, quem sabe se está claro ou escuro é o aparelho, e um interruptor mostrando
+            a posição errada é pior que não ter interruptor.
+        */
+        efetivo: function () {
+            var atributo = document.documentElement.getAttribute('data-tema');
+
+            if (atributo === 'claro' || atributo === 'escuro') {
+                return atributo;
+            }
+
+            try {
+                return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro';
+            } catch (erro) {
+                return 'claro';
+            }
         }
     };
 

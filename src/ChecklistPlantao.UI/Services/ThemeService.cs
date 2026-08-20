@@ -23,6 +23,15 @@ public interface IThemeService
     /// <summary>A escolha em vigor. Devolve <see cref="ThemeChoice.Automatic"/> se nada foi escolhido.</summary>
     Task<ThemeChoice> GetAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// O tema que está VALENDO — nunca <see cref="ThemeChoice.Automatic"/>. Com "seguir o
+    /// aparelho" escolhido, devolve o que o aparelho decidiu.
+    ///
+    /// É o que um interruptor de duas posições precisa saber: mostrar a posição errada é pior
+    /// que não ter interruptor.
+    /// </summary>
+    Task<ThemeChoice> GetEffectiveAsync(CancellationToken cancellationToken = default);
+
     Task SetAsync(ThemeChoice choice, CancellationToken cancellationToken = default);
 }
 
@@ -48,6 +57,21 @@ public sealed class WebViewThemeService(IJSRuntime js, ILogger<WebViewThemeServi
             // aparelho. Ler uma preferência de aparência nunca pode derrubar a tela.
             logger.LogDebug(erro, "Não foi possível ler a preferência de tema; assumindo automático.");
             return ThemeChoice.Automatic;
+        }
+    }
+
+    public async Task<ThemeChoice> GetEffectiveAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var lido = await js.InvokeAsync<string>("temaDoAplicativo.efetivo", cancellationToken);
+            return Interpretar(lido) is ThemeChoice.Dark ? ThemeChoice.Dark : ThemeChoice.Light;
+        }
+        catch (Exception erro) when (erro is JSException or InvalidOperationException or TaskCanceledException)
+        {
+            // Sem JavaScript, o tema em vigor é o claro: é o que o CSS entrega sem nenhum atributo.
+            logger.LogDebug(erro, "Não foi possível ler o tema em vigor; assumindo claro.");
+            return ThemeChoice.Light;
         }
     }
 

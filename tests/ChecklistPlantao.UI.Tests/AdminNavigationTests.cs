@@ -38,6 +38,7 @@ public sealed class AdminNavigationTests : BunitContext
         Services.AddSingleton<IAppSession>(new StubSession(ComPermissoes(Permissions.ChecklistView)));
         Services.AddSingleton<ISyncStatusService>(new StubSyncStatus());
         Services.AddSingleton<INotificationStatusService>(new StubNotificationStatus());
+        Services.AddSingleton<ChecklistPlantao.UI.Services.IThemeService>(new TemaFalso());
 
         var cut = Render<MainLayout>();
 
@@ -54,6 +55,7 @@ public sealed class AdminNavigationTests : BunitContext
         Services.AddSingleton<IAppSession>(new StubSession(ComPermissoes(Permissions.ChecklistView)));
         Services.AddSingleton<ISyncStatusService>(new StubSyncStatus());
         Services.AddSingleton<INotificationStatusService>(new StubNotificationStatus());
+        Services.AddSingleton<ChecklistPlantao.UI.Services.IThemeService>(new TemaFalso());
 
         var cut = Render<MainLayout>();
 

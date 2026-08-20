@@ -65,6 +65,22 @@
             </li>
         }
     </ul>
+
+    @*
+        Faixa extra do menu. A ilha não sabe o que vai aqui — quem decide é o layout. Sem isto ela
+        precisaria conhecer o serviço de tema, e navegação não tem nada com aparência.
+
+        Aparece no TOPO do painel aberto, e não embaixo: por causa do column-reverse, o último
+        filho do DOM é o primeiro na tela. É onde ela deve ficar de qualquer forma — longe do
+        polegar, que pousa no gatilho e não pode esbarrar num ajuste ao mirar "Painel". Em ordem
+        de tabulação ela continua depois dos destinos, que é o que o teclado espera.
+    *@
+    @if (Extra is not null)
+    {
+        <div class="ilha__extra">
+            @Extra
+        </div>
+    }
 </nav>
 
 @code {
@@ -73,6 +89,10 @@
 
     [Parameter, EditorRequired]
     public IReadOnlyList<ItemDaIlha> Items { get; set; } = [];
+
+    /// <summary>Conteúdo extra do painel aberto. Nulo não desenha nada.</summary>
+    [Parameter]
+    public RenderFragment? Extra { get; set; }
 
     private bool _aberta;
 

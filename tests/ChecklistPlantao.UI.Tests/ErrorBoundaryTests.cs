@@ -24,6 +24,7 @@ public sealed class ErrorBoundaryTests : BunitContext
         Services.AddSingleton<IAppSession>(new FakeSession());
         Services.AddSingleton<ISyncStatusService>(new FakeSync());
         Services.AddSingleton<INotificationStatusService>(new FakeNotifications());
+        Services.AddSingleton<ChecklistPlantao.UI.Services.IThemeService>(new TemaFalso());
     }
 
     private IRenderedComponent<MainLayout> RenderComPaginaQuebrada()

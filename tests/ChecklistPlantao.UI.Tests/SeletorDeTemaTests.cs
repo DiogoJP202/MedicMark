@@ -81,21 +81,4 @@ public sealed class SeletorDeTemaTests : BunitContext
         Assert.Equal(3, radios.Count);
         Assert.All(radios, r => Assert.Equal("tema", r.GetAttribute("name")));
     }
-
-    private sealed class TemaFalso : IThemeService
-    {
-        public ThemeChoice Atual { get; set; } = ThemeChoice.Automatic;
-
-        public ThemeChoice? Gravado { get; private set; }
-
-        public Task<ThemeChoice> GetAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult(Atual);
-
-        public Task SetAsync(ThemeChoice choice, CancellationToken cancellationToken = default)
-        {
-            Gravado = choice;
-            Atual = choice;
-            return Task.CompletedTask;
-        }
-    }
 }

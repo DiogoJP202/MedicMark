@@ -30,7 +30,15 @@
             cartão "Estado do dispositivo" no painel, além da faixa de saúde no topo. A lista
             administrativa de aparelhos é outra coisa, e mora em Configurações avançadas.
         *@
-        <IslandNav Items="Destinos" />
+        <IslandNav Items="Destinos">
+            <Extra>
+                @*
+                    Trocar de tema com UM toque, sem sair da tela. As três opções — inclusive
+                    "seguir o aparelho" — continuam em Estado do dispositivo.
+                *@
+                <SeletorDeTemaCompacto />
+            </Extra>
+        </IslandNav>
     }
 
     <NotificationHealthBanner Status="_notificacoes"
