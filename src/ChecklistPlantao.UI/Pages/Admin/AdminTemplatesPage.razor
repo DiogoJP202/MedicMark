@@ -82,10 +82,7 @@
             <label class="campo__rotulo" for="tpl-ordem">Ordem</label>
             <input id="tpl-ordem" class="campo__controle" type="number" @bind="_ordemTemplate" />
         </div>
-        <label class="campo campo--horizontal">
-            <input type="checkbox" style="width:24px;height:24px" @bind="_templateAtivo" />
-            <span class="campo__rotulo">Ativo</span>
-        </label>
+        <Caixa @bind-Value="_templateAtivo" Label="Ativo" />
     </div>
 
     @*
@@ -99,14 +96,10 @@
 
         @foreach (var setor in _setores)
         {
-            <label class="campo campo--horizontal">
-                <input type="checkbox"
-                       style="width:24px;height:24px"
-                       data-testid="@($"template-sector-{setor.Id}")"
-                       checked="@_setoresDoTemplate.Contains(setor.Id)"
-                       @onchange="e => AlternarSetor(setor.Id, e.Value is true)" />
-                <span class="campo__rotulo">@setor.Name</span>
-            </label>
+            <Caixa Value="@_setoresDoTemplate.Contains(setor.Id)"
+                   ValueChanged="marcada => AlternarSetor(setor.Id, marcada)"
+                   Label="@setor.Name"
+                   TestId="@($"template-sector-{setor.Id}")" />
         }
     </div>
 </FormDialog>
@@ -135,18 +128,9 @@
     </div>
 
     <div class="linha">
-        <label class="campo campo--horizontal">
-            <input type="checkbox" style="width:24px;height:24px" data-testid="column-notify" @bind="_notificar" />
-            <span class="campo__rotulo">Notificar</span>
-        </label>
-        <label class="campo campo--horizontal">
-            <input type="checkbox" style="width:24px;height:24px" @bind="_colunaAtiva" />
-            <span class="campo__rotulo">Ativa</span>
-        </label>
-        <label class="campo campo--horizontal">
-            <input type="checkbox" style="width:24px;height:24px" @bind="_permitirAdiar" />
-            <span class="campo__rotulo">Permitir adiar</span>
-        </label>
+        <Caixa @bind-Value="_notificar" Label="Notificar" TestId="column-notify" />
+        <Caixa @bind-Value="_colunaAtiva" Label="Ativa" />
+        <Caixa @bind-Value="_permitirAdiar" Label="Permitir adiar" />
     </div>
 
     <div class="linha">

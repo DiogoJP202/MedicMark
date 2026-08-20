@@ -52,10 +52,7 @@
             <label class="campo__rotulo" for="marcador-ordem">Ordem</label>
             <input id="marcador-ordem" class="campo__controle" type="number" @bind="_ordem" />
         </div>
-        <label class="campo campo--horizontal">
-            <input type="checkbox" style="width:24px;height:24px" @bind="_ativo" />
-            <span class="campo__rotulo">Ativo</span>
-        </label>
+        <Caixa @bind-Value="_ativo" Label="Ativo" />
     </div>
 </FormDialog>
 

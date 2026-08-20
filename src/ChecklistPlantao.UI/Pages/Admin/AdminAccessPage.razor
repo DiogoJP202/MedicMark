@@ -26,10 +26,7 @@
         <input id="grupo-nome" class="campo__controle" data-testid="group-name" @bind="_nomeGrupo" />
     </div>
 
-    <label class="campo campo--horizontal">
-        <input type="checkbox" style="width:24px;height:24px" data-testid="group-all-sectors" @bind="_todosSetores" />
-        <span class="campo__rotulo">Acesso a todos os setores, inclusive os criados depois</span>
-    </label>
+    <Caixa @bind-Value="_todosSetores" Label="Acesso a todos os setores, inclusive os criados depois" TestId="group-all-sectors" />
 
     @if (!_todosSetores)
     {
@@ -37,13 +34,10 @@
             <legend class="campo__rotulo">Setores autorizados</legend>
             @foreach (var setor in _setores)
             {
-                <label class="campo campo--horizontal">
-                    <input type="checkbox"
-                           style="width:24px;height:24px"
-                           checked="@_setoresSelecionados.Contains(setor.Id)"
-                           @onchange="args => AlternarSetor(setor.Id, args.Value is true)" />
+                <Caixa Value="@_setoresSelecionados.Contains(setor.Id)"
+                       ValueChanged="marcada => AlternarSetor(setor.Id, marcada)">
                     <span>@setor.Name</span>
-                </label>
+                </Caixa>
             }
         </fieldset>
     }
@@ -52,22 +46,16 @@
         <legend class="campo__rotulo">Permissões</legend>
         @foreach (var permissao in _permissoes)
         {
-            <label class="campo campo--horizontal">
-                <input type="checkbox"
-                       style="width:24px;height:24px"
-                       data-testid="@($"perm-{permissao.Key}")"
-                       checked="@_permissoesSelecionadas.Contains(permissao.Key)"
-                       @onchange="args => AlternarPermissao(permissao.Key, args.Value is true)" />
+            <Caixa Value="@_permissoesSelecionadas.Contains(permissao.Key)"
+                   ValueChanged="marcada => AlternarPermissao(permissao.Key, marcada)"
+                   TestId="@($"perm-{permissao.Key}")">
                 <span>@permissao.Description <code class="campo__ajuda">@permissao.Key</code></span>
-            </label>
+            </Caixa>
         }
     </fieldset>
 
     <div class="linha">
-        <label class="campo campo--horizontal">
-            <input type="checkbox" style="width:24px;height:24px" @bind="_grupoAtivo" />
-            <span class="campo__rotulo">Ativo</span>
-        </label>
+        <Caixa @bind-Value="_grupoAtivo" Label="Ativo" />
         <button type="button" class="botao botao--primario" data-testid="group-save" @onclick="SalvarGrupoAsync">Salvar grupo</button>
         @if (_grupoEditando is not null)
         {
@@ -114,24 +102,18 @@
                 <span class="campo__ajuda">Mínimo 8 caracteres, com letra e número.</span>
             </div>
         }
-        <label class="campo campo--horizontal">
-            <input type="checkbox" style="width:24px;height:24px" @bind="_usuarioAtivo" />
-            <span class="campo__rotulo">Ativo</span>
-        </label>
+        <Caixa @bind-Value="_usuarioAtivo" Label="Ativo" />
     </div>
 
     <fieldset class="campo">
         <legend class="campo__rotulo">Grupos (o acesso é a soma de todos)</legend>
         @foreach (var grupo in _grupos)
         {
-            <label class="campo campo--horizontal">
-                <input type="checkbox"
-                       style="width:24px;height:24px"
-                       data-testid="@($"user-group-{grupo.Id}")"
-                       checked="@_gruposSelecionados.Contains(grupo.Id)"
-                       @onchange="args => AlternarGrupo(grupo.Id, args.Value is true)" />
+            <Caixa Value="@_gruposSelecionados.Contains(grupo.Id)"
+                   ValueChanged="marcada => AlternarGrupo(grupo.Id, marcada)"
+                   TestId="@($"user-group-{grupo.Id}")">
                 <span>@grupo.Name</span>
-            </label>
+            </Caixa>
         }
     </fieldset>
 

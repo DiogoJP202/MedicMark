@@ -83,10 +83,7 @@
             <label class="campo__rotulo" for="setor-ordem">Ordem</label>
             <input id="setor-ordem" class="campo__controle" type="number" @bind="_ordemSetor" />
         </div>
-        <label class="campo campo--horizontal">
-            <input type="checkbox" style="width:24px;height:24px" @bind="_setorAtivo" />
-            <span class="campo__rotulo">Ativo</span>
-        </label>
+        <Caixa @bind-Value="_setorAtivo" Label="Ativo" />
     </div>
 
     <div class="campo">
@@ -127,10 +124,7 @@
             <label class="campo__rotulo" for="leito-ordem">Ordem</label>
             <input id="leito-ordem" class="campo__controle" type="number" @bind="_ordemLeito" />
         </div>
-        <label class="campo campo--horizontal">
-            <input type="checkbox" style="width:24px;height:24px" @bind="_leitoAtivo" />
-            <span class="campo__rotulo">Ativo</span>
-        </label>
+        <Caixa @bind-Value="_leitoAtivo" Label="Ativo" />
     </div>
 </FormDialog>
 

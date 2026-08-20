@@ -77,14 +77,10 @@ else
                        @oninput="AoDigitarBusca" />
             </div>
 
-            <label class="campo campo--horizontal" style="margin:0">
-                <input type="checkbox"
-                       style="width:24px;height:24px"
-                       data-testid="only-pending"
-                       checked="@_somentePendentes"
-                       @onchange="AlternarSomentePendentes" />
-                <span class="campo__rotulo">Somente pendentes</span>
-            </label>
+            <Caixa Value="@_somentePendentes"
+                   ValueChanged="AlternarSomentePendentes"
+                   Label="Somente pendentes"
+                   TestId="only-pending" />
         </div>
 
         @*
@@ -289,7 +285,7 @@ else
 
     private void AoDigitarBusca(ChangeEventArgs args) => _busca = args.Value?.ToString() ?? string.Empty;
 
-    private void AlternarSomentePendentes(ChangeEventArgs args) => _somentePendentes = args.Value is true;
+    private void AlternarSomentePendentes(bool marcada) => _somentePendentes = marcada;
 
     /// <summary>
     /// Atualização otimista: o estado local muda primeiro e a tela redesenha na hora.

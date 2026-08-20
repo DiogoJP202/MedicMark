@@ -373,6 +373,79 @@ p { margin: 0 0 var(--esp-3); }
     gap: var(--esp-3);
 }
 
+/* ------------------------------------------------------------------ caixa de marcação
+
+   A caixa desenhada tem 24px; a ÁREA QUE RESPONDE ao toque tem 48px de altura. Desenhar pequeno
+   e deixar o alvo do mesmo tamanho é o erro clássico em celular — e aqui a tela é usada com uma
+   mão, de madrugada.                                                                           */
+
+.caixa {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--esp-3);
+    min-height: var(--toque-min);
+    padding: var(--esp-1) 0;
+    cursor: pointer;
+    /* Sem isto, um toque um pouco demorado seleciona o rótulo em vez de marcar. */
+    user-select: none;
+}
+
+/*
+    A caixa nativa continua no DOM e continua sendo quem o leitor de tela anuncia e o teclado
+    opera. Ela só não é vista — `display: none` a tiraria da ordem de tabulação.
+*/
+.caixa__entrada {
+    position: absolute;
+    opacity: 0;
+    width: 24px;
+    height: 24px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.caixa__marca {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--cor-borda-forte);
+    border-radius: var(--raio-sm);
+    background: var(--cor-superficie);
+    color: var(--cor-texto-inverso);
+}
+
+.caixa__marca > svg {
+    width: 18px;
+    height: 18px;
+    /* Escondido enquanto desmarcada: o estado é o sinal, não só o fundo. */
+    opacity: 0;
+}
+
+.caixa__entrada:checked + .caixa__marca {
+    background: var(--cor-primaria);
+    border-color: var(--cor-primaria);
+}
+
+.caixa__entrada:checked + .caixa__marca > svg { opacity: 1; }
+
+/* O foco da caixa nativa some ao estilizar; redesenhado aqui para não perder o teclado. */
+.caixa__entrada:focus-visible + .caixa__marca {
+    outline: 3px solid var(--cor-primaria-clara);
+    outline-offset: 2px;
+}
+
+.caixa__rotulo {
+    font-size: var(--texto-sm);
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+}
+
+.caixa--desabilitada { cursor: not-allowed; opacity: 0.55; }
+
+.caixa--desabilitada .caixa__entrada { cursor: not-allowed; }
+
 /* ------------------------------------------------------------------ faixas e distintivos */
 
 .faixa {
