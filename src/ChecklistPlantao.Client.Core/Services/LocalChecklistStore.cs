@@ -135,6 +135,23 @@ public sealed class LocalChecklistStore : IChecklistStore
         }
     }
 
+    public async Task<CurrentSessionView?> GetCurrentSessionAsync(Guid sectorId, CancellationToken cancellationToken = default)
+    {
+        var (db, meu) = await AbrirAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            var sessao = await EnsureSessionAsync(db, sectorId, cancellationToken).ConfigureAwait(false);
+            return sessao is null
+                ? null
+                : new CurrentSessionView(sessao.Id, sessao.SectorId, sessao.ServiceDate, sessao.IsOpen);
+        }
+        finally
+        {
+            await FecharAsync(db, meu).ConfigureAwait(false);
+        }
+    }
+
     private async Task<ChecklistBoard> GetBoardAsync(
         LocalDbContext db,
         Guid sectorId,
@@ -162,9 +179,14 @@ public sealed class LocalChecklistStore : IChecklistStore
 
         var setor = await db.Sectors.AsNoTracking().FirstOrDefaultAsync(s => s.Id == sectorId, cancellationToken).ConfigureAwait(false);
 
+        var idsDosLeitos = sessao.Beds
+            .Where(b => b.IsActiveInSession)
+            .Select(b => b.BedId)
+            .ToHashSet();
+
         var leitos = await db.Beds
             .AsNoTracking()
-            .Where(b => b.SectorId == sectorId && b.IsActive)
+            .Where(b => idsDosLeitos.Contains(b.Id))
             .OrderBy(b => b.SortOrder)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -300,6 +322,7 @@ public sealed class LocalChecklistStore : IChecklistStore
     {
         var sessao = await db.OperationalSessions
             .AsNoTracking()
+            .Include(s => s.Beds)
             .FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken)
             .ConfigureAwait(false);
 
@@ -315,9 +338,14 @@ public sealed class LocalChecklistStore : IChecklistStore
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        var idsDosLeitos = sessao.Beds
+            .Where(b => b.IsActiveInSession)
+            .Select(b => b.BedId)
+            .ToHashSet();
+
         var leitos = await db.Beds
             .AsNoTracking()
-            .Where(b => b.SectorId == sessao.SectorId && b.IsActive)
+            .Where(b => idsDosLeitos.Contains(b.Id))
             .OrderBy(b => b.SortOrder)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);

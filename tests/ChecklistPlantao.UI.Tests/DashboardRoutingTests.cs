@@ -198,6 +198,9 @@ public sealed class DashboardRoutingTests : BunitContext
         public Task<IReadOnlyList<ChecklistTemplateDto>> GetTemplatesAsync(Guid sectorId, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<ChecklistTemplateDto>>([]);
 
+        public Task<CurrentSessionView?> GetCurrentSessionAsync(Guid sectorId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<CurrentSessionView?>(null);
+
         public Task<ChecklistBoard> GetBoardAsync(Guid sectorId, Guid templateId, CancellationToken cancellationToken = default) =>
             Task.FromResult(UiTestData.Board());
 

@@ -159,6 +159,9 @@ public sealed record ChecklistBoard(
         Guid.Empty, Guid.Empty, string.Empty, default, null!, [], [], false);
 }
 
+/// <summary>Identidade da sessão atual sem depender da abertura de uma grade de checklist.</summary>
+public sealed record CurrentSessionView(Guid Id, Guid SectorId, DateOnly ServiceDate, bool IsOpen);
+
 /// <summary>Pendências agrupadas para a tela de pendências e para as faixas de atraso.</summary>
 public sealed record PendingGroup(
     Guid SectorId,

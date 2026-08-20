@@ -55,6 +55,8 @@ public interface IChecklistStore
 
     Task<IReadOnlyList<ChecklistTemplateDto>> GetTemplatesAsync(Guid sectorId, CancellationToken cancellationToken = default);
 
+    Task<CurrentSessionView?> GetCurrentSessionAsync(Guid sectorId, CancellationToken cancellationToken = default);
+
     Task<ChecklistBoard> GetBoardAsync(Guid sectorId, Guid templateId, CancellationToken cancellationToken = default);
 
     /// <summary>

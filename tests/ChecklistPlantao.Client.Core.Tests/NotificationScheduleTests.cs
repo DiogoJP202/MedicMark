@@ -161,26 +161,4 @@ public sealed class NotificationScheduleTests
         Assert.Empty(agendamentos);
     }
 
-    [Fact]
-    public void Contagem_de_pendencias_agrupa_por_coluna()
-    {
-        var sessao = Guid.CreateVersion7();
-        var template = Guid.CreateVersion7();
-        var colunaA = Guid.CreateVersion7();
-        var colunaB = Guid.CreateVersion7();
-
-        var entradas = new List<Domain.Operations.ChecklistEntry>
-        {
-            new(Guid.CreateVersion7(), sessao, Guid.CreateVersion7(), template, colunaA, AgoraUtc),
-            new(Guid.CreateVersion7(), sessao, Guid.CreateVersion7(), template, colunaA, AgoraUtc),
-            new(Guid.CreateVersion7(), sessao, Guid.CreateVersion7(), template, colunaB, AgoraUtc),
-        };
-
-        entradas[0].SetCompletion(true, AgoraUtc);
-
-        var pendentes = NotificationScheduleBuilder.CountPending(entradas);
-
-        Assert.Equal(1, pendentes[colunaA]);
-        Assert.Equal(1, pendentes[colunaB]);
-    }
 }

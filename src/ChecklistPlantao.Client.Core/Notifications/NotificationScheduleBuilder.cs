@@ -70,16 +70,6 @@ public static class NotificationScheduleBuilder
         return [.. agendamentos.OrderBy(a => a.FireAt)];
     }
 
-    /// <summary>Pendências por coluna a partir das marcações locais.</summary>
-    public static IReadOnlyDictionary<Guid, int> CountPending(IEnumerable<ChecklistEntry> entries)
-    {
-        ArgumentNullException.ThrowIfNull(entries);
-
-        return entries
-            .GroupBy(e => e.ChecklistColumnId)
-            .ToDictionary(g => g.Key, g => g.Count(e => !e.IsCompleted));
-    }
-
     private static ScheduledNotification Create(
         NotificationOccurrence ocorrencia,
         ChecklistColumn coluna,

@@ -86,6 +86,7 @@ public static class DependencyInjection
             sp.GetRequiredService<ILogger<LocalChecklistStore>>()));
         services.AddScoped<IDeviceDiagnosticsService, DeviceDiagnosticsService>();
         services.AddScoped<INotificationStatusService, NotificationStatusService>();
+        services.AddScoped<LocalNotificationPlanService>();
         // Uma implementação, três contratos. Cada tela de administração injeta só o que usa —
         // a de leitos deixou de depender de redefinição de senha. Ver docs/DECISIONS.md (D-022).
         services.AddScoped<AdministrationService>();
