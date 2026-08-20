@@ -24,6 +24,12 @@ internal sealed class FakeAdministrationService : IStructureAdminService, IAcces
 
     public List<DeviceDto> Devices { get; } = [];
 
+    public List<AccessGroupDto> Groups { get; } = [];
+
+    public List<AppUserDto> Users { get; } = [];
+
+    public List<PermissionDto> Permissions { get; } = [];
+
     /// <summary>Resposta das operações de gravação. O teste troca por falha quando quiser.</summary>
     public Result SaveResult { get; set; } = Result.Ok();
 
@@ -36,6 +42,18 @@ internal sealed class FakeAdministrationService : IStructureAdminService, IAcces
     public SaveColumnRequest? LastColumn { get; private set; }
 
     public SaveMarkerRequest? LastMarker { get; private set; }
+
+    public SaveGroupRequest? LastGroup { get; private set; }
+
+    public CreateUserRequest? LastCreatedUser { get; private set; }
+
+    public UpdateUserRequest? LastUpdatedUser { get; private set; }
+
+    public ResetPasswordRequest? LastPasswordReset { get; private set; }
+
+    public SaveNotificationConfigurationRequest? LastNotifications { get; private set; }
+
+    public SaveInstitutionSettingsRequest? LastSettings { get; private set; }
 
     public Guid? LastEditedId { get; private set; }
 
@@ -84,37 +102,55 @@ internal sealed class FakeAdministrationService : IStructureAdminService, IAcces
     }
 
     public Task<IReadOnlyList<AccessGroupDto>> GetGroupsAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<AccessGroupDto>>([]);
+        Task.FromResult<IReadOnlyList<AccessGroupDto>>(Groups);
 
-    public Task<Result> SaveGroupAsync(Guid? id, SaveGroupRequest request, CancellationToken cancellationToken = default) =>
-        Registrar(id);
+    public Task<Result> SaveGroupAsync(Guid? id, SaveGroupRequest request, CancellationToken cancellationToken = default)
+    {
+        LastGroup = request;
+        return Registrar(id);
+    }
 
     public Task<IReadOnlyList<AppUserDto>> GetUsersAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<AppUserDto>>([]);
+        Task.FromResult<IReadOnlyList<AppUserDto>>(Users);
 
-    public Task<Result> CreateUserAsync(CreateUserRequest request, CancellationToken cancellationToken = default) =>
-        Registrar(null);
+    public Task<Result> CreateUserAsync(CreateUserRequest request, CancellationToken cancellationToken = default)
+    {
+        LastCreatedUser = request;
+        return Registrar(null);
+    }
 
-    public Task<Result> UpdateUserAsync(Guid id, UpdateUserRequest request, CancellationToken cancellationToken = default) =>
-        Registrar(id);
+    public Task<Result> UpdateUserAsync(Guid id, UpdateUserRequest request, CancellationToken cancellationToken = default)
+    {
+        LastUpdatedUser = request;
+        return Registrar(id);
+    }
 
-    public Task<Result> ResetPasswordAsync(Guid id, ResetPasswordRequest request, CancellationToken cancellationToken = default) =>
-        Registrar(id);
+    public Task<Result> ResetPasswordAsync(Guid id, ResetPasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        LastPasswordReset = request;
+        return Registrar(id);
+    }
 
     public Task<IReadOnlyList<PermissionDto>> GetPermissionsAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<PermissionDto>>([]);
+        Task.FromResult<IReadOnlyList<PermissionDto>>(Permissions);
 
     public Task<NotificationConfigurationDto> GetNotificationConfigurationAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(new NotificationConfigurationDto(true, true, "High", true, true, false, "{checklist}", "{pendentes}", 1));
 
-    public Task<Result> SaveNotificationConfigurationAsync(SaveNotificationConfigurationRequest request, CancellationToken cancellationToken = default) =>
-        Registrar(null);
+    public Task<Result> SaveNotificationConfigurationAsync(SaveNotificationConfigurationRequest request, CancellationToken cancellationToken = default)
+    {
+        LastNotifications = request;
+        return Registrar(null);
+    }
 
     public Task<InstitutionSettingsDto> GetSettingsAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(new InstitutionSettingsDto("America/Sao_Paulo", new TimeOnly(19, 0), new TimeOnly(7, 0), 24, 7, 5, true));
 
-    public Task<Result> SaveSettingsAsync(SaveInstitutionSettingsRequest request, CancellationToken cancellationToken = default) =>
-        Registrar(null);
+    public Task<Result> SaveSettingsAsync(SaveInstitutionSettingsRequest request, CancellationToken cancellationToken = default)
+    {
+        LastSettings = request;
+        return Registrar(null);
+    }
 
     public Task<IReadOnlyList<DeviceDto>> GetDevicesAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<DeviceDto>>(Devices);

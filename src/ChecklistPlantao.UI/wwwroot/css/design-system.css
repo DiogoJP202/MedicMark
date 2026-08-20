@@ -774,6 +774,39 @@ p { margin: 0 0 var(--esp-3); }
 
 .admin-formulario-grupo legend { padding: 0 var(--esp-2); font-weight: 700; }
 
+.admin-secao + .admin-secao { margin-top: var(--esp-6); }
+
+.admin-etapas {
+    margin: 0 0 var(--esp-3);
+    color: var(--cor-texto-suave);
+    font-size: var(--texto-sm);
+    font-weight: 700;
+}
+
+.admin-configuracoes { display: grid; gap: var(--esp-4); }
+
+.admin-configuracoes > .admin-formulario-grupo { margin-top: 0; }
+
+.admin-revisao { padding: var(--esp-4); }
+
+.admin-revisao h3 { margin-top: 0; }
+
+.admin-revisao dl,
+.admin-detalhes {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: var(--esp-2) var(--esp-3);
+    margin: 0;
+}
+
+.admin-revisao dt,
+.admin-detalhes dt { color: var(--cor-texto-suave); font-weight: 700; }
+
+.admin-revisao dd,
+.admin-detalhes dd { margin: 0; }
+
+.admin-dispositivo { display: grid; gap: var(--esp-3); }
+
 /* ------------------------------------------------------------------ botões */
 
 .botao {

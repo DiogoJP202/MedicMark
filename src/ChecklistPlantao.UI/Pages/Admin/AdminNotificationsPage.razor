@@ -2,17 +2,11 @@
 
 @inject ISystemAdminService Admin
 
-@*
-    Notificações: som, vibração, prioridade e os textos do alerta.
-
-    Página própria — antes os três assuntos de sistema dividiam uma única página e três rotas, o
-    que carregava dados desnecessários e mostrava a quem só tinha uma permissão os formulários
-    das outras duas.
-*@
-
 <PageTitle>Notificações</PageTitle>
 
-<h2>Notificações</h2>
+<AdminPageHeader Title="Notificações"
+                 Description="Configure onde os alertas aparecem, seu conteúdo e o comportamento no Android."
+                 BackHref="/admin/avancado" />
 
 <AdminFeedback Result="_resultado" />
 
@@ -22,39 +16,53 @@
 }
 else
 {
-    <div class="cartao">
-        <div class="linha">
-            <Caixa @bind-Value="_som" Label="Som" TestId="notif-sound" />
-            <Caixa @bind-Value="_vibracao" Label="Vibração" />
-            <Caixa @bind-Value="_android" Label="Habilitado no Android" />
-            <Caixa @bind-Value="_windows" Label="Habilitado no Windows" />
-        </div>
+    <div class="admin-configuracoes">
+        <fieldset class="cartao admin-formulario-grupo" data-testid="notification-channels">
+            <legend>Canais e comportamento</legend>
+            <p class="campo__ajuda">Escolha as plataformas que recebem alertas e como o aparelho chama a atenção.</p>
+            <div class="linha">
+                <Caixa @bind-Value="_android" Label="Habilitado no Android" TestId="notif-android" />
+                <Caixa @bind-Value="_windows" Label="Habilitado no Windows" TestId="notif-windows" />
+                <Caixa @bind-Value="_som" Label="Som" TestId="notif-sound" />
+                <Caixa @bind-Value="_vibracao" Label="Vibração" TestId="notif-vibration" />
+            </div>
 
-        <div class="campo" style="max-width:220px">
-            <label class="campo__rotulo" for="prioridade">Prioridade</label>
-            <select id="prioridade" class="campo__controle" @bind="_prioridade">
-                <option value="Normal">Normal</option>
-                <option value="High">Alta</option>
-                <option value="Urgent">Urgente</option>
-            </select>
-        </div>
+            <div class="campo" style="max-width:220px">
+                <div class="linha">
+                    <label class="campo__rotulo" for="prioridade">Prioridade</label>
+                    <HelpPopover Label="Ajuda sobre a prioridade">Prioridades mais altas ganham destaque, mas ainda respeitam os ajustes de notificação do sistema operacional.</HelpPopover>
+                </div>
+                <select id="prioridade" class="campo__controle" @bind="_prioridade">
+                    <option value="Normal">Normal</option>
+                    <option value="High">Alta</option>
+                    <option value="Urgent">Urgente</option>
+                </select>
+            </div>
+        </fieldset>
 
-        <div class="campo">
-            <label class="campo__rotulo" for="titulo">Modelo do título</label>
-            <input id="titulo" class="campo__controle" @bind="_titulo" />
-            <span class="campo__ajuda">Marcadores: {checklist}, {coluna}, {setor}, {pendentes}.</span>
-        </div>
+        <fieldset class="cartao admin-formulario-grupo" data-testid="notification-content">
+            <legend>Conteúdo do alerta</legend>
+            <div class="campo">
+                <div class="linha">
+                    <label class="campo__rotulo" for="titulo">Modelo do título</label>
+                    <HelpPopover Label="Ajuda sobre os marcadores do título">Use {checklist}, {coluna}, {setor} e {pendentes}; eles serão substituídos ao criar cada alerta.</HelpPopover>
+                </div>
+                <input id="titulo" class="campo__controle" data-testid="notif-title" @bind="_titulo" />
+            </div>
 
-        <div class="campo">
-            <label class="campo__rotulo" for="corpo">Modelo da mensagem</label>
-            <input id="corpo" class="campo__controle" @bind="_corpo" />
-        </div>
+            <div class="campo">
+                <label class="campo__rotulo" for="corpo">Modelo da mensagem</label>
+                <input id="corpo" class="campo__controle" data-testid="notif-body" @bind="_corpo" />
+            </div>
+        </fieldset>
 
-        <Caixa @bind-Value="_telaCheia" Label="Permitir alerta em tela cheia no Android" />
-        <p class="campo__ajuda">
-            Desligado por padrão: exige permissão especial, é intrusivo e as lojas restringem o uso.
-            Ative apenas se a instituição realmente precisar. Ver docs/NOTIFICATIONS.md.
-        </p>
+        <fieldset class="cartao admin-formulario-grupo" data-testid="notification-android-options">
+            <legend>Opções avançadas do Android</legend>
+            <div class="linha">
+                <Caixa @bind-Value="_telaCheia" Label="Permitir alerta em tela cheia" TestId="notif-full-screen" />
+                <HelpPopover Label="Ajuda sobre alertas em tela cheia">Essa permissão é intrusiva e sujeita a restrições da loja. Mantenha desligada, salvo quando a instituição realmente precisar interromper a tela atual.</HelpPopover>
+            </div>
+        </fieldset>
 
         <button type="button" class="botao botao--primario" data-testid="notif-save" @onclick="SalvarAsync">
             Salvar notificações
@@ -91,6 +99,9 @@ else
         _resultado = await Admin.SaveNotificationConfigurationAsync(new SaveNotificationConfigurationRequest(
             _som, _vibracao, _prioridade, _android, _windows, _telaCheia, _titulo, _corpo, _notificacoes?.Version ?? 0));
 
-        await CarregarAsync();
+        if (_resultado.Succeeded)
+        {
+            await CarregarAsync();
+        }
     }
 }

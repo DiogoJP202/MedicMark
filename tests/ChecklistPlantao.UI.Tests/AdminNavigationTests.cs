@@ -118,7 +118,7 @@ public sealed class AdminNavigationTests : BunitContext
 
         Assert.Contains("Usuários e Grupos", cut.Markup, StringComparison.Ordinal);
         Assert.Contains("Notificações", cut.Markup, StringComparison.Ordinal);
-        Assert.Contains("Configurações Gerais", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("Plantão e acesso", cut.Markup, StringComparison.Ordinal);
         Assert.Contains("Dispositivos", cut.Markup, StringComparison.Ordinal);
     }
 
@@ -132,7 +132,7 @@ public sealed class AdminNavigationTests : BunitContext
 
         Assert.Contains("Dispositivos", cut.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain("Usuários e Grupos", cut.Markup, StringComparison.Ordinal);
-        Assert.DoesNotContain("Configurações Gerais", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Plantão e acesso", cut.Markup, StringComparison.Ordinal);
     }
 
     [Fact]

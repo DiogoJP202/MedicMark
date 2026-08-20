@@ -2,57 +2,77 @@
 
 @inject ISystemAdminService Admin
 
-<PageTitle>Configurações gerais</PageTitle>
+<PageTitle>Plantão e acesso</PageTitle>
 
-<h2>Configurações gerais</h2>
+<AdminPageHeader Title="Plantão e acesso"
+                 Description="Defina a janela operacional, a retenção e as regras de uso offline."
+                 BackHref="/admin/avancado" />
 
 <AdminFeedback Result="_resultado" />
 
 @if (_configuracoes is null)
 {
-    <LoadingState Message="Carregando as configurações gerais…" />
+    <LoadingState Message="Carregando as configurações de plantão e acesso…" />
 }
 else
 {
-    <div class="cartao">
-        <div class="campo" style="max-width:280px">
-            <label class="campo__rotulo" for="fuso">Fuso horário</label>
-            <input id="fuso" class="campo__controle" data-testid="settings-timezone" @bind="_fuso" />
-            <span class="campo__ajuda">Identificador IANA, por exemplo America/Sao_Paulo.</span>
-        </div>
-
-        <div class="linha">
-            <div class="campo" style="flex:0 1 150px">
-                <label class="campo__rotulo" for="turno-inicio">Início do plantão</label>
-                <input id="turno-inicio" class="campo__controle" type="time" data-testid="settings-shift-start" @bind="_inicio" />
+    <div class="admin-configuracoes">
+        <fieldset class="cartao admin-formulario-grupo" data-testid="settings-shift">
+            <legend>Horários e fuso</legend>
+            <div class="campo" style="max-width:320px">
+                <div class="linha">
+                    <label class="campo__rotulo" for="fuso">Fuso horário</label>
+                    <HelpPopover Label="Ajuda sobre o fuso horário">Use um identificador IANA, por exemplo America/Sao_Paulo. Ele determina a data operacional de todos os setores.</HelpPopover>
+                </div>
+                <input id="fuso" class="campo__controle" data-testid="settings-timezone" @bind="_fuso" />
             </div>
-            <div class="campo" style="flex:0 1 150px">
-                <label class="campo__rotulo" for="turno-fim">Fim do plantão</label>
-                <input id="turno-fim" class="campo__controle" type="time" @bind="_fim" />
-            </div>
-        </div>
-        <p class="campo__ajuda">
-            Colunas com horário anterior ao início do turno pertencem ao dia seguinte —
-            é assim que 00H, 02H, 04H e 06H ficam no mesmo plantão que 20H e 22H.
-        </p>
 
-        <div class="linha">
-            <div class="campo" style="flex:0 1 190px">
-                <label class="campo__rotulo" for="retencao">Recuperação após encerrar (h)</label>
+            <div class="linha">
+                <div class="campo" style="flex:0 1 170px">
+                    <label class="campo__rotulo" for="turno-inicio">Início do plantão</label>
+                    <input id="turno-inicio" class="campo__controle" type="time" data-testid="settings-shift-start" @bind="_inicio" />
+                </div>
+                <div class="campo" style="flex:0 1 170px">
+                    <label class="campo__rotulo" for="turno-fim">Fim do plantão</label>
+                    <input id="turno-fim" class="campo__controle" type="time" data-testid="settings-shift-end" @bind="_fim" />
+                </div>
+                <HelpPopover Label="Ajuda sobre a virada do plantão">Colunas anteriores ao início do turno pertencem ao dia seguinte; assim 00H a 06H ficam no mesmo plantão iniciado às 19H.</HelpPopover>
+            </div>
+        </fieldset>
+
+        <fieldset class="cartao admin-formulario-grupo" data-testid="settings-retention-group">
+            <legend>Retenção após encerramento</legend>
+            <div class="campo" style="max-width:240px">
+                <div class="linha">
+                    <label class="campo__rotulo" for="retencao">Prazo de recuperação (horas)</label>
+                    <HelpPopover Label="Ajuda sobre a retenção">Durante esse prazo um encerramento pode ser recuperado. Zero remove a possibilidade imediatamente.</HelpPopover>
+                </div>
                 <input id="retencao" class="campo__controle" type="number" min="0" data-testid="settings-retention" @bind="_retencao" />
-                <span class="campo__ajuda">Zero apaga imediatamente ao encerrar.</span>
             </div>
-            <div class="campo" style="flex:0 1 180px">
-                <label class="campo__rotulo" for="offline">Validade do acesso offline (dias)</label>
-                <input id="offline" class="campo__controle" type="number" min="1" @bind="_offlineDias" />
-            </div>
-            <div class="campo" style="flex:0 1 180px">
-                <label class="campo__rotulo" for="tentativas">Tentativas offline</label>
-                <input id="tentativas" class="campo__controle" type="number" min="1" @bind="_tentativas" />
-            </div>
-        </div>
+        </fieldset>
 
-        <Caixa @bind-Value="_abrirAutomaticamente" Label="Abrir o plantão automaticamente ao entrar no setor" />
+        <fieldset class="cartao admin-formulario-grupo" data-testid="settings-offline">
+            <legend>Acesso offline</legend>
+            <div class="linha">
+                <div class="campo" style="flex:0 1 220px">
+                    <label class="campo__rotulo" for="offline">Validade do acesso (dias)</label>
+                    <input id="offline" class="campo__controle" type="number" min="1" data-testid="settings-offline-days" @bind="_offlineDias" />
+                </div>
+                <div class="campo" style="flex:0 1 220px">
+                    <label class="campo__rotulo" for="tentativas">Tentativas permitidas</label>
+                    <input id="tentativas" class="campo__controle" type="number" min="1" data-testid="settings-offline-attempts" @bind="_tentativas" />
+                </div>
+                <HelpPopover Label="Ajuda sobre o acesso offline">Esses limites valem apenas quando o servidor está indisponível e existe uma credencial local válida no aparelho.</HelpPopover>
+            </div>
+        </fieldset>
+
+        <fieldset class="cartao admin-formulario-grupo" data-testid="settings-auto-open">
+            <legend>Abertura automática</legend>
+            <div class="linha">
+                <Caixa @bind-Value="_abrirAutomaticamente" Label="Abrir o plantão automaticamente ao entrar no setor" />
+                <HelpPopover Label="Ajuda sobre a abertura automática">Quando habilitada, a primeira consulta do setor abre ou adota a sessão operacional vigente.</HelpPopover>
+            </div>
+        </fieldset>
 
         <button type="button" class="botao botao--primario" data-testid="settings-save" @onclick="SalvarAsync">
             Salvar configurações
@@ -91,6 +111,9 @@ else
         _resultado = await Admin.SaveSettingsAsync(new SaveInstitutionSettingsRequest(
             _fuso, _inicio, _fim, _retencao, _offlineDias, _tentativas, _abrirAutomaticamente));
 
-        await CarregarAsync();
+        if (_resultado.Succeeded)
+        {
+            await CarregarAsync();
+        }
     }
 }

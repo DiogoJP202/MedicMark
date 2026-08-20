@@ -4,45 +4,64 @@
 
 <PageTitle>Dispositivos</PageTitle>
 
-<h2>Dispositivos</h2>
+<AdminPageHeader Title="Dispositivos"
+                 Description="Consulte o último estado sincronizado dos aparelhos conhecidos."
+                 BackHref="/admin/avancado" />
 
-<div class="faixa faixa--info">
-    <Icone Nome="info" Class="faixa__icone" />
-    <div class="faixa__conteudo">
-        <p class="faixa__texto">
-            Os dados abaixo são o <strong>último estado sincronizado</strong> de cada aparelho.
-            Um dispositivo totalmente offline não aparece atualizado aqui — o servidor não tem
-            como saber o estado atual dele.
-        </p>
-    </div>
+<div class="linha" style="margin-bottom:var(--esp-4)">
+    <span class="campo__ajuda">Esta página é somente leitura.</span>
+    <HelpPopover Label="Ajuda sobre o estado dos dispositivos">Um aparelho totalmente offline não consegue atualizar o servidor; por isso os dados representam sempre o último estado sincronizado, não necessariamente o estado atual.</HelpPopover>
 </div>
 
-<div class="tabela__area">
-    <table class="tabela">
-        <thead>
-            <tr><th>Dispositivo</th><th>Plataforma</th><th>Versão</th><th>Visto em</th><th>Notificações</th><th>Alarme exato</th><th>Situação</th></tr>
-        </thead>
-        <tbody>
-            @foreach (var dispositivo in _dispositivos)
-            {
-                <tr data-testid="@($"device-row-{dispositivo.Id}")">
-                    <td>@dispositivo.DeviceName</td>
-                    <td>@dispositivo.Platform</td>
-                    <td>@dispositivo.AppVersion</td>
-                    <td>@dispositivo.LastSeenAtUtc.ToLocalTime().ToString("dd/MM HH:mm", CultureInfo.GetCultureInfo("pt-BR"))</td>
-                    <td>@dispositivo.NotificationHealth</td>
-                    <td>@(dispositivo.ExactAlarmPermissionGranted is { } e ? (e ? "sim" : "não") : "—")</td>
-                    <td>@(dispositivo.IsActive ? "ativo" : "inativo")</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
-
-@if (_dispositivos.Count == 0)
+@if (_dispositivos.Count == 0 && !_carregando)
 {
     <EmptyState Title="Nenhum aparelho registrado"
                 Message="Os dispositivos aparecem aqui depois da primeira sincronização com este servidor." />
+}
+else
+{
+    <div class="lista-responsiva" data-testid="devices-readonly-list">
+        <div class="lista-responsiva__tabela tabela__area">
+            <table class="tabela">
+                <thead>
+                    <tr><th>Dispositivo</th><th>Plataforma</th><th>Versão</th><th>Visto em</th><th>Notificações</th><th>Alarme exato</th><th>Situação</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var dispositivo in _dispositivos)
+                    {
+                        <tr data-testid="@($"device-row-{dispositivo.Id}")">
+                            <td>@dispositivo.DeviceName</td>
+                            <td>@dispositivo.Platform</td>
+                            <td>@dispositivo.AppVersion</td>
+                            <td>@VistoEm(dispositivo)</td>
+                            <td>@dispositivo.NotificationHealth</td>
+                            <td>@AlarmeExato(dispositivo)</td>
+                            <td><StatusBadge Text="@(dispositivo.IsActive ? "Ativo" : "Inativo")" Tone="@(dispositivo.IsActive ? "sucesso" : "inativo")" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="lista-responsiva__cards">
+            @foreach (var dispositivo in _dispositivos)
+            {
+                <article class="cartao admin-dispositivo" data-testid="@($"device-card-{dispositivo.Id}")">
+                    <div class="linha linha--entre">
+                        <div>
+                            <strong>@dispositivo.DeviceName</strong>
+                            <span class="campo__ajuda">@dispositivo.Platform · versão @dispositivo.AppVersion</span>
+                        </div>
+                        <StatusBadge Text="@(dispositivo.IsActive ? "Ativo" : "Inativo")" Tone="@(dispositivo.IsActive ? "sucesso" : "inativo")" />
+                    </div>
+                    <dl class="admin-detalhes">
+                        <dt>Visto em</dt><dd>@VistoEm(dispositivo)</dd>
+                        <dt>Notificações</dt><dd>@dispositivo.NotificationHealth</dd>
+                        <dt>Alarme exato</dt><dd>@AlarmeExato(dispositivo)</dd>
+                    </dl>
+                </article>
+            }
+        </div>
+    </div>
 }
 
 <LoadingOverlay Visible="_carregando" Message="Carregando os dispositivos…" />
@@ -54,7 +73,6 @@
     protected override async Task OnInitializedAsync()
     {
         _carregando = true;
-
         try
         {
             _dispositivos = await Admin.GetDevicesAsync();
@@ -64,4 +82,10 @@
             _carregando = false;
         }
     }
+
+    private static string VistoEm(DeviceDto dispositivo) =>
+        dispositivo.LastSeenAtUtc.ToLocalTime().ToString("dd/MM HH:mm", CultureInfo.GetCultureInfo("pt-BR"));
+
+    private static string AlarmeExato(DeviceDto dispositivo) =>
+        dispositivo.ExactAlarmPermissionGranted is { } permitido ? (permitido ? "Sim" : "Não") : "—";
 }
