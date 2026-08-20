@@ -1,0 +1,163 @@
+@implements IDisposable
+
+@inject IAppSession Session
+@inject NavigationManager Navigation
+
+@*
+    O setor no canto superior esquerdo, agora clicável.
+
+    Ele já era a informação mais visível do aplicativo e a única que responde "onde eu estou" —
+    mas trocar de setor exigia ir ao Painel, achar o cartão "Trocar de setor" e abrir outra tela.
+    Nome que identifica o contexto e não deixa mudá-lo é rótulo; virou controle.
+
+    Continua sendo o <h1> da página. O botão vive DENTRO do cabeçalho, e não no lugar dele: o
+    título é o ponto de referência de quem navega por leitor de tela, e trocá-lo por um botão
+    apagaria isso da árvore de acessibilidade.
+
+    Sem permissão para trocar, ou sem setor escolhido ainda, volta a ser texto — um botão que não
+    leva a lugar nenhum é pior que nenhum botão.
+*@
+
+<div class="setor-menu">
+    <h1 class="app-topo__titulo">
+        @if (PodeTrocar)
+        {
+            <button type="button"
+                    class="setor-gatilho"
+                    data-testid="sector-menu-toggle"
+                    aria-expanded="@_aberto.ToString().ToLowerInvariant()"
+                    aria-controls="setor-menu-lista"
+                    @onclick="AlternarAsync">
+                <span class="setor-gatilho__nome">@Titulo</span>
+                <Icone Nome="seta" Class="setor-gatilho__seta" />
+            </button>
+        }
+        else
+        {
+            <span class="setor-menu__texto">@Titulo</span>
+        }
+    </h1>
+
+    @if (_aberto)
+    {
+        @* Captura o toque fora, como na ilha. Sem isto, fechar exigiria acertar o gatilho. *@
+        <div class="setor-menu__fundo" data-testid="sector-menu-backdrop" @onclick="Fechar"></div>
+
+        <div class="setor-menu__painel" id="setor-menu-lista" data-testid="sector-menu">
+            @if (_setores is null)
+            {
+                <p class="setor-menu__aviso">Carregando os setores…</p>
+            }
+            else if (_setores.Count == 0)
+            {
+                <p class="setor-menu__aviso">Nenhum setor disponível para o seu usuário.</p>
+            }
+            else if (_setores.Count == 1)
+            {
+                <p class="setor-menu__aviso">Você tem acesso a um setor só.</p>
+            }
+            else
+            {
+                <ul class="setor-menu__lista">
+                    @foreach (var setor in _setores)
+                    {
+                        var atual = setor.Id == Session.CurrentSectorId;
+
+                        <li>
+                            <button type="button"
+                                    class="setor-menu__item @(atual ? "setor-menu__item--atual" : string.Empty)"
+                                    data-testid="@($"sector-menu-{setor.Id}")"
+                                    aria-current="@(atual ? "true" : null)"
+                                    @onclick="() => EscolherAsync(setor.Id)">
+                                <span class="setor-menu__nome">@setor.Name</span>
+
+                                @* O estado do setor ajuda a escolher: pendências à vista, como nos cartões. *@
+                                @if (!setor.HasOpenSession)
+                                {
+                                    <span class="distintivo">Sem plantão</span>
+                                }
+                                else if (setor.PendingTasks > 0)
+                                {
+                                    <span class="distintivo distintivo--alerta">@setor.PendingTasks</span>
+                                }
+
+                                @* O atual não se distingue só pela cor de fundo. *@
+                                @if (atual)
+                                {
+                                    <Icone Nome="check" Class="setor-menu__marca" />
+                                }
+                            </button>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    }
+</div>
+
+<LoadingOverlay Visible="_trocando" Message="Trocando de setor…" />
+
+@code {
+    private bool _aberto;
+    private bool _trocando;
+
+    /// <summary>Nulo enquanto não foi buscado. Só é buscado ao abrir — o cabeçalho renderiza o tempo todo.</summary>
+    private IReadOnlyList<SectorSummary>? _setores;
+
+    private string Titulo =>
+        Session.CurrentSectorName is { Length: > 0 } setor ? setor : "Checklist de Plantão";
+
+    private bool PodeTrocar =>
+        Session.IsAuthenticated
+        && Session.CurrentSectorName is { Length: > 0 }
+        && Session.Access.Has(Permissions.SectorSelect);
+
+    protected override void OnInitialized() => Navigation.LocationChanged += AoNavegar;
+
+    private void AoNavegar(object? remetente, LocationChangedEventArgs argumentos) =>
+        _ = InvokeAsync(() => { _aberto = false; StateHasChanged(); });
+
+    private async Task AlternarAsync()
+    {
+        _aberto = !_aberto;
+
+        if (!_aberto)
+        {
+            return;
+        }
+
+        // Busca a cada abertura: as pendências de cada setor mudam, e uma lista velha aqui
+        // faria escolher pelo motivo errado.
+        _setores = null;
+        _setores = await Session.GetAvailableSectorsAsync();
+    }
+
+    private void Fechar() => _aberto = false;
+
+    private async Task EscolherAsync(Guid sectorId)
+    {
+        _aberto = false;
+
+        if (sectorId == Session.CurrentSectorId)
+        {
+            return;
+        }
+
+        _trocando = true;
+
+        try
+        {
+            await Session.SelectSectorAsync(sectorId);
+        }
+        finally
+        {
+            _trocando = false;
+        }
+
+        // Volta ao painel: o checklist aberto é de um modelo do setor ANTERIOR, e ficar nele
+        // depois da troca mostraria uma tela que não existe mais.
+        Navigation.NavigateTo("/");
+    }
+
+    public void Dispose() => Navigation.LocationChanged -= AoNavegar;
+}

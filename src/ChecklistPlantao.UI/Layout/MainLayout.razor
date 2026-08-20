@@ -17,9 +17,7 @@
 
 <div class="app-shell">
     <header class="app-topo">
-        <h1 class="app-topo__titulo">
-            @(Session.CurrentSectorName is { Length: > 0 } setor ? setor : "Checklist de Plantão")
-        </h1>
+        <MenuDeSetor />
         <SyncStatusIndicator Status="_sync" OnSyncNow="SincronizarAsync" />
     </header>
 

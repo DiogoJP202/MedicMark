@@ -387,11 +387,11 @@ p { margin: 0 0 var(--esp-3); }
     font-size: var(--texto-md);
     font-weight: 650;
     margin: 0;
-    flex: 1 1 auto;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    /*
+        Sem `overflow: hidden` aqui: o corte agora é do texto lá dentro. No título ele aparava o
+        anel de foco do botão de setor, que passa 2px para fora da caixa.
+    */
 }
 
 .app-conteudo {
@@ -430,6 +430,136 @@ p { margin: 0 0 var(--esp-3); }
 
 .linha--fim { justify-content: flex-end; }
 .linha--entre { justify-content: space-between; }
+
+
+/* ------------------------------------------------------------------ menu de setor
+
+   O setor no canto superior esquerdo. Era rótulo; virou controle, sem deixar de ser o <h1>.
+
+   O painel é posicionado em relação a este bloco, e não à barra: a barra tem altura variável
+   quando o nome do setor quebra em duas linhas, e o painel ficaria descolado.                  */
+
+.setor-menu {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+    /* Alinha o TEXTO com a margem da barra, e não a caixa do botão que o envolve. */
+    margin-left: calc(-1 * var(--esp-2));
+}
+
+.setor-gatilho {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--esp-2);
+    max-width: 100%;
+    min-height: var(--toque-min);
+    padding: var(--esp-1) var(--esp-2);
+    border: 0;
+    border-radius: var(--raio-md);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: inherit;
+    cursor: pointer;
+}
+
+.setor-gatilho:hover { background: var(--realce-sutil); }
+
+/* Também usado sem botão, quando não há permissão para trocar. */
+.setor-menu__texto,
+.setor-gatilho__nome {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.setor-gatilho__seta {
+    flex: 0 0 auto;
+    opacity: 0.85;
+    transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.setor-gatilho__seta > svg { width: 18px; height: 18px; }
+
+.setor-gatilho[aria-expanded="true"] .setor-gatilho__seta { transform: rotate(180deg); }
+
+.setor-menu__fundo {
+    position: fixed;
+    inset: 0;
+    background: var(--veu-leve);
+}
+
+.setor-menu__painel {
+    position: absolute;
+    top: calc(100% + var(--esp-2));
+    left: 0;
+    z-index: 1;
+    min-width: min(84vw, 300px);
+    max-width: min(92vw, 380px);
+    padding: var(--esp-2);
+    border-radius: var(--raio-md);
+    /* Fundo de SUPERFÍCIE, e não do chrome: o painel pertence ao conteúdo, não à barra. */
+    background: var(--cor-superficie);
+    color: var(--cor-texto);
+    border: 1px solid var(--cor-borda-forte);
+    box-shadow: var(--elev-sobreposto);
+}
+
+.setor-menu__aviso {
+    margin: 0;
+    padding: var(--esp-2);
+    font-size: var(--texto-sm);
+    color: var(--cor-texto-suave);
+}
+
+.setor-menu__lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.setor-menu__item {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-2);
+    width: 100%;
+    min-height: var(--toque-min);
+    padding: var(--esp-2) var(--esp-3);
+    border: 0;
+    border-radius: var(--raio-sm);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: var(--texto-sm);
+    text-align: left;
+    cursor: pointer;
+}
+
+.setor-menu__item:hover { background: var(--cor-superficie-alt); }
+
+/* O atual: fundo, peso e a marca de conferido — nunca só a cor. */
+.setor-menu__item--atual {
+    background: var(--cor-superficie-alt);
+    font-weight: 700;
+}
+
+.setor-menu__nome {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.setor-menu__marca {
+    flex: 0 0 auto;
+    color: var(--cor-primaria-texto);
+}
+
+.setor-menu__marca > svg { width: 18px; height: 18px; }
 
 /* ------------------------------------------------------------------ cartões */
 
