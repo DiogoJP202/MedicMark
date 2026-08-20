@@ -397,7 +397,12 @@ p { margin: 0 0 var(--esp-3); }
 .app-conteudo {
     flex: 1 1 auto;
     padding: var(--esp-4);
-    padding-bottom: var(--esp-7);
+    /*
+        O rodapé reserva a ilha. Era um espaçador no fluxo, dentro do próprio componente; com a
+        ilha embaixo isso somaria altura DEPOIS do conteúdo já esticado, e uma tela vazia ganharia
+        70px de rolagem sem ter nada para rolar.
+    */
+    padding-bottom: calc(var(--ilha-reserva) + var(--esp-4));
 }
 
 .app-rodape-acoes {
@@ -1265,7 +1270,8 @@ p { margin: 0 0 var(--esp-3); }
 .toast-desfazer {
     position: fixed;
     left: 50%;
-    bottom: var(--esp-5);
+    /* Acima da ilha, que também mora no rodapé — sem isto os dois se sobrepõem. */
+    bottom: calc(var(--ilha-reserva) + var(--esp-2));
     transform: translateX(-50%);
     z-index: var(--z-toast);
     display: flex;
@@ -1404,18 +1410,29 @@ p { margin: 0 0 var(--esp-3); }
    sensação de a forma crescer em vez de um painel aparecer embaixo.
 
    Por isso as duas larguras são EXPLÍCITAS: `width: auto` não anima, e sem animar a largura o
-   efeito vira dropdown.                                                                        */
+   efeito vira dropdown.
+
+   FICA NO RODAPÉ, e não sob a barra do topo, por dois motivos:
+
+     - alcance. Este aplicativo é usado com uma mão, de madrugada, andando pelo corredor. A
+       navegação principal precisa estar onde o polegar chega — que é exatamente onde a barra de
+       abas que a ilha substituiu já ficava.
+     - leitura. Embaixo da barra do topo ela criava um segundo cabeçalho: duas faixas empilhadas
+       e uma cápsula solta entre o cabeçalho e o conteúdo.
+
+   Ancorada por `bottom`, ela cresce PARA CIMA ao abrir, e o gatilho não sai do lugar — o dedo
+   continua onde estava quando a lista aparece.                                                 */
 
 :root {
     --ilha-altura: 52px;
     --ilha-largura-fechada: min(76vw, 260px);
     --ilha-largura-aberta: min(92vw, 360px);
-}
 
-/* Reserva a altura da ilha FECHADA no fluxo. Expandida ela cobre o conteúdo de propósito. */
-.ilha-espaco {
-    height: calc(var(--ilha-altura) + var(--esp-4));
-    flex: 0 0 auto;
+    /* Distância do rodapé, respeitando a barra de gestos do Android. */
+    --ilha-folga: calc(var(--esp-4) + env(safe-area-inset-bottom, 0px));
+
+    /* O espaço total que a ilha ocupa embaixo. O espaçador e o toast se apoiam neste valor. */
+    --ilha-reserva: calc(var(--ilha-altura) + var(--ilha-folga));
 }
 
 .ilha-fundo {
@@ -1428,8 +1445,16 @@ p { margin: 0 0 var(--esp-3); }
 
 .ilha {
     position: fixed;
-    top: calc(var(--altura-topo) + var(--esp-2));
+    bottom: var(--ilha-folga);
     left: 50%;
+
+    /*
+        column-reverse: o gatilho fica embaixo e a lista cresce ACIMA dele. A ordem do DOM
+        continua gatilho -> lista, então quem navega por teclado alcança os itens logo depois
+        de abrir; só a ordem VISUAL é invertida.
+    */
+    display: flex;
+    flex-direction: column-reverse;
     z-index: calc(var(--z-banner) + 2);
 
     width: var(--ilha-largura-fechada);
@@ -1487,16 +1512,18 @@ p { margin: 0 0 var(--esp-3); }
 
 .ilha__icone > svg { width: 22px; height: 22px; }
 
+/* Aponta sempre para onde a lista está ou vai aparecer: para cima fechada, para baixo aberta. */
 .ilha__seta {
     flex: 0 0 auto;
     display: inline-flex;
     opacity: 0.85;
+    transform: rotate(180deg);
     transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .ilha__seta > svg { width: 18px; height: 18px; }
 
-.ilha--aberta .ilha__seta { transform: rotate(180deg); }
+.ilha--aberta .ilha__seta { transform: rotate(0deg); }
 
 /* ---- estado aberto: a lista ---- */
 

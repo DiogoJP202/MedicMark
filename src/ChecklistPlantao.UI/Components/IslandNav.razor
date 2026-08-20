@@ -8,12 +8,15 @@
     muda de forma entre compacto e expandido — largura, altura e raio da borda transitam juntos.
     Fechada mostra onde você está; aberta, para onde pode ir.
 
-    Fica fixa no topo e flutua sobre o conteúdo. O espaçador abaixo reserva a altura FECHADA, para
-    que a página nunca comece escondida atrás dela; expandida, a ilha cobre o conteúdo de
-    propósito — é um estado momentâneo, com fundo capturando o toque de fora.
-*@
+    Fica fixa no RODAPÉ e flutua sobre o conteúdo — onde o polegar chega, que é o que a barra de
+    abas substituída já fazia certo. Expandida, ela cresce para cima e cobre o conteúdo de
+    propósito: é um estado momentâneo, com fundo capturando o toque de fora.
 
-<div class="ilha-espaco" aria-hidden="true"></div>
+    Quem reserva o espaço embaixo é o `padding-bottom` de `.app-conteudo`, e não um espaçador no
+    fluxo. O espaçador funcionava com a ilha no topo; embaixo, dentro de uma coluna flexível que
+    já se estica, ele passaria a somar altura DEPOIS do conteúdo esticado — e uma tela vazia
+    ganharia 70px de rolagem sem ter nada para rolar.
+*@
 
 @if (_aberta)
 {
