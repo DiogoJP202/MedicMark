@@ -12,4 +12,13 @@
     <PackageReference Include="bunit" />
   </ItemGroup>
 
+
+  <ItemGroup>
+    <!--
+      A folha de estilo entra como recurso embutido para o teste de contraste MEDIR o arquivo
+      que o aplicativo carrega, e não uma cópia das cores digitada no teste — que envelheceria
+      em silêncio na primeira vez que alguém mexesse na paleta.
+    -->
+    <EmbeddedResource Include="..\..\src\ChecklistPlantao.UI\wwwroot\css\design-system.css" LogicalName="design-system.css" />
+  </ItemGroup>
 </Project>

@@ -25,7 +25,7 @@
         Este valor é o mais claro que passa nos DOIS fundos: 3,37:1 na superfície, 3,11:1 na
         página. Medido, não estimado.
     */
-    --cor-borda-forte: #7e8e9a;
+    --cor-borda-forte: #76858f;
 
     --cor-texto: #16232c;
     --cor-texto-suave: #4b5b66;
@@ -42,6 +42,46 @@
     --cor-erro: #8f1d1d;
     --cor-erro-suave: #fbe3e3;
     --cor-neutro-suave: #e6ebef;
+
+    /*
+        Três papéis que hoje cabem numa cor só, e no escuro deixam de caber.
+
+        A primária clara faz tudo ao mesmo tempo: pinta a barra do topo, preenche o botão que
+        carrega texto branco, e escreve texto sobre fundo claro. No escuro isso é impossível —
+        para o branco ler sobre um preenchimento, ele precisa ser escuro; para o traço ler sobre
+        a página, ele precisa ser claro. Uma cor não pode ser as duas. Daí a separação:
+
+          --cor-chrome         superfície GRANDE (barra do topo, ilha). Fica escura nos dois
+                               temas: uma faixa azul-média acesa às 3h é exatamente o que este
+                               tema existe para evitar.
+          --cor-primaria       preenchimento INTERATIVO pequeno (botão, caixa marcada, aba
+                               ativa). Carrega texto branco e precisa aparecer sobre o cartão.
+          --cor-primaria-texto TRAÇO: texto, barra de progresso, roda de carregamento, borda de
+                               destaque. Precisa aparecer sobre o fundo, não carregar texto.
+
+        No tema claro os três valem #0f3d5c — nada muda de aparência. A separação só cobra
+        sentido no escuro.
+    */
+    --cor-chrome: #0f3d5c;
+    --cor-primaria-texto: #0f3d5c;
+
+    /* O anel de foco. Separado porque no escuro ele precisa ser claro, e a primária não é. */
+    --cor-foco: #17587f;
+
+    /*
+        Estados: -suave é FUNDO, o nome puro é TRAÇO sobre esse fundo, e -forte é
+        PREENCHIMENTO sólido que carrega texto branco. No claro, traço e preenchimento
+        coincidem; no escuro, não.
+    */
+    --cor-alerta-forte: #8a5300;
+    --cor-erro-forte: #8f1d1d;
+
+    /*
+        O toast tinha o fundo da COR DO TEXTO. Invertendo o tema, ele viraria um retângulo
+        claro com texto branco por cima — ilegível. Tem cor própria por isso.
+    */
+    --cor-toast-fundo: #16232c;
+    --cor-toast-texto: #ffffff;
 
     /* Espaçamento — escala de 4px */
     --esp-1: 0.25rem;
@@ -91,6 +131,12 @@
     --realce-medio: rgb(255 255 255 / 22%);
     --contorno-claro: rgb(255 255 255 / 55%);
 
+    /*
+        Realce de toque em botão sem preenchimento. No claro, escurece; no escuro, clareia —
+        um véu preto sobre uma superfície escura não existe.
+    */
+    --veu-toque: rgb(0 0 0 / 8%);
+
     /* Alvos de toque: 48px é o mínimo confortável para uso com uma mão. */
     --toque-min: 48px;
     --toque-grande: 60px;
@@ -112,6 +158,139 @@
         onde fica a barra de status.
     */
     --altura-topo: calc(3.25rem + env(safe-area-inset-top, 0px));
+
+    /* Diz ao motor qual é o tema: campos, barras de rolagem e menus nativos seguem daqui. */
+    color-scheme: light;
+}
+
+/* ------------------------------------------------------------------ tema noturno
+
+   O plantão vai das 19h às 7h. A tela padrão é #f4f6f8 — branca. Às 3h, numa enfermaria de luz
+   baixa, isso ofusca e desfaz a visão adaptada ao escuro de quem está trabalhando. É o único
+   item deste tema que nasce do domínio, e não de preferência.
+
+   São DOIS seletores com o mesmo corpo, de propósito:
+
+     - o @media atende quem não escolheu nada e deixou o aparelho decidir;
+     - o [data-tema="escuro"] atende quem escolheu à mão, em Dispositivo.
+
+   O :not([data-tema="claro"]) é o que faz a escolha explícita por "claro" vencer o aparelho.
+
+   A duplicação incomoda, e a alternativa incomodaria mais: em CSS puro não há como aplicar um
+   mesmo bloco a dois seletores em contextos diferentes sem repetir, e resolver isso em
+   JavaScript tornaria o tema refém de o script ter rodado. Há teste comparando os dois blocos
+   declaração por declaração — se um mudar sem o outro, o build reprova.                       */
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-tema="claro"]) {
+        color-scheme: dark;
+
+        /*
+            Não é inverter. Preto puro com branco puro cansa a vista e faz o texto "vibrar"; o alvo
+            é uma página quase preta e um texto quase branco, com a mesma folga de contraste que o
+            tema claro entrega. Todos os pares foram MEDIDOS — o teste ContrasteTests reprova o build
+            se algum cair abaixo do mínimo.
+        */
+        --cor-fundo: #10161b;
+        --cor-superficie: #19222a;
+        --cor-superficie-alt: #222d37;
+        --cor-borda: #2f3b46;
+        --cor-borda-forte: #7d8f9c;
+
+        --cor-texto: #dde6ed;
+        --cor-texto-suave: #a7b6c1;
+        /* Continua branco: só aparece sobre preenchimento escuro, nos dois temas. */
+        --cor-texto-inverso: #ffffff;
+
+        --cor-chrome: #152430;
+        --cor-primaria: #35719b;
+        /* O passo do hover aqui é para BAIXO: acima disto o branco em cima dele cai de 4,5:1. */
+        --cor-primaria-clara: #2b6288;
+        --cor-primaria-suave: #16303f;
+        --cor-primaria-texto: #7cc2ea;
+        --cor-foco: #5cb0e8;
+
+        /*
+            Os fundos tingidos são os que mais mudam: #dff2e6 é um verde claro que, no escuro,
+            vira um borrão iluminado. Cada estado ganha um fundo profundo e um traço claro.
+        */
+        --cor-sucesso: #6fd39b;
+        --cor-sucesso-suave: #13301f;
+        --cor-alerta: #e5b263;
+        --cor-alerta-suave: #33260f;
+        --cor-alerta-forte: #9a682d;
+        --cor-erro: #f08c8c;
+        --cor-erro-suave: #3a1a1a;
+        --cor-erro-forte: #c04a4a;
+        --cor-neutro-suave: #26313b;
+
+        /* Mais claro que a página, e não mais escuro: aqui o toast sobe, no claro ele desce. */
+        --cor-toast-fundo: #2b3743;
+        --cor-toast-texto: #eaf1f6;
+
+        /* Sombra escura sobre fundo escuro não separa nada. No escuro ela é quase preta. */
+        --elev-repouso: 0 1px 2px rgb(0 0 0 / 45%);
+        --elev-flutuante: 0 6px 18px rgb(0 0 0 / 55%);
+        --elev-sobreposto: 0 18px 44px rgb(0 0 0 / 70%);
+        --veu-leve: rgb(0 0 0 / 55%);
+        --veu-medio: rgb(0 0 0 / 72%);
+        --veu-toque: rgb(255 255 255 / 10%);
+    }
+}
+
+:root[data-tema="escuro"] {
+    color-scheme: dark;
+
+    /*
+        Não é inverter. Preto puro com branco puro cansa a vista e faz o texto "vibrar"; o alvo
+        é uma página quase preta e um texto quase branco, com a mesma folga de contraste que o
+        tema claro entrega. Todos os pares foram MEDIDOS — o teste ContrasteTests reprova o build
+        se algum cair abaixo do mínimo.
+    */
+    --cor-fundo: #10161b;
+    --cor-superficie: #19222a;
+    --cor-superficie-alt: #222d37;
+    --cor-borda: #2f3b46;
+    --cor-borda-forte: #7d8f9c;
+
+    --cor-texto: #dde6ed;
+    --cor-texto-suave: #a7b6c1;
+    /* Continua branco: só aparece sobre preenchimento escuro, nos dois temas. */
+    --cor-texto-inverso: #ffffff;
+
+    --cor-chrome: #152430;
+    --cor-primaria: #35719b;
+    /* O passo do hover aqui é para BAIXO: acima disto o branco em cima dele cai de 4,5:1. */
+    --cor-primaria-clara: #2b6288;
+    --cor-primaria-suave: #16303f;
+    --cor-primaria-texto: #7cc2ea;
+    --cor-foco: #5cb0e8;
+
+    /*
+        Os fundos tingidos são os que mais mudam: #dff2e6 é um verde claro que, no escuro,
+        vira um borrão iluminado. Cada estado ganha um fundo profundo e um traço claro.
+    */
+    --cor-sucesso: #6fd39b;
+    --cor-sucesso-suave: #13301f;
+    --cor-alerta: #e5b263;
+    --cor-alerta-suave: #33260f;
+    --cor-alerta-forte: #9a682d;
+    --cor-erro: #f08c8c;
+    --cor-erro-suave: #3a1a1a;
+    --cor-erro-forte: #c04a4a;
+    --cor-neutro-suave: #26313b;
+
+    /* Mais claro que a página, e não mais escuro: aqui o toast sobe, no claro ele desce. */
+    --cor-toast-fundo: #2b3743;
+    --cor-toast-texto: #eaf1f6;
+
+    /* Sombra escura sobre fundo escuro não separa nada. No escuro ela é quase preta. */
+    --elev-repouso: 0 1px 2px rgb(0 0 0 / 45%);
+    --elev-flutuante: 0 6px 18px rgb(0 0 0 / 55%);
+    --elev-sobreposto: 0 18px 44px rgb(0 0 0 / 70%);
+    --veu-leve: rgb(0 0 0 / 55%);
+    --veu-medio: rgb(0 0 0 / 72%);
+    --veu-toque: rgb(255 255 255 / 10%);
 }
 
 /* ------------------------------------------------------------------ base */
@@ -153,8 +332,22 @@ p { margin: 0 0 var(--esp-3); }
 
 /* Foco sempre visível — a navegação por teclado no Windows depende disso. */
 :focus-visible {
-    outline: 3px solid var(--cor-primaria-clara);
+    outline: 3px solid var(--cor-foco);
     outline-offset: 2px;
+}
+
+/*
+    Sobre a barra do topo e a ilha, o anel de foco vira branco.
+
+    O anel padrão é azul-escuro, e a barra também: 1,49:1 um contra o outro. Quem navega por
+    teclado no Windows — que é como o computador da sala é usado — perdia o foco de vista no
+    botão de sincronizar e no gatilho da ilha. Os links da ilha já resolviam isso por conta
+    própria; agora a regra vale para tudo que pousa sobre o chrome. Achado pelo teste de
+    contraste.
+*/
+.app-topo :focus-visible,
+.ilha :focus-visible {
+    outline-color: var(--cor-texto-inverso);
 }
 
 .visualmente-oculto {
@@ -181,7 +374,7 @@ p { margin: 0 0 var(--esp-3); }
     position: sticky;
     top: 0;
     z-index: var(--z-banner);
-    background: var(--cor-primaria);
+    background: var(--cor-chrome);
     color: var(--cor-texto-inverso);
     padding: var(--esp-2) var(--esp-4);
     display: flex;
@@ -264,7 +457,7 @@ p { margin: 0 0 var(--esp-3); }
     border-color: var(--cor-borda-forte);
 }
 
-.cartao--acionavel:hover { border-color: var(--cor-primaria-clara); }
+.cartao--acionavel:hover { border-color: var(--cor-primaria-texto); }
 .cartao--acionavel:active { background: var(--cor-superficie-alt); }
 
 .grade-cartoes {
@@ -310,14 +503,14 @@ p { margin: 0 0 var(--esp-3); }
 }
 
 .botao--perigo {
-    background: var(--cor-erro);
+    background: var(--cor-erro-forte);
     color: var(--cor-texto-inverso);
 }
 
 .botao--texto {
     background: transparent;
     border-color: transparent;
-    color: var(--cor-primaria);
+    color: var(--cor-primaria-texto);
     text-decoration: underline;
 }
 
@@ -448,7 +641,7 @@ p { margin: 0 0 var(--esp-3); }
 
 /* O foco da caixa nativa some ao estilizar; redesenhado aqui para não perder o teclado. */
 .caixa__entrada:focus-visible + .caixa__marca {
-    outline: 3px solid var(--cor-primaria-clara);
+    outline: 3px solid var(--cor-foco);
     outline-offset: 2px;
 }
 
@@ -462,6 +655,85 @@ p { margin: 0 0 var(--esp-3); }
 
 .caixa--desabilitada .caixa__entrada { cursor: not-allowed; }
 
+
+/* ------------------------------------------------------------------ escolha entre poucas opções
+
+   Três cartões lado a lado, um rádio nativo escondido dentro de cada. Mesma ideia da caixa de
+   marcação: quem opera é o controle nativo, quem aparece é o rótulo — e o rótulo INTEIRO é o
+   alvo de toque.                                                                               */
+
+.opcoes {
+    border: 0;
+    margin: 0;
+    /* fieldset tem largura mínima intrínseca; sem isto ele estoura o cartão em telas estreitas. */
+    min-width: 0;
+    padding: 0;
+}
+
+.opcoes__titulo {
+    padding: 0;
+    font-size: var(--texto-md);
+    font-weight: 650;
+}
+
+.opcoes__ajuda {
+    margin: var(--esp-1) 0 var(--esp-3);
+    font-size: var(--texto-sm);
+    color: var(--cor-texto-suave);
+}
+
+.opcoes__lista {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--esp-2);
+}
+
+.opcao {
+    flex: 1 1 7rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--esp-1);
+    min-height: var(--toque-grande);
+    padding: var(--esp-3) var(--esp-2);
+    border: 2px solid var(--cor-borda-forte);
+    border-radius: var(--raio-md);
+    background: var(--cor-superficie);
+    color: var(--cor-texto);
+    font-size: var(--texto-sm);
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.opcao__entrada {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    cursor: pointer;
+}
+
+/* O foco vive no rótulo porque o rádio está invisível — sem isto o teclado se perde aqui. */
+.opcao:focus-within {
+    outline: 3px solid var(--cor-foco);
+    outline-offset: 2px;
+}
+
+.opcao__icone { font-size: var(--texto-xl); }
+
+/* A escolhida: fundo, peso e a marca de conferido — nunca só a cor. */
+.opcao--ativa {
+    background: var(--cor-primaria);
+    border-color: var(--cor-primaria);
+    color: var(--cor-texto-inverso);
+    font-weight: 700;
+}
+
+.opcao__marca { font-size: var(--texto-sm); }
 /* ------------------------------------------------------------------ faixas e distintivos */
 
 .faixa {
@@ -515,7 +787,7 @@ p { margin: 0 0 var(--esp-3); }
     white-space: pre-wrap;
 }
 
-.faixa--info { background: var(--cor-primaria-suave); border-color: var(--cor-primaria-clara); }
+.faixa--info { background: var(--cor-primaria-suave); border-color: var(--cor-primaria-texto); }
 .faixa--sucesso { background: var(--cor-sucesso-suave); border-color: var(--cor-sucesso); }
 .faixa--alerta { background: var(--cor-alerta-suave); border-color: var(--cor-alerta); }
 .faixa--erro { background: var(--cor-erro-suave); border-color: var(--cor-erro); }
@@ -571,7 +843,7 @@ p { margin: 0 0 var(--esp-3); }
 }
 
 .faixa__fechar:hover,
-.modal__fechar:hover { background: rgb(0 0 0 / 8%); }
+.modal__fechar:hover { background: var(--veu-toque); }
 
 .faixa__fechar:focus-visible,
 .modal__fechar:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
@@ -648,7 +920,7 @@ p { margin: 0 0 var(--esp-3); }
 
 /* A cor reforça o estado, nunca o transmite sozinha — o texto ao lado já o diz. */
 .sync-botao--ok { border-color: var(--contorno-claro); }
-.sync-botao--atencao { background: var(--cor-alerta); border-color: var(--cor-alerta-suave); }
+.sync-botao--atencao { background: var(--cor-alerta-forte); border-color: var(--cor-alerta-suave); }
 .sync-botao--pendente { background: var(--cor-primaria-clara); border-color: var(--cor-texto-inverso); }
 
 /* ------------------------------------------------------------------ progresso */
@@ -672,7 +944,7 @@ p { margin: 0 0 var(--esp-3); }
 
 .progresso__barra {
     height: 100%;
-    background: var(--cor-primaria);
+    background: var(--cor-primaria-texto);
     transition: width 120ms linear;
 }
 
@@ -932,10 +1204,15 @@ p { margin: 0 0 var(--esp-3); }
     display: flex;
     align-items: center;
     gap: var(--esp-4);
-    background: var(--cor-texto);
-    color: var(--cor-texto-inverso);
+    background: var(--cor-toast-fundo);
+    color: var(--cor-toast-texto);
     padding: var(--esp-3) var(--esp-4);
     border-radius: var(--raio-lg);
+    /*
+        A sombra é o que separa o toast da página — e sombra não aparece sobre fundo escuro.
+        O contorno faz esse trabalho nos dois temas, com 3:1 medido contra os dois fundos.
+    */
+    border: 1px solid var(--cor-borda-forte);
     box-shadow: var(--elev-sobreposto);
     max-width: calc(100vw - 2 * var(--esp-4));
 }
@@ -988,7 +1265,7 @@ p { margin: 0 0 var(--esp-3); }
     height: 44px;
     border-radius: 50%;
     border: 4px solid var(--cor-neutro-suave);
-    border-top-color: var(--cor-primaria);
+    border-top-color: var(--cor-primaria-texto);
     animation: carregando-girar 900ms linear infinite;
 }
 
@@ -1090,7 +1367,7 @@ p { margin: 0 0 var(--esp-3); }
 
     width: var(--ilha-largura-fechada);
     border-radius: 999px;
-    background: var(--cor-primaria);
+    background: var(--cor-chrome);
     color: var(--cor-texto-inverso);
     box-shadow: var(--elev-flutuante);
     overflow: hidden;

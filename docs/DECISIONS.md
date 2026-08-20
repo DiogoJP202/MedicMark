@@ -479,6 +479,66 @@ de o namespace ser alcançável por sufixo.
 
 ---
 
+## D-024 — A preferência de tema mora no WebView, e não no banco local
+
+**Contexto.** O plano previa guardar a escolha de tema em `DeviceState`, no banco local, e subir
+`LocalDbContext.LocalSchemaVersion` para o esquema acompanhar.
+
+Só que subir essa versão **apaga o banco**: `EnsureLocalSchema` faz `EnsureDeleted` + `EnsureCreated`
+quando a versão no disco não bate, porque não há migrations no aparelho (D-017). Junto com o banco vai
+a fila de envio — as marcações que ainda não chegaram ao servidor.
+
+**Decisão.** A escolha fica no `localStorage` do WebView, sob `checklistplantao.tema`, aplicada por
+`wwwroot/js/tema.js` antes do primeiro pixel. `IThemeService` é a ponte, e devolve "seguir o aparelho"
+sempre que o JavaScript não responde.
+
+**Consequências.** Uma preferência de aparência não custa as marcações de um plantão — que é a única
+coisa neste aplicativo que não pode ser perdida. Em troca, a escolha some se os dados do aplicativo
+forem limpos; nesse caso ela volta a ser "seguir o aparelho", que é o padrão de qualquer forma.
+
+O script roda no `<head>`, sem `defer`, de propósito: aplicado depois que o Blazor sobe, a tela
+apareceria branca por um instante — exatamente o que dói às 3h.
+
+Continua valendo: quando um campo novo de verdade precisar entrar no `DeviceState`, a versão sobe e o
+banco é recriado. O que esta decisão diz é que **aparência não é um motivo suficiente** para isso.
+
+**Status.** Aceita.
+
+---
+
+## D-025 — Uma cor não é um papel: a primária virou três
+
+**Contexto.** No tema claro, `--cor-primaria` (#0f3d5c) fazia três trabalhos ao mesmo tempo: pintava a
+barra do topo, preenchia o botão que carrega texto branco, e escrevia texto sobre fundo claro.
+
+No escuro isso é aritmeticamente impossível. Para o branco ler sobre um preenchimento, o
+preenchimento precisa ser escuro; para um traço ler sobre a página escura, ele precisa ser claro. Uma
+cor não pode ser as duas.
+
+**Decisão.** Três tokens, nomeados pelo papel:
+
+| Token | Papel | Precisa de |
+|---|---|---|
+| `--cor-chrome` | superfície grande (barra do topo, ilha) | carregar texto branco |
+| `--cor-primaria` | preenchimento interativo (botão, caixa marcada, aba ativa) | carregar branco **e** aparecer sobre o cartão |
+| `--cor-primaria-texto` | traço (texto, barra de progresso, roda, borda de destaque) | aparecer sobre o fundo |
+
+O mesmo corte vale para os estados: `-suave` é fundo, o nome puro é traço, `-forte` é preenchimento
+sólido. No tema claro os pares coincidem — a separação não muda um pixel do que existia.
+
+**Consequências.** O tema escuro passou a ser uma redeclaração de valores, sem tocar em nenhuma regra
+de componente. E a barra do topo ficou escura nos dois temas de propósito: uma faixa azul-média acesa
+às 3h é o que este tema existe para evitar.
+
+`ContrasteTests` mede a folha de estilo real e aplica **a mesma tabela de pares aos dois temas** — é o
+que impede o escuro de ser julgado por um critério mais frouxo. Ele já pagou o custo na estreia:
+encontrou o anel de foco a 1,49:1 sobre a barra do topo (tema claro, desde sempre) e a borda de
+controle a 3,00:1 sobre a superfície alternativa.
+
+**Status.** Aceita.
+
+---
+
 ## D-012 — Administrador inicial sem senha no repositório
 
 **Contexto.** O enunciado proíbe senha padrão no código.

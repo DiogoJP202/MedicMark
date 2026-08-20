@@ -16,7 +16,7 @@
 .status-bar-safe-area {
     display: block;
     height: env(safe-area-inset-top, 0px);
-    background-color: var(--cor-primaria);
+    background-color: var(--cor-chrome);
     width: 100%;
 }
 
