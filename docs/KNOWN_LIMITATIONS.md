@@ -194,3 +194,20 @@ Registradas em [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md):
 - HTTPS com certificado confiável nos aparelhos não foi validado.
 
 Nada disso é afirmado como testado em nenhum ponto da documentação.
+
+---
+
+## 13. A preferência de tema não sobrevive a uma limpeza de dados
+
+A escolha entre claro, escuro e "seguir o aparelho" fica no armazenamento do WebView, e não no
+banco local. É deliberado: subir a versão do esquema local apaga o banco — inclusive a fila de
+envio —, e uma preferência de aparência não pode custar as marcações de um plantão. Ver
+[DECISIONS.md](DECISIONS.md), D-024.
+
+**Consequência:** limpar os dados do aplicativo devolve o tema a "seguir o aparelho".
+
+**Impacto:** baixo. É o padrão de qualquer forma, e quem limpa os dados do aplicativo vai precisar
+configurar servidor e login de novo — o tema é o menor dos ajustes.
+
+**Não é limitação:** o tema acompanhar o modo noturno do sistema quando ninguém escolheu nada.
+Isso é o comportamento pretendido.

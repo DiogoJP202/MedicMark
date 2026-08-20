@@ -539,6 +539,70 @@ controle a 3,00:1 sobre a superfície alternativa.
 
 ---
 
+## D-026 — A navegação principal mora no rodapé
+
+**Contexto.** A ilha nasceu logo abaixo da barra do topo, centralizada. Em uso, duas coisas
+apareceram: ela criava um segundo cabeçalho — duas faixas empilhadas e uma cápsula solta entre o
+cabeçalho e o conteúdo — e punha a navegação principal fora do alcance do polegar.
+
+Este aplicativo é usado com uma mão, de madrugada, andando pelo corredor. A barra de abas que a
+ilha substituiu ficava embaixo, e nisso ela estava certa.
+
+**Decisão.** A ilha é ancorada por `bottom` e cresce **para cima** ao abrir, com
+`flex-direction: column-reverse`. O gatilho não sai do lugar quando a lista aparece.
+
+A ordem do DOM continua gatilho → lista, então quem navega por teclado alcança os destinos logo
+depois de abrir. Só a ordem visual é invertida.
+
+**Consequências.** Duas, que precisaram de conserto:
+
+- o toast de desfazer também mora no rodapé centralizado, e os dois se sobreporiam. Ele passou a se
+  apoiar em `--ilha-reserva`;
+- o espaçador de fluxo saiu. Ele funcionava com a ilha no topo; embaixo, dentro de uma coluna
+  flexível que já se estica, passaria a somar altura DEPOIS do conteúdo esticado, e uma tela vazia
+  ganharia 70px de rolagem sem ter nada para rolar. A reserva virou `padding-bottom` de
+  `.app-conteudo`.
+
+A faixa de ajustes do menu — hoje o interruptor de tema — aparece no TOPO do painel aberto, porque
+com `column-reverse` o último filho do DOM é o primeiro na tela. É onde ela deve ficar de qualquer
+forma: longe do polegar, que pousa no gatilho e não pode esbarrar num ajuste ao mirar "Painel".
+
+**Status.** Aceita.
+
+---
+
+## D-027 — O que identifica o contexto também deve deixar mudá-lo
+
+**Contexto.** O nome do setor no canto superior esquerdo era a informação mais visível do
+aplicativo, e a única que responde "onde eu estou". Mas trocar de setor exigia ir ao Painel, achar
+o cartão "Trocar de setor" e abrir outra tela.
+
+**Decisão.** O nome virou controle, com a lista de setores em um painel logo abaixo. Continua sendo
+o `<h1>`: o botão vive DENTRO do cabeçalho, e não no lugar dele, porque o título é o ponto de
+referência de quem navega por leitor de tela.
+
+Volta a ser texto puro em dois casos — sem a permissão `sector.select`, e sem setor escolhido
+ainda. Um botão que não leva a lugar nenhum é pior que nenhum botão.
+
+**Consequências.** A lista é buscada a cada abertura, e não uma vez só: as pendências de cada setor
+mudam, e uma lista velha aqui faria escolher pelo motivo errado.
+
+Trocar volta ao Painel, como já fazia a tela `/setores` — o checklist aberto é de um modelo do setor
+anterior, e ficar nele mostraria uma tela que não existe mais.
+
+Dois detalhes que só apareceram na medição:
+
+- o título tinha `overflow: hidden` para o nome longo caber com reticências, e isso aparava o anel
+  de foco do botão novo, que passa 2px para fora da caixa. O corte passou para o texto lá dentro;
+- o painel se ancora ao bloco, e não a `--altura-topo`: a barra tem 64px de altura real contra os
+  52px do token, e o painel ficaria descolado.
+
+A tela `/setores` continua existindo — é para onde vai quem ainda não escolheu setor nenhum.
+
+**Status.** Aceita.
+
+---
+
 ## D-012 — Administrador inicial sem senha no repositório
 
 **Contexto.** O enunciado proíbe senha padrão no código.

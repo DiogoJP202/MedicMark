@@ -179,7 +179,18 @@ O aplicativo guarda localmente apenas o que é dele:
 |---|---|---|
 | Endereço do servidor | banco local | Tela de configuração, no primeiro uso ou pelo botão "Alterar" |
 | Nome do dispositivo | banco local | Mesma tela |
-| Setor atual | banco local | Menu → Trocar de setor |
+| Setor atual | banco local | Nome do setor, no topo da tela |
+| Tema (claro, escuro ou seguir o aparelho) | armazenamento do WebView | Interruptor no menu do rodapé, ou Estado do dispositivo → Aparência |
 
 Tudo o mais — horários, leitos, marcadores, permissões — vem do servidor e não é editável no
 aparelho. Ver [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md), item 10.
+
+## Por que o tema não está no banco local
+
+Subir a versão do esquema local **apaga o banco** — não há migrations no aparelho (D-017), então
+`EnsureLocalSchema` recria o arquivo quando a versão muda. Junto com o banco iria a fila de envio.
+
+Uma preferência de aparência não pode custar as marcações de um plantão. Por isso ela vive no
+armazenamento do WebView, sob a chave `checklistplantao.tema`. Se os dados do aplicativo forem
+limpos, ela volta a ser "seguir o aparelho" — que é o padrão de qualquer forma. Ver
+[DECISIONS.md](DECISIONS.md), D-024.

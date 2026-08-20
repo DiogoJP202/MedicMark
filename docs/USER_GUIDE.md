@@ -9,6 +9,35 @@
 4. **Permitir notificações** quando o aparelho perguntar. Sem isso, você não recebe os lembretes
    dos horários.
 
+## O menu
+
+Fica no **rodapé**, no meio da tela, e mostra em que tela você está. Toque nele e a lista **cresce
+para cima**, sem o botão sair do lugar — o dedo continua onde estava.
+
+Está embaixo de propósito: é onde o polegar chega quando o aparelho está em uma mão só.
+
+Para fechar sem escolher nada, toque em qualquer lugar fora.
+
+## Trocar de setor
+
+Toque no **nome do setor**, no canto superior esquerdo. A lista mostra cada setor com o que está
+pendente nele.
+
+Ao trocar, o aplicativo volta ao Painel — o checklist que estava aberto era do setor anterior.
+
+Se o seu usuário tiver acesso a um setor só, o nome continua lá, só não abre.
+
+## Tema claro e escuro
+
+O plantão vai das 19h às 7h, e uma tela branca às 3h atrapalha a vista.
+
+- **Troca rápida:** abra o menu do rodapé e use o interruptor **Tema escuro**.
+- **Seguir o aparelho:** em **Estado do dispositivo** → **Aparência** há três opções — Seguir o
+  aparelho, Claro e Escuro. "Seguir o aparelho" acompanha o modo noturno do celular sozinho.
+
+A escolha vale **para este aparelho**, e não para a sua conta: o tablet da sala pode ficar claro
+enquanto o seu celular fica escuro.
+
 ## Marcar uma tarefa
 
 Toque na célula. Pronto.
@@ -67,6 +96,10 @@ Toque para visualizar
 ```
 
 Toque para ir direto às pendências, agrupadas por horário e com os leitos que faltam.
+
+Na lista e na matriz, o leito atrasado mostra um **triângulo de atenção** — o mesmo sinal que o
+leitor de tela anuncia como "atrasado". O fundo âmbar reforça, mas nunca é o único sinal: quem não
+distingue cores, ou está com a tela no sol, continua vendo qual é.
 
 ## Faixa vermelha de notificações
 

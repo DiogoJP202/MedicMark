@@ -118,7 +118,8 @@ deploy/                            Dockerfile, compose, backup e restore
 |---|---|
 | entender **uma regra de negócio** | `ChecklistPlantao.Domain` — turno, permissões, retenção e conflito ficam todos aqui, e nada mais |
 | mudar **o que uma tela mostra** | `ChecklistPlantao.UI/Pages` e `/Components` |
-| mudar **o visual** | `ChecklistPlantao.UI/wwwroot/css/design-system.css`, arquivo único |
+| mudar **o visual** | `ChecklistPlantao.UI/wwwroot/css/design-system.css`, arquivo único — toda cor é token, e `ContrasteTests` reprova o build se um par cair abaixo do mínimo |
+| mexer no **tema claro/escuro** | os tokens em `design-system.css`, mais `wwwroot/js/tema.js` e `UI/Services/ThemeService.cs` |
 | mexer em **marcar, fila ou sincronização** | `ChecklistPlantao.Client.Core` — `OutboxWriter` e `SyncEngine` |
 | acrescentar **um endpoint** | `ChecklistPlantao.Server/Controllers` + o caso de uso em `Application` |
 | entender **por que algo é assim** | [DECISIONS.md](docs/DECISIONS.md) — toda decisão tem contexto e consequência |

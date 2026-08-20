@@ -265,6 +265,14 @@ Design system em CSS próprio sem CDN, todos os componentes pedidos pelo enuncia
 desktop, lista por coluna no celular, telas de configuração, login, setor, painel, checklist,
 classificações, pendências, plantão, estado do dispositivo e administração.
 
+Navegação em ilha no **rodapé**, que cresce para cima sem o gatilho sair do lugar; troca de setor
+pelo nome no topo; **tema noturno** com escolha por aparelho.
+
+O contraste é **medido, não estimado**: `ContrasteTests` lê a folha de estilo embutida como recurso
+e aplica a mesma tabela de pares aos dois temas. Ele encontrou dois defeitos do tema claro que
+estavam lá desde o começo — o anel de foco a 1,49:1 sobre a barra do topo e a borda de controle a
+3,00:1 na superfície alternativa.
+
 ### Offline e sincronização — Implementado · Validado por teste automatizado
 Banco local, fila gravada na mesma transação do estado, push/pull, idempotência, adoção de
 conflito, backoff com jitter, bootstrap de recuperação, autenticação offline PBKDF2.
