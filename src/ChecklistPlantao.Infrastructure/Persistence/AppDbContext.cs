@@ -314,11 +314,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.HasMany(e => e.Beds).WithOne().HasForeignKey(b => b.SessionId).OnDelete(DeleteBehavior.Cascade);
             entity.Navigation(e => e.Beds).UsePropertyAccessMode(PropertyAccessMode.Field);
 
-            // No máximo uma sessão ABERTA por setor e data de serviço.
-            entity.HasIndex(e => new { e.SectorId, e.ServiceDate })
+            // No máximo uma sessão ABERTA por setor, independentemente da data de serviço.
+            entity.HasIndex(e => e.SectorId)
                 .IsUnique()
                 .HasFilter("\"Status\" = 'Open'")
-                .HasDatabaseName("IX_Sessoes_Setor_Data_Aberta");
+                .HasDatabaseName("IX_Sessoes_Setor_Aberta");
         });
 
         builder.Entity<SessionBed>(entity =>

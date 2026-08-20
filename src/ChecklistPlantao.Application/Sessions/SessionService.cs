@@ -135,7 +135,26 @@ public sealed class SessionService(
         db.OperationalSessions.Add(session);
         db.AppendChange(SyncEntityTypes.OperationalSession, session.Id, SyncChangeType.Created, session.Version, sectorId, now);
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateException)
+        {
+            // O Any acima entrega a mensagem amigável no caminho comum; o índice filtrado fecha
+            // a janela de concorrência entre duas requisições que fizeram o Any ao mesmo tempo.
+            var competingSessionExists = await db.OperationalSessions
+                .AsNoTracking()
+                .AnyAsync(s => s.Id != session.Id && s.SectorId == sectorId && s.Status == SessionStatus.Open, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (competingSessionExists)
+            {
+                return new OperationError(ApiErrorCodes.SessionAlreadyOpen, "Este setor já tem uma sessão de plantão aberta.");
+            }
+
+            throw;
+        }
 
         logger.LogInformation(
             "Sessão {SessionId} aberta no setor {SectorId} para a data de serviço {ServiceDate} com {Leitos} leito(s).",
