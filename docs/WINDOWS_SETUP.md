@@ -1,7 +1,8 @@
 # Windows
 
-> O projeto **compila** para `net10.0-windows10.0.19041.0` neste ambiente. A execução e as
-> notificações em máquina real não foram validadas — ver
+> O projeto compila para `net10.0-windows10.0.19041.0` e a interface foi exercitada no Windows
+> em 18/08/2026, incluindo administração e uso do checklist. O empacotamento MSIX não foi
+> validado e o aplicativo desempacotado continua exigindo o processo aberto para alertar; ver
 > [MANUAL_TEST_PLAN.md](MANUAL_TEST_PLAN.md), seção 6.
 
 ## Requisitos

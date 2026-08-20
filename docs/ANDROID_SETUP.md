@@ -1,8 +1,9 @@
 # Android
 
-> Não foi possível validar em aparelho neste ambiente: não havia dispositivo conectado nem
-> emulador instalado. O projeto **compila** para `net10.0-android`; o comportamento em aparelho
-> real precisa ser verificado com [MANUAL_TEST_PLAN.md](MANUAL_TEST_PLAN.md), seção 5.
+> O projeto compila para `net10.0-android` e foi executado num Xiaomi com Android 13 em
+> 18/08/2026. Login, checklist, botão de teste e alerta no horário da coluna foram validados.
+> Reinício do aparelho, uso prolongado com o app fechado e restrições agressivas de bateria
+> continuam pendentes; ver [MANUAL_TEST_PLAN.md](MANUAL_TEST_PLAN.md), seção 5.
 
 ## Requisitos
 

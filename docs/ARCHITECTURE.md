@@ -78,9 +78,9 @@ Três consequências que o diagrama torna visíveis:
 
 Três escolhas merecem explicação:
 
-**A RCL não referencia Application.** Se referenciasse, a interface arrastaria EF Core. Em vez
-disso a RCL **declara** as abstrações de que precisa (`IAppSession`, `IChecklistStore`,
-`ISyncStatusService`…) e o `Client.Core` as implementa. Inversão de dependência aplicada onde ela
+**A RCL não referencia Application.** Se referenciasse, a interface arrastaria EF Core. As
+abstrações que ela consome (`IAppSession`, `IChecklistStore`, `ISyncStatusService`…) vivem em
+`Client.Abstractions`, e o `Client.Core` as implementa. Inversão de dependência aplicada onde ela
 realmente paga: a interface fica testável com bUnit contra duplos simples.
 
 **Infrastructure não é alcançável pelo cliente.** Identity fica confinado ao servidor, e o
@@ -101,10 +101,17 @@ Infrastructure, atrás de métodos da interface.
 | "Conclusão vence" | `Domain/Sync/MergePolicies` | O cliente precisa prever o que o servidor fará |
 | Retenção | `Domain/Settings/RetentionPolicy` | Regra de negócio, não de infraestrutura |
 | Quando alertar | `Domain/Scheduling/NotificationPlanner` | Cálculo puro, testável sem plataforma |
+| Matriz esperada do plantão | `Domain/Operations/SessionSummaryCalculator` | Resumo online, offline e alertas usam a mesma regra |
 | Aplicar marcação com conflito | `Application/Checklist/ChecklistMutationService` | Caminho único de escrita: REST e sync convergem |
 | Cursor e idempotência | `Infrastructure/Persistence/AppDbContext` | Consultas que exigem o provedor relacional |
 
 Nada de regra de negócio em controller. Controllers traduzem HTTP e delegam.
+
+O universo operacional de um plantão vem de `SessionBed`, e não do cadastro atual de `Bed`.
+Mover ou desativar um leito depois da abertura não o retira daquela sessão; criar um leito depois
+também não o incorpora. Quadro, pendências, resumo, marcadores e notificações leem esse mesmo
+snapshot. Tipos e colunas, que não têm snapshot próprio, continuam seguindo a configuração ativa
+e aplicável no momento do cálculo.
 
 ## Duas configurações de EF Core
 

@@ -16,7 +16,7 @@ Administração
 │   └── Configurações Avançadas
 │       ├── Usuários e Grupos
 │       ├── Notificações
-│       ├── Configurações Gerais
+│       ├── Plantão e acesso
 │       └── Dispositivos
 └── Atalhos para Setores e leitos · Tipos de checklist
 ```
@@ -24,8 +24,9 @@ Administração
 Os atalhos existem porque setores e tipos de checklist são o que se mexe no dia a dia.
 
 Cadastrar e editar acontece em **janela sobreposta**: os botões "Novo …" e "Editar" abrem um
-formulário sobre a lista, e ele só fecha quando o servidor aceita. Se algo for recusado, a janela
-continua aberta com o que você digitou e a explicação do motivo.
+formulário sobre a lista, e ele só fecha quando o servidor aceita. Usuários e grupos usam etapas
+curtas com Voltar e Continuar. Se algo for recusado, a janela permanece na etapa atual com o que
+foi digitado e a explicação do motivo.
 
 ## Primeiro acesso
 
@@ -41,7 +42,8 @@ Faça isto logo:
 
 ## Setores e leitos
 
-O seed traz o setor **Oeste** com os 16 leitos da folha. Tudo é editável.
+O seed traz o setor **Oeste** com os 16 leitos da folha. Cada setor aparece em um card, com os
+leitos aninhados e a ação **Adicionar leito** dentro do próprio setor. Tudo é editável.
 
 - **Ordem** controla a posição na tela. Use múltiplos de 10 para poder inserir depois.
 - **Desativar** tira o item dos próximos plantões e não apaga o plantão atual.
@@ -74,6 +76,10 @@ Por coluna:
 
 Alterar um horário **reagenda todos os aparelhos** na próxima sincronização.
 
+As colunas ficam dentro de **Gerenciar colunas**, uma seção expansível de cada tipo. No formulário,
+opções de repetição só aparecem quando a notificação está ligada, e os minutos de adiamento só
+aparecem quando o adiamento está habilitado.
+
 ## Marcadores
 
 C.I., Sondas e Drenos são apenas os iniciais — crie outros à vontade.
@@ -85,13 +91,14 @@ compara textos como "Sondas".
 
 O acesso é sempre pela **união dos grupos ativos** do usuário. Não existe permissão avulsa.
 
-Comece pelos grupos:
+Use **Adicionar** e escolha Grupo. O assistente percorre:
 
 1. Nomeie ("Plantão Noturno Oeste").
 2. Escolha os setores, ou marque **acesso a todos os setores** — que inclui os criados depois.
 3. Marque as permissões.
 
-Depois crie os usuários e associe. Um usuário em dois grupos recebe a soma.
+Depois use **Adicionar → Usuário**: informe conta e senha, escolha os grupos e revise antes de
+salvar. Um usuário em dois grupos recebe a soma. Na edição, o login é somente leitura.
 
 Alterar um grupo **desconecta todos os membros**: a mudança precisa valer na hora.
 
@@ -115,7 +122,7 @@ ATENÇÃO — Gelo 22H
 **Alerta em tela cheia no Android** vem desligado. Exige permissão especial, é intrusivo e as lojas
 restringem o uso. Ligue apenas se a instituição realmente precisar.
 
-## Configurações gerais
+## Plantão e acesso
 
 | Configuração | Padrão | Efeito |
 |---|---|---|

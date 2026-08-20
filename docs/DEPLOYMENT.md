@@ -173,8 +173,30 @@ docker compose -f deploy/docker-compose.yml logs --tail 200 servidor
 
 ## Atualização
 
-1. Fazer backup.
-2. Publicar a nova versão.
-3. As migrations são aplicadas automaticamente na subida.
-4. Conferir `/health/ready`.
-5. Os aparelhos recebem a configuração nova na próxima sincronização e reagendam as notificações.
+### Pré-implantação da sessão aberta única
+
+A migração `SessaoAbertaUnicaPorSetor` troca o índice antigo, que incluía a data, por
+`IX_Sessoes_Setor_Aberta`, único em `SectorId` enquanto `Status = 'Open'`. Antes de publicar uma
+versão que a contenha, execute no SQLite central:
+
+```sql
+SELECT SectorId, COUNT(*)
+FROM Sessoes
+WHERE Status = 'Open'
+GROUP BY SectorId
+HAVING COUNT(*) > 1;
+```
+
+Se a consulta devolver qualquer linha, **aborte a implantação** e reconcilie as sessões
+manualmente com a equipe responsável. A migração não escolhe nem encerra uma sessão
+automaticamente. Depois de a consulta voltar vazia, faça o backup do arquivo central antes de
+subir a nova versão.
+
+### Sequência
+
+1. Executar a consulta de duplicidades acima quando a versão incluir essa migração.
+2. Fazer backup do SQLite central.
+3. Publicar a nova versão.
+4. As migrations são aplicadas automaticamente na subida.
+5. Conferir `/health/ready` e os logs da aplicação da migração.
+6. Os aparelhos recebem a configuração nova na próxima sincronização e reagendam as notificações.

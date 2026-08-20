@@ -19,15 +19,18 @@ Todas em `ChecklistPlantao.Client.Core.Notifications`:
 
 ## Como um alerta é calculado
 
-`NotificationScheduleBuilder` transforma configuração + estado do plantão na lista concreta:
+`LocalNotificationPlanService` lê o snapshot local da sessão e usa o mesmo
+`SessionSummaryCalculator` do resumo online e offline. Depois, `NotificationScheduleBuilder`
+transforma cada coluna pendente na lista concreta:
 
 1. a janela do plantão (padrão 19:00 → 07:00) define a que dia pertence cada coluna;
 2. `NotificationPlanner` produz as ocorrências: antecedência opcional, alerta na hora e as
    repetições após a tolerância;
 3. colunas **sem pendência são puladas** — é assim que as repetições são canceladas quando o
    horário é concluído;
-4. sessão encerrada gera **lista vazia**;
-5. ocorrências já passadas são descartadas.
+4. conclusões de leitos fora de `SessionBed.IsActiveInSession` são ignoradas;
+5. sessão encerrada gera **lista vazia**;
+6. ocorrências já passadas são descartadas.
 
 Todo o cálculo é puro: recebe o instante e o fuso, não os consulta. É por isso que a travessia da
 meia-noite tem teste automatizado sem depender do relógio da máquina.
@@ -100,7 +103,11 @@ setor selecionado.
 Havendo problema, a faixa fica fixa no topo, **não pode ser dispensada** enquanto durar, e oferece
 "Corrigir agora" (abre exatamente a tela do sistema onde falta permissão) e "Testar alerta".
 
-## Como validar
+## Validação realizada e pendente
 
-Nada aqui foi validado em aparelho real neste ambiente. Os cenários estão em
+Em 18/08/2026, num Xiaomi com Android 13, o botão de teste e um alerta agendado no horário da
+coluna foram validados com o aplicativo em execução real. Permanecem pendentes o alerta depois de
+reiniciar o aparelho (`BootReceiver`), um período prolongado com o aplicativo fechado e a validação
+com isenção/restrição agressiva de bateria. No Windows, continua valendo a limitação deliberada:
+sem MSIX o alerta exige o processo aberto ou minimizado. Os cenários restantes estão em
 [MANUAL_TEST_PLAN.md](MANUAL_TEST_PLAN.md), seções 5 a 9.

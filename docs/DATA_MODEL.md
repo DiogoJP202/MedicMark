@@ -19,8 +19,8 @@ Dois bancos SQLite, com as **mesmas entidades de domínio** e o que é específi
 | `TipoChecklistSetores` | `ChecklistTemplateSector` | Sem linhas = vale para todos os setores |
 | `ColunasChecklist` | `ChecklistColumn` | **Único filtrado:** `(TemplateId, DisplayName)` onde ativo |
 | `Marcadores` | `BedMarkerDefinition` | `Code` único |
-| `Sessoes` | `OperationalSession` | **Único filtrado:** `(SectorId, ServiceDate)` onde `Status = 'Open'` |
-| `SessaoLeitos` | `SessionBed` | PK composta |
+| `Sessoes` | `OperationalSession` | **Único filtrado:** `SectorId` onde `Status = 'Open'` |
+| `SessaoLeitos` | `SessionBed` | PK composta; snapshot operacional dos leitos na abertura |
 | `Marcacoes` | `ChecklistEntry` | **Único:** `(SessionId, BedId, TemplateId, ColumnId)`. **Sem coluna de usuário** |
 | `SessaoLeitoMarcadores` | `SessionBedMarker` | **Único:** `(SessionId, BedId, MarkerDefinitionId)` |
 | `ConfiguracaoNotificacoes` | `NotificationConfiguration` | Uma linha, Id fixo |
@@ -52,7 +52,7 @@ são responsabilidades do servidor.
 | `ColunasChecklist (TemplateId, DisplayName)` filtrado por ativo | Duas colunas ativas homônimas no mesmo tipo |
 | `IX_Marcacoes_Celula` | Duas entradas para a mesma célula |
 | `IX_SessaoLeitoMarcadores_Unico` | Marcador duplicado no mesmo leito e sessão |
-| `IX_Sessoes_Setor_Data_Aberta` | Duas sessões abertas no mesmo setor e data |
+| `IX_Sessoes_Setor_Aberta` em `SectorId`, filtrado por `Status = 'Open'` | Duas sessões abertas no mesmo setor, mesmo com datas diferentes |
 | `Usuarios (UserName)` | Usuário duplicado |
 | `UsuarioGrupos (UserId, GroupId)` | Associação duplicada |
 

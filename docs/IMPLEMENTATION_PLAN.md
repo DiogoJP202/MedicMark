@@ -45,6 +45,8 @@ src/
   ChecklistPlantao.Application      casos de uso, abstrações, validação, permissões
   ChecklistPlantao.Infrastructure   EF Core servidor, Identity, migrations, ChangeLog
   ChecklistPlantao.Server           Web API, JWT, SignalR, health, serviços de fundo
+  ChecklistPlantao.Client.Abstractions
+                                     contratos entre interface e núcleo do cliente
   ChecklistPlantao.UI               Razor Class Library: componentes, páginas, design system
   ChecklistPlantao.Client.Core      SQLite local, Outbox, sync, auth offline, agenda de notificações
   ChecklistPlantao.Client           MAUI Blazor Hybrid (Android + Windows)
@@ -61,12 +63,13 @@ docs/                               esta documentação
 Grafo de referências, sem ciclos:
 
 ```
-Domain ← Contracts(∅) 
+Domain ← Contracts(∅)
 Application → Domain, Contracts
 Infrastructure → Domain, Application, Contracts
 Server → Domain, Application, Contracts, Infrastructure
-UI → Domain, Application, Contracts
-Client.Core → Domain, Application, Contracts
+Client.Abstractions → Domain, Contracts
+UI → Domain, Contracts, Client.Abstractions
+Client.Core → Domain, Application, Contracts, Client.Abstractions
 Client → UI, Client.Core
 ```
 

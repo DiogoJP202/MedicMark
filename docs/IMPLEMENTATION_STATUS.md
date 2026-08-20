@@ -1,6 +1,6 @@
 # Estado da implementação
 
-Última atualização: 2026-08-18.
+Última atualização: 2026-08-20.
 
 ## Estados usados
 
@@ -20,9 +20,9 @@
 
 | Comando | Resultado |
 |---|---|
-| `dotnet build ChecklistPlantao.sln -c Release` | ✅ 0 erros, **0 avisos** — inclui os dois heads MAUI |
+| `dotnet build ChecklistPlantao.sln -c Release --no-restore --nologo` | ✅ 0 erros, **0 avisos** — inclui os dois heads MAUI |
 | `dotnet build ChecklistPlantao.NoMaui.slnf -c Release` | ✅ 0 erros, 0 avisos |
-| `dotnet test ChecklistPlantao.NoMaui.slnf -c Release` | ✅ **564 testes, 0 falhas** |
+| `dotnet test ChecklistPlantao.NoMaui.slnf -c Release --no-restore --nologo` | ✅ **587 testes, 0 falhas** |
 | `dotnet build -f net10.0-android` | ✅ compila |
 | `dotnet build -f net10.0-windows10.0.19041.0` | ✅ compila |
 | `dotnet restore` | ✅ sem avisos de vulnerabilidade |
@@ -31,11 +31,25 @@
 
 | Projeto | Testes | O que cobre |
 |---|---|---|
-| Domain.Tests | 114 | Turno, permissões, retenção, conflito, agendamento, seeds, **nome único de coluna** |
-| UI.Tests (bUnit) | 273 | Componentes, filtros, faixas, desvio da primeira execução, estado da conexão no login, contenção de falha de tela, modais de cadastro e hierarquia da administração, **contraste medido da folha de estilo nos dois temas** |
-| Client.Core.Tests | 86 | Persistência offline, fila, idempotência, conflito, auth offline, recusa do servidor, grafo de dependências real, sessão entre escopos e **versão do esquema local** |
-| Server.IntegrationTests | 58 | API de ponta a ponta com servidor e SQLite reais, lote com repetição na mesma célula, cadastro de estrutura, o cliente HTTP real contra o servidor real e **o aviso em tempo real do hub até o cliente** |
+| Domain.Tests | 117 | Turno, permissões, retenção, conflito, agendamento, seeds e **matriz esperada do resumo pelo snapshot da sessão** |
+| UI.Tests (bUnit) | 291 | Componentes, filtros, estados reativos do Plantão, acessibilidade, modais, assistentes de usuário/grupo, navegação e **contraste medido da folha de estilo nos dois temas** |
+| Client.Core.Tests | 87 | Persistência offline, fila, idempotência, conflito, auth offline, snapshot da sessão, resumo/alertas locais, grafo de dependências e **versão do esquema local** |
+| Server.IntegrationTests | 59 | API e SQLite reais, cliente HTTP, SignalR e **disputa concorrente de abertura com resposta 409** |
 | Application.Tests | 33 | Casos de uso, sessão, retenção, administração, **criação de coluna e restrição de tipo a setor** |
+
+### Rodada Plantão, integridade e Administração — 20/08
+
+- resumo online e offline calculam a matriz esperada a partir de `SessionBed`, inclusive quando
+  nenhuma célula foi tocada;
+- quadro, pendências, classificações e plano local de notificações usam o mesmo snapshot;
+- a tela Plantão distingue Pendente, Parcial e Concluído e recarrega por eventos sem acumular
+  inscrições;
+- `IX_Sessoes_Setor_Aberta` impede duas sessões abertas no mesmo setor, e a disputa HTTP devolve
+  409 à requisição perdedora;
+- Administração principal e avançada usam cabeçalhos, retornos, listas responsivas, ajuda
+  acessível, modais e assistentes sem alterar os contratos de salvamento;
+- a migração foi exercitada em SQLite nos ciclos `Up → Down → Up`; a implantação ainda exige a
+  consulta prévia e o backup descritos em `DEPLOYMENT.md`.
 
 O `Server.IntegrationTests` passou a referenciar o `Client.Core`. Era o último ponto cego da
 suíte: todo teste de cliente substituía `IServerApi` por um duplo, então o `HttpServerApi` nunca
@@ -245,7 +259,7 @@ Servidor executado de verdade, com estas verificações feitas:
 | 27 | Não existe histórico de usuário por marcação | Implementado · Validado por teste automatizado (inspeciona o modelo do EF) |
 | 28 | Não existem dados de paciente | Implementado · Verificável por inspeção do modelo |
 | 29 | Build dos projetos compatíveis passa | ✅ **Toda a solução, 0 avisos** |
-| 30 | Testes compatíveis passam | ✅ **564 testes** |
+| 30 | Testes compatíveis passam | ✅ **587 testes** |
 
 ---
 

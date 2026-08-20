@@ -1,8 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Casos de uso, abstrações e validação. Sem EF Core e sem ASP.NET:
-    tanto o servidor quanto o cliente offline dependem deste projeto.
+    Casos de uso, abstrações e validação. Usa somente o pacote-base do EF Core para consultas
+    assíncronas sobre IAppDataContext; não referencia provedor de banco nem ASP.NET.
+    Tanto o servidor quanto o cliente offline dependem deste projeto.
   -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>

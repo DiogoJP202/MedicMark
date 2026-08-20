@@ -91,6 +91,17 @@ Um plantão de um setor. Pode ser aberta automaticamente (padrão) ou manualment
 **No máximo uma sessão aberta por setor** — garantido por índice único filtrado no banco, não só
 por verificação em código: duas requisições simultâneas não conseguem burlar.
 
+Na abertura, os leitos ativos do setor são copiados para `SessionBed`. Esse snapshot é a fonte
+operacional do plantão: um leito movido ou desativado depois continua no trabalho já aberto, e um
+leito criado depois entra apenas no próximo plantão. Quadro, pendências, resumo, classificações e
+alertas consultam `SessionBed.IsActiveInSession`; nenhum deles reconstrói o universo pelo cadastro
+atual. Tipos e colunas continuam seguindo a configuração ativa e aplicável no momento do cálculo,
+pois ainda não possuem snapshot por sessão.
+
+O progresso esperado é a matriz `leitos ativos da sessão × colunas ativas e aplicáveis`. A falta
+de uma linha em `Marcacoes` significa pendência, não ausência de trabalho. Entradas duplicadas ou
+de leitos, tipos e colunas fora dessa matriz não aumentam os totais.
+
 Ao encerrar, o resumo mostra concluídas, pendentes e os leitos de cada marcador (C.I., Sondas,
 Drenos). Com pendências, exige confirmação explícita.
 
@@ -136,7 +147,7 @@ Impostas por índice, não apenas por código:
 - dois marcadores iguais para o mesmo leito na mesma sessão;
 - nome de usuário duplicado;
 - associação duplicada entre usuário e grupo;
-- duas sessões abertas no mesmo setor e data.
+- duas sessões abertas no mesmo setor, independentemente da data de serviço.
 
 Índices de leito e coluna são **filtrados por ativo**: um item desativado não deve travar o
 cadastro de um novo com o mesmo código.

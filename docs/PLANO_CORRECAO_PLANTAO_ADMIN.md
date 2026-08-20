@@ -1,4 +1,22 @@
-# Plano de ataque — Plantão e Administração
+# Plano e resultado — Plantão, integridade e Administração
+
+Status: **implementado em 20/08/2026** na branch
+`codex/correcao-plantao-reformulacao-admin`.
+
+| Etapa | Resultado | Commit |
+|---|---|---|
+| Regra central do resumo | Matriz esperada e filtros de dados inconsistentes | `2cc08ee` |
+| Snapshot em todo o cliente | Sessão direta, quadro e alertas no mesmo universo | `cfea7de` |
+| Tela Plantão | Estados, cards e recarga reativa segura | `f0d9104` |
+| Sessão aberta única | Índice por setor, migração e conflito HTTP 409 | `4a2d299` |
+| Base visual da Administração | Cabeçalho, ajuda, badges, responsividade e rodapé de modal | `a6ea842` |
+| Administração principal | Setores/leitos, tipos/colunas e marcadores | `ab577a9` |
+| Configurações avançadas | Assistentes de acesso e páginas avançadas responsivas | `87cec8a` |
+| Documentação e qualificação | Documentação harmonizada e gates completos | commit desta etapa |
+
+O gate automatizado medido ao final contém **587 testes, sem falhas**, e o build completo termina
+com **0 erros e 0 avisos**, incluindo Android e Windows. O resultado detalhado e as validações
+manuais já realizadas ficam em [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
 
 ## Diagnóstico e estratégia
 
@@ -115,7 +133,8 @@ Criar componentes reutilizáveis antes de reformular as páginas:
   - novo view model de sessão na camada cliente;
   - estado calculado no `ProgressDto`, ignorado na serialização;
   - rodapé customizável opcional no `FormDialog`.
-- Não criar endpoint HTTP, migração ou alteração de banco.
+- Nenhum endpoint HTTP ou DTO serializado foi alterado. Foi criada somente a migração do banco
+  central `SessaoAbertaUnicaPorSetor`; o banco local permanece inalterado.
 - Substituir o teste que hoje exige a omissão de tipos sem entradas.
 - Cobrir:
   - tipo nunca iniciado, parcial e totalmente concluído;
@@ -128,9 +147,11 @@ Criar componentes reutilizáveis antes de reformular as páginas:
   - teclado e ARIA do popover;
   - todos os passos, retornos, cancelamentos e erros do fluxo de usuários/grupos;
   - preservação dos testes atuais de modais e administração.
+  - disputa concorrente de abertura, ciclo `Up`/`Down` da migração e detecção operacional prévia
+    de sessões abertas duplicadas.
 - Validação final:
-  - `dotnet build -c Release`;
-  - suíte completa de testes;
+  - `dotnet test ChecklistPlantao.NoMaui.slnf -c Release --no-restore --nologo`;
+  - `dotnet build ChecklistPlantao.sln -c Release --no-restore --nologo`;
   - inspeção visual em largura móvel e desktop, incluindo modais, listas extensas, tema claro/escuro e navegação
     por teclado.
 

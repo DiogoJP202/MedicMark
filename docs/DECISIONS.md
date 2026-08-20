@@ -187,6 +187,20 @@ solução sem o head MAUI, para acelerar o ciclo de build e teste do servidor e 
 
 ---
 
+## D-012 — Administrador inicial sem senha no repositório
+
+**Contexto.** O enunciado proíbe senha padrão no código.
+
+**Decisão.** O seed cria o grupo Administradores e as permissões, mas só cria o usuário administrador se
+`Bootstrap:AdminUserName` e `Bootstrap:AdminPassword` estiverem presentes na configuração (variáveis de
+ambiente ou User Secrets). Sem esses valores o servidor sobe e registra um aviso explicando o que fazer.
+
+**Consequências.** Nenhuma credencial no repositório. O procedimento está em `docs/DEPLOYMENT.md`.
+
+**Status.** Aceita.
+
+---
+
 ## D-013 — Credenciais e autorização em tabelas separadas
 
 **Contexto.** O enunciado pede ASP.NET Identity, mas o domínio precisa ficar livre de infraestrutura
@@ -254,11 +268,14 @@ regra a seguir ao acrescentar qualquer configuração nova.
 desativado não deve travar o cadastro de um novo com o mesmo código.
 
 **Decisão.** Índices únicos parciais (`HasFilter("\"IsActive\" = 1")`) em `Leitos (SectorId, Code)` e
-`ColunasChecklist (ChecklistTemplateId, DisplayName)`; e em `Sessoes (SectorId, ServiceDate)` filtrado
-por `Status = 'Open'`, o que garante no máximo uma sessão aberta por setor.
+`ColunasChecklist (ChecklistTemplateId, DisplayName)`. Para sessões, o índice
+`IX_Sessoes_Setor_Aberta` é único apenas em `SectorId` e filtrado por `Status = 'Open'`: a data de
+serviço não pode permitir uma segunda sessão aberta no mesmo setor.
 
 **Consequências.** A regra é imposta pelo banco, não só pelo código de aplicação — duas requisições
-concorrentes não conseguem burlar.
+concorrentes não conseguem burlar. A migração exige consulta prévia por duplicidades e backup; se
+o banco já tiver mais de uma sessão aberta em um setor, a implantação é abortada para reconciliação
+manual, sem encerrar sessões automaticamente.
 
 **Status.** Aceita.
 
@@ -598,19 +615,5 @@ Dois detalhes que só apareceram na medição:
   52px do token, e o painel ficaria descolado.
 
 A tela `/setores` continua existindo — é para onde vai quem ainda não escolheu setor nenhum.
-
-**Status.** Aceita.
-
----
-
-## D-012 — Administrador inicial sem senha no repositório
-
-**Contexto.** O enunciado proíbe senha padrão no código.
-
-**Decisão.** O seed cria o grupo Administradores e as permissões, mas só cria o usuário administrador se
-`Bootstrap:AdminUserName` e `Bootstrap:AdminPassword` estiverem presentes na configuração (variáveis de
-ambiente ou User Secrets). Sem esses valores o servidor sobe e registra um aviso explicando o que fazer.
-
-**Consequências.** Nenhuma credencial no repositório. O procedimento está em `docs/DEPLOYMENT.md`.
 
 **Status.** Aceita.
