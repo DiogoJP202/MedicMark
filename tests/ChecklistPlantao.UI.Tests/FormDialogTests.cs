@@ -144,4 +144,17 @@ public sealed class FormDialogTests : BunitContext
 
         Assert.True(visivel);
     }
+
+    [Fact]
+    public void Rodape_customizado_substitui_as_acoes_padrao()
+    {
+        var cut = Render<FormDialog>(p => p
+            .Add(d => d.Visible, true)
+            .Add(d => d.Title, "Fluxo em etapas")
+            .Add(d => d.FooterContent, builder => builder.AddMarkupContent(0, "<button data-testid='continuar'>Continuar</button>")));
+
+        Assert.NotNull(cut.Find("[data-testid=continuar]"));
+        Assert.Empty(cut.FindAll("[data-testid=form-dialog-save]"));
+        Assert.Empty(cut.FindAll("[data-testid=form-dialog-cancel]"));
+    }
 }

@@ -22,7 +22,7 @@ else
     <div class="pilha">
         <div class="cartao">
             <p class="faixa__texto"><strong>Data do plantão:</strong> @_sessaoAtual.ServiceDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)</p>
-            <p class="faixa__texto"><strong>Situação:</strong> @(_sessaoAtual.IsOpen ? "Aberto" : "Encerrado")</p>
+            <p class="faixa__texto"><strong>Situação:</strong> <StatusBadge Text="@(_sessaoAtual.IsOpen ? "Aberto" : "Encerrado")" Tone="@(_sessaoAtual.IsOpen ? "sucesso" : "inativo")" /></p>
         </div>
 
         @if (_resumo is not null)
@@ -52,7 +52,7 @@ else
                                  data-testid="@($"summary-template-{template.TemplateId}")"
                                  data-state="@template.Progress.State.ToString()">
                             <h4 class="cartao__titulo">@template.TemplateName</h4>
-                            <p class="faixa__texto"><strong>@StateLabel(template.Progress.State)</strong></p>
+                            <StatusBadge Text="@StateLabel(template.Progress.State)" Tone="@StateTone(template.Progress.State)" />
                             <p class="faixa__texto">@template.Progress.Completed de @template.Progress.Total concluída(s)</p>
                             <p class="campo__ajuda">@template.Progress.Pending pendente(s)</p>
                         </article>
@@ -143,6 +143,13 @@ else
         ProgressState.Completed => "Concluído",
         ProgressState.Partial => "Parcial",
         _ => "Pendente",
+    };
+
+    private static string StateTone(ProgressState state) => state switch
+    {
+        ProgressState.Completed => "sucesso",
+        ProgressState.Partial => "alerta",
+        _ => "inativo",
     };
 
     private void AoMudarDados() => SolicitarRecarga();

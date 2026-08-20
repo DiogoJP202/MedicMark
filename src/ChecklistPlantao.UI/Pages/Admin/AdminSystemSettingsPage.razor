@@ -12,8 +12,9 @@
 
 <PageTitle>Configurações do sistema</PageTitle>
 
-<h2>Configurações do sistema</h2>
-<p>As alterações feitas aqui são sincronizadas para todos os dispositivos.</p>
+<AdminPageHeader Title="Configurações do sistema"
+                 Description="As alterações feitas aqui são sincronizadas para todos os dispositivos."
+                 BackHref="/admin" />
 
 <AdminMenu Items="Itens" Access="Session.Access" OnSelect="@(rota => Navigation.NavigateTo(rota))" />
 

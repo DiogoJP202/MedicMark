@@ -32,19 +32,26 @@
             @ChildContent
 
             <div class="modal__acoes">
-                <button type="button"
-                        class="botao botao--contorno"
-                        data-testid="form-dialog-cancel"
-                        @onclick="CancelarAsync">
-                    @CancelText
-                </button>
-                <button type="button"
-                        class="botao botao--primario"
-                        data-testid="form-dialog-save"
-                        disabled="@Saving"
-                        @onclick="SalvarAsync">
-                    @(Saving ? "Salvando…" : SaveText)
-                </button>
+                @if (FooterContent is not null)
+                {
+                    @FooterContent
+                }
+                else
+                {
+                    <button type="button"
+                            class="botao botao--contorno"
+                            data-testid="form-dialog-cancel"
+                            @onclick="CancelarAsync">
+                        @CancelText
+                    </button>
+                    <button type="button"
+                            class="botao botao--primario"
+                            data-testid="form-dialog-save"
+                            disabled="@Saving"
+                            @onclick="SalvarAsync">
+                        @(Saving ? "Salvando…" : SaveText)
+                    </button>
+                }
             </div>
         </div>
     </div>
@@ -78,6 +85,10 @@
 
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Rodapé alternativo para fluxos em etapas. Nulo preserva Cancelar/Salvar.</summary>
+    [Parameter]
+    public RenderFragment? FooterContent { get; set; }
 
     [Parameter]
     public EventCallback OnSave { get; set; }

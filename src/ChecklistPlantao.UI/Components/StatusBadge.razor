@@ -1,0 +1,9 @@
+<span class="badge badge--@Tone" data-tone="@Tone">@Text</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Text { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Tone { get; set; } = "neutro";
+}

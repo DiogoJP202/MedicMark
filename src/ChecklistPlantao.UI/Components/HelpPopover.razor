@@ -1,0 +1,40 @@
+<span class="ajuda-popover" @onkeydown="AoTeclar" @onfocusout="Fechar">
+    <button type="button"
+            class="ajuda-popover__gatilho"
+            aria-label="@Label"
+            aria-expanded="@_aberto.ToString().ToLowerInvariant()"
+            aria-controls="@_conteudoId"
+            @onclick="Alternar">
+        ?
+    </button>
+
+    @if (_aberto)
+    {
+        <span id="@_conteudoId" class="ajuda-popover__conteudo" role="tooltip">
+            @ChildContent
+        </span>
+    }
+</span>
+
+@code {
+    private readonly string _conteudoId = $"ajuda-{Guid.CreateVersion7():N}";
+    private bool _aberto;
+
+    [Parameter]
+    public string Label { get; set; } = "Mostrar ajuda";
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private void Alternar() => _aberto = !_aberto;
+
+    private void Fechar() => _aberto = false;
+
+    private void AoTeclar(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            Fechar();
+        }
+    }
+}

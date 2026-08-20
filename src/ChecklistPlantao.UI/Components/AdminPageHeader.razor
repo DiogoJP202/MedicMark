@@ -1,0 +1,35 @@
+<header class="admin-cabecalho">
+    <div class="admin-cabecalho__texto">
+        @if (!string.IsNullOrWhiteSpace(BackHref))
+        {
+            <a class="admin-cabecalho__voltar" href="@BackHref" aria-label="@($"Voltar de {Title}")">
+                <Icone Nome="voltar" />
+                <span>Voltar</span>
+            </a>
+        }
+        <h2 class="admin-cabecalho__titulo">@Title</h2>
+        @if (!string.IsNullOrWhiteSpace(Description))
+        {
+            <p class="admin-cabecalho__descricao">@Description</p>
+        }
+    </div>
+
+    @if (Actions is not null)
+    {
+        <div class="admin-cabecalho__acoes">@Actions</div>
+    }
+</header>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Description { get; set; }
+
+    [Parameter]
+    public string? BackHref { get; set; }
+
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+}
