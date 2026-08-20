@@ -709,9 +709,16 @@ public sealed class LocalChecklistStore : IChecklistStore
         var marcadores = await db.SessionBedMarkers.AsNoTracking().Where(m => m.SessionId == sessionId).ToListAsync(cancellationToken).ConfigureAwait(false);
         var definicoes = await db.BedMarkerDefinitions.AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
 
+        var leitosDaSessao = await db.SessionBeds
+            .AsNoTracking()
+            .Where(b => b.SessionId == sessionId && b.IsActiveInSession)
+            .Select(b => b.BedId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
         var codigos = await db.Beds
             .AsNoTracking()
-            .Where(b => b.SectorId == sessao.SectorId)
+            .Where(b => leitosDaSessao.Contains(b.Id))
             .ToDictionaryAsync(b => b.Id, b => b.Code, cancellationToken)
             .ConfigureAwait(false);
 

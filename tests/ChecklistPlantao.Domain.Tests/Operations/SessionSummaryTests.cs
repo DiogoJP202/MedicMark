@@ -69,6 +69,8 @@ public sealed class SessionSummaryTests
         [
             Entry(_leito1148, _vinteHoras, completed: true),
             Entry(_leito1150, _vinteHoras, completed: true),
+            Entry(_leito1148, _vinteEDuas, completed: true),
+            Entry(_leito1150, _vinteEDuas, completed: true),
         ];
 
         var resumo = SessionSummaryCalculator.Build(entradas, [_gelo], [], [], BedCodes());
@@ -93,8 +95,7 @@ public sealed class SessionSummaryTests
         Assert.Equal(["1148", "1150"], sondas.BedCodes);
         Assert.Equal(2, sondas.Count);
 
-        var drenos = resumo.Markers.Single(m => m.MarkerName == "Drenos");
-        Assert.Empty(drenos.BedCodes);
+        Assert.DoesNotContain(resumo.Markers, m => m.MarkerName == "Drenos");
     }
 
     [Fact]
@@ -118,11 +119,11 @@ public sealed class SessionSummaryTests
 
         var resumo = SessionSummaryCalculator.Build([], [_gelo], [], [_sondas, _drenos], BedCodes());
 
-        Assert.Equal("Sondas", Assert.Single(resumo.Markers).MarkerName);
+        Assert.Empty(resumo.Markers);
     }
 
     [Fact]
-    public void Tipo_sem_entradas_nao_polui_o_resumo()
+    public void Tipo_sem_entradas_aparece_com_todas_as_celulas_pendentes()
     {
         var glicemia = TestData.Template("Glicemia", "GLICEMIA");
         glicemia.Column("Jantar", new TimeOnly(19, 30));
@@ -134,6 +135,51 @@ public sealed class SessionSummaryTests
             [],
             BedCodes());
 
-        Assert.Equal("Gelo", Assert.Single(resumo.Templates).TemplateName);
+        var tipo = resumo.Templates.Single(t => t.TemplateName == "Glicemia");
+        Assert.Equal(2, tipo.Progress.Total);
+        Assert.Equal(0, tipo.Progress.Completed);
+        Assert.Equal(2, tipo.Progress.Pending);
+    }
+
+    [Fact]
+    public void Resumo_vazio_ainda_representa_toda_a_matriz_esperada()
+    {
+        var resumo = SessionSummaryCalculator.Build([], [_gelo], [], [], BedCodes());
+
+        Assert.Equal(4, resumo.Overall.Total);
+        Assert.Equal(0, resumo.Overall.Completed);
+        Assert.Equal(4, resumo.Overall.Pending);
+        Assert.Single(resumo.Templates);
+    }
+
+    [Fact]
+    public void Entradas_de_leitos_e_colunas_fora_do_snapshot_sao_ignoradas()
+    {
+        var leitoExterno = Guid.CreateVersion7();
+        var colunaInativa = _gelo.Column("00H", new TimeOnly(0, 0), 30);
+        colunaInativa.SetActive(false, TestData.NowUtc);
+
+        ChecklistEntry[] entradas =
+        [
+            Entry(_leito1148, _vinteHoras, completed: true),
+            Entry(leitoExterno, _vinteHoras, completed: true),
+            Entry(_leito1148, colunaInativa, completed: true),
+        ];
+
+        var resumo = SessionSummaryCalculator.Build(entradas, [_gelo], [], [], BedCodes());
+
+        Assert.Equal(4, resumo.Overall.Total);
+        Assert.Equal(1, resumo.Overall.Completed);
+        Assert.Equal(2, Assert.Single(resumo.Templates).Columns.Count);
+    }
+
+    [Fact]
+    public void Sem_leitos_ativos_na_sessao_nao_ha_trabalho_esperado()
+    {
+        var resumo = SessionSummaryCalculator.Build([], [_gelo], [], [], new Dictionary<Guid, string>());
+
+        Assert.Equal(ChecklistProgress.Empty, resumo.Overall);
+        Assert.Empty(resumo.Templates);
+        Assert.Empty(resumo.Markers);
     }
 }

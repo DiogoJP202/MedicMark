@@ -34,17 +34,18 @@ public static class SessionSummaryCalculator
         IEnumerable<ChecklistTemplate> templates,
         IEnumerable<SessionBedMarker> markers,
         IEnumerable<BedMarkerDefinition> markerDefinitions,
-        IReadOnlyDictionary<Guid, string> bedCodesById)
+        IReadOnlyDictionary<Guid, string> activeSessionBedCodesById)
     {
         ArgumentNullException.ThrowIfNull(entries);
         ArgumentNullException.ThrowIfNull(templates);
         ArgumentNullException.ThrowIfNull(markers);
         ArgumentNullException.ThrowIfNull(markerDefinitions);
-        ArgumentNullException.ThrowIfNull(bedCodesById);
+        ArgumentNullException.ThrowIfNull(activeSessionBedCodesById);
 
-        var entriesByColumn = entries
-            .GroupBy(e => e.ChecklistColumnId)
-            .ToDictionary(g => g.Key, g => ChecklistProgress.From(g));
+        var sessionBedIds = activeSessionBedCodesById.Keys.ToHashSet();
+        var sessionEntries = entries
+            .Where(e => sessionBedIds.Contains(e.BedId))
+            .ToList();
 
         var templateProgress = new List<TemplateProgress>();
         var overall = ChecklistProgress.Empty;
@@ -56,12 +57,20 @@ public static class SessionSummaryCalculator
 
             foreach (var column in template.ActiveColumnsInOrder)
             {
-                var progress = entriesByColumn.TryGetValue(column.Id, out var value) ? value : ChecklistProgress.Empty;
+                var completed = sessionEntries
+                    .Where(e => e.ChecklistTemplateId == template.Id
+                        && e.ChecklistColumnId == column.Id
+                        && e.IsCompleted)
+                    .Select(e => e.BedId)
+                    .Distinct()
+                    .Count();
+
+                var progress = new ChecklistProgress(sessionBedIds.Count, completed);
                 columns.Add(new ColumnProgress(column.Id, column.DisplayName, column.TriggerTime, progress));
                 templateTotal += progress;
             }
 
-            if (templateTotal.Total == 0)
+            if (sessionBedIds.Count == 0 || columns.Count == 0)
             {
                 continue;
             }
@@ -80,10 +89,12 @@ public static class SessionSummaryCalculator
                 definition.Name,
                 [.. selectedMarkers
                     .Where(m => m.MarkerDefinitionId == definition.Id)
-                    .Select(m => bedCodesById.TryGetValue(m.BedId, out var code) ? code : null)
+                    .Select(m => activeSessionBedCodesById.TryGetValue(m.BedId, out var code) ? code : null)
                     .Where(code => code is not null)
                     .Select(code => code!)
+                    .Distinct(StringComparer.Ordinal)
                     .Order(StringComparer.Ordinal)]))
+            .Where(group => group.Count > 0)
             .ToList();
 
         return new SessionSummary(overall, templateProgress, markerGroups);

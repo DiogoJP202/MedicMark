@@ -93,7 +93,7 @@ public sealed class SessionLifecycleTests
 
         var confirmando = await host.Sessions.CloseAsync(session, confirmWithPending: true, user);
         Assert.True(confirmando.IsSuccess);
-        Assert.Equal(1, confirmando.Required.Overall.Pending);
+        Assert.Equal(await ExpectedTaskCountAsync(host, session), confirmando.Required.Overall.Pending);
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public sealed class SessionLifecycleTests
     {
         using var host = await ApplicationTestHost.CreateAsync();
         var user = TestUser.WithEverything();
-        var session = await CreateSessionWithOneEntryAsync(host, user, completed: true);
+        var session = await CreateCompleteSessionAsync(host, user);
 
         var result = await host.Sessions.CloseAsync(session, confirmWithPending: false, user);
 
@@ -240,5 +240,45 @@ public sealed class SessionLifecycleTests
         await host.Db.SaveChangesAsync();
 
         return sessionId;
+    }
+
+    private static async Task<Guid> CreateCompleteSessionAsync(ApplicationTestHost host, ICurrentUser user)
+    {
+        var sectorId = await host.OesteSectorIdAsync();
+        var opened = await host.Sessions.OpenAsync(sectorId, null, user);
+        var sessionId = opened.Required.Id;
+        var beds = await host.OesteBedIdsAsync();
+        var templates = await host.Db.ChecklistTemplates
+            .Include(t => t.Columns)
+            .Include(t => t.Sectors)
+            .ToListAsync();
+
+        foreach (var template in templates.Where(t => t.IsActive && t.AppliesTo(sectorId)))
+        {
+            foreach (var column in template.ActiveColumnsInOrder)
+            {
+                foreach (var bedId in beds)
+                {
+                    await host.Mutations.ApplyEntryAsync(sessionId, bedId, template.Id, column.Id, true, 0, user);
+                }
+            }
+        }
+
+        await host.Db.SaveChangesAsync();
+        return sessionId;
+    }
+
+    private static async Task<int> ExpectedTaskCountAsync(ApplicationTestHost host, Guid sessionId)
+    {
+        var session = await host.Db.OperationalSessions.SingleAsync(s => s.Id == sessionId);
+        var bedCount = await host.Db.SessionBeds.CountAsync(b => b.SessionId == sessionId && b.IsActiveInSession);
+        var templates = await host.Db.ChecklistTemplates
+            .Include(t => t.Columns)
+            .Include(t => t.Sectors)
+            .ToListAsync();
+
+        return bedCount * templates
+            .Where(t => t.IsActive && t.AppliesTo(session.SectorId))
+            .Sum(t => t.ActiveColumnsInOrder.Count());
     }
 }

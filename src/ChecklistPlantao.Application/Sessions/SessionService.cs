@@ -364,9 +364,16 @@ public sealed class SessionService(
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        var activeBedIds = await db.SessionBeds
+            .AsNoTracking()
+            .Where(b => b.SessionId == session.Id && b.IsActiveInSession)
+            .Select(b => b.BedId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
         var bedCodes = await db.Beds
             .AsNoTracking()
-            .Where(b => b.SectorId == session.SectorId)
+            .Where(b => activeBedIds.Contains(b.Id))
             .ToDictionaryAsync(b => b.Id, b => b.Code, cancellationToken)
             .ConfigureAwait(false);
 
