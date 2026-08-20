@@ -17,7 +17,7 @@
     @if (_recolhido)
     {
         <div class="faixa @CssFaixa faixa--fixa faixa--compacta" role="alert" data-testid="notification-health-banner">
-            <span class="faixa__icone" aria-hidden="true">▲</span>
+            <Icone Nome="alerta" Class="faixa__icone" />
             <button type="button"
                     class="faixa__resumo"
                     data-testid="notification-health-expand"
@@ -34,7 +34,7 @@
     else
     {
         <div class="faixa @CssFaixa faixa--fixa" role="alert" data-testid="notification-health-banner">
-            <span class="faixa__icone" aria-hidden="true">▲</span>
+            <Icone Nome="alerta" Class="faixa__icone" />
             <div class="faixa__conteudo">
                 <p class="faixa__titulo">ATENÇÃO</p>
                 <p class="faixa__texto">

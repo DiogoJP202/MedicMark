@@ -6,7 +6,7 @@
 @if (Atrasadas > 0)
 {
     <button type="button" class="faixa faixa--alerta" style="width:100%;text-align:left;cursor:pointer" @onclick="OnOpen" data-testid="pending-banner">
-        <span class="faixa__icone" aria-hidden="true">!</span>
+        <Icone Nome="alerta" Class="faixa__icone" />
         <span class="faixa__conteudo">
             <span class="faixa__titulo">@Atrasadas TAREFA@(Atrasadas == 1 ? "" : "S") ATRASADA@(Atrasadas == 1 ? "" : "S")</span>
             <span class="faixa__texto">@Descricao</span>

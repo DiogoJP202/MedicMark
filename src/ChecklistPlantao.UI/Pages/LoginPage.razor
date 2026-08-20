@@ -37,7 +37,7 @@ else
     @if (!ServerConfiguration.IsConfigured)
     {
         <div class="faixa faixa--alerta">
-            <span class="faixa__icone" aria-hidden="true">▲</span>
+            <Icone Nome="alerta" Class="faixa__icone" />
             <div class="faixa__conteudo">
                 <p class="faixa__titulo">Servidor não configurado</p>
                 <p class="faixa__texto">Configure o endereço do servidor antes do primeiro acesso.</p>
@@ -112,7 +112,7 @@ else
         @if (_erro is not null)
         {
             <div class="faixa faixa--erro" role="alert" data-testid="login-error">
-                <span class="faixa__icone" aria-hidden="true">✕</span>
+                <Icone Nome="erro" Class="faixa__icone" />
                 <div class="faixa__conteudo">
                     <p class="faixa__texto">@_erro</p>
                     @if (_detalhe is not null)

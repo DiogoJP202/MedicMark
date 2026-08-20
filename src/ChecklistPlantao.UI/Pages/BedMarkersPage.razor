@@ -21,7 +21,7 @@
 }
 else if (_leitos.Count == 0)
 {
-    <EmptyState Icon="—" Title="Nenhum leito no plantão" Message="Abra um plantão para classificar os leitos." />
+    <EmptyState Icon="vazio" Title="Nenhum leito no plantão" Message="Abra um plantão para classificar os leitos." />
 }
 else
 {
@@ -67,7 +67,7 @@ else
     @if (_mensagem is not null)
     {
         <div class="faixa faixa--alerta" role="status" data-testid="markers-message">
-            <span class="faixa__icone" aria-hidden="true">▲</span>
+            <Icone Nome="alerta" Class="faixa__icone" />
             <div class="faixa__conteudo"><p class="faixa__texto">@_mensagem</p></div>
         </div>
     }

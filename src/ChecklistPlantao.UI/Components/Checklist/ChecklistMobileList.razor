@@ -39,7 +39,7 @@
 
 @if (LinhasVisiveis.Count == 0)
 {
-    <EmptyState Icon="✓"
+    <EmptyState Icon="check"
                 Title="@(OnlyPending ? "Nada pendente aqui" : "Nenhum leito encontrado")"
                 Message="@(OnlyPending ? "Todos os leitos deste horário já foram marcados." : "Nenhum leito corresponde à busca.")" />
 }

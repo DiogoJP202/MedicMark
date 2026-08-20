@@ -373,6 +373,22 @@ p { margin: 0 0 var(--esp-3); }
     gap: var(--esp-3);
 }
 
+/* ------------------------------------------------------------------ ícones
+
+   Tamanho vem do contexto, e não do ícone: ele preenche o espaço que o elemento ao redor der.
+   Assim a faixa, o botão e a ilha usam o mesmo desenho em escalas diferentes sem variantes.    */
+
+.icone {
+    display: inline-flex;
+    flex: 0 0 auto;
+    line-height: 0;
+}
+
+.icone > svg {
+    width: 1.25em;
+    height: 1.25em;
+}
+
 /* ------------------------------------------------------------------ caixa de marcação
 
    A caixa desenhada tem 24px; a ÁREA QUE RESPONDE ao toque tem 48px de altura. Desenhar pequeno

@@ -28,7 +28,7 @@ else if (_erro is not null)
 }
 else if (Session.CurrentSectorId is null)
 {
-    <EmptyState Icon="—" Title="Nenhum setor selecionado" Message="Escolha um setor para ver o checklist.">
+    <EmptyState Icon="vazio" Title="Nenhum setor selecionado" Message="Escolha um setor para ver o checklist.">
         <button type="button" class="botao botao--primario" @onclick="@(() => Navigation.NavigateTo("/setores"))">
             Escolher setor
         </button>
@@ -40,7 +40,7 @@ else
         @if (!_board.IsSessionOpen)
         {
             <div class="faixa faixa--alerta" role="status">
-                <span class="faixa__icone" aria-hidden="true">▲</span>
+                <Icone Nome="alerta" Class="faixa__icone" />
                 <div class="faixa__conteudo">
                     <p class="faixa__titulo">Plantão encerrado</p>
                     <p class="faixa__texto">Este checklist está apenas para consulta. Abra um novo plantão para marcar tarefas.</p>

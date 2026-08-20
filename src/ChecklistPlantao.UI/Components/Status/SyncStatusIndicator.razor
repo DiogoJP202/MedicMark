@@ -14,7 +14,7 @@
         aria-label="@($"{Status.Headline}. Toque para sincronizar agora.")"
         disabled="@(Status.IsSyncing || OnSyncNow.HasDelegate == false)"
         @onclick="SincronizarAsync">
-    <span class="sync-botao__icone @(Status.IsSyncing ? "sync-botao__icone--girando" : "")" aria-hidden="true">@Icone</span>
+    <Icone Nome="@Icone" Class="@($"sync-botao__icone {(Status.IsSyncing ? "sync-botao__icone--girando" : "")}")" />
     <span class="sync-botao__textos">
         <span class="sync-botao__estado">@Status.Headline</span>
         @* O verbo é o que transforma um rótulo em convite. *@
@@ -29,13 +29,14 @@
     [Parameter]
     public EventCallback OnSyncNow { get; set; }
 
+    /// <summary>Cada estado tem FORMA própria, e não só cor — o botão fica na barra do topo.</summary>
     private string Icone => Status.Connectivity switch
     {
-        _ when Status.IsSyncing => "⟳",
-        ConnectivityState.Online => "●",
-        ConnectivityState.LocalNetwork => "◐",
-        ConnectivityState.ServerUnreachable => "▲",
-        _ => "○",
+        _ when Status.IsSyncing => "sincronizando",
+        ConnectivityState.Online => "conectado",
+        ConnectivityState.LocalNetwork => "rede-local",
+        ConnectivityState.ServerUnreachable => "sem-servidor",
+        _ => "offline",
     };
 
     private string CssEstado => Status.Connectivity switch
