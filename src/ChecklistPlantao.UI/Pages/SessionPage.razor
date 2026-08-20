@@ -1,25 +1,19 @@
 @page "/sessao"
+@implements IDisposable
 
 @inject IAppSession Session
 @inject IChecklistStore Store
-@inject NavigationManager Navigation
-
-@*
-    Abrir, encerrar e reiniciar o plantão.
-
-    Toda ação destrutiva pede confirmação; o resumo de fechamento traz o que o item 9 do
-    enunciado exige, incluindo os leitos com C.I., Sondas e Drenos.
-*@
+@inject ISyncStatusService SyncStatus
 
 <PageTitle>Plantão</PageTitle>
 
 <h2>Plantão do setor @Session.CurrentSectorName</h2>
 
-@if (_carregando)
+@if (_carregando && _sessaoAtual is null)
 {
     <LoadingState />
 }
-else if (_board.SessionId == Guid.Empty)
+else if (_sessaoAtual is null)
 {
     <EmptyState Icon="vazio" Title="Nenhum plantão aberto" Message="Abra um plantão para começar o checklist." />
 }
@@ -27,13 +21,13 @@ else
 {
     <div class="pilha">
         <div class="cartao">
-            <p class="faixa__texto"><strong>Data do plantão:</strong> @_board.ServiceDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)</p>
-            <p class="faixa__texto"><strong>Situação:</strong> @(_board.IsSessionOpen ? "Aberto" : "Encerrado")</p>
+            <p class="faixa__texto"><strong>Data do plantão:</strong> @_sessaoAtual.ServiceDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)</p>
+            <p class="faixa__texto"><strong>Situação:</strong> @(_sessaoAtual.IsOpen ? "Aberto" : "Encerrado")</p>
         </div>
 
         @if (_resumo is not null)
         {
-            <div class="cartao">
+            <div class="cartao cartao--destaque">
                 <h3 class="cartao__titulo">Resumo</h3>
                 <ChecklistProgress Label="Tarefas" Total="_resumo.Overall.Total" Completed="_resumo.Overall.Completed" />
 
@@ -47,39 +41,46 @@ else
                         </div>
                     </div>
                 }
+            </div>
 
-                <h4>Classificações</h4>
-                <ul>
-                    @foreach (var marcador in _resumo.Markers)
-                    {
-                        <li data-testid="@($"summary-marker-{marcador.MarkerDefinitionId}")">
-                            <strong>@marcador.MarkerName:</strong>
-                            @(marcador.BedCodes.Count == 0 ? "nenhum leito" : string.Join(", ", marcador.BedCodes))
-                        </li>
-                    }
-                </ul>
-
-                <h4>Por tipo de checklist</h4>
-                <ul>
+            <section aria-labelledby="resumo-tipos">
+                <h3 id="resumo-tipos">Por tipo de checklist</h3>
+                <div class="grade-cartoes grade-cartoes--compacta">
                     @foreach (var template in _resumo.Templates)
                     {
-                        <li>
-                            <strong>@template.TemplateName:</strong>
-                            @template.Progress.Completed de @template.Progress.Total
-                            @if (template.Progress.Pending > 0)
-                            {
-                                <text> (@template.Progress.Pending pendente(s))</text>
-                            }
-                        </li>
+                        <article class="cartao"
+                                 data-testid="@($"summary-template-{template.TemplateId}")"
+                                 data-state="@template.Progress.State.ToString()">
+                            <h4 class="cartao__titulo">@template.TemplateName</h4>
+                            <p class="faixa__texto"><strong>@StateLabel(template.Progress.State)</strong></p>
+                            <p class="faixa__texto">@template.Progress.Completed de @template.Progress.Total concluída(s)</p>
+                            <p class="campo__ajuda">@template.Progress.Pending pendente(s)</p>
+                        </article>
                     }
-                </ul>
-            </div>
+                </div>
+            </section>
+
+            @if (_resumo.Markers.Count > 0)
+            {
+                <section aria-labelledby="resumo-classificacoes">
+                    <h3 id="resumo-classificacoes">Classificações</h3>
+                    <div class="grade-cartoes grade-cartoes--compacta">
+                        @foreach (var marcador in _resumo.Markers)
+                        {
+                            <article class="cartao" data-testid="@($"summary-marker-{marcador.MarkerDefinitionId}")">
+                                <h4 class="cartao__titulo">@marcador.MarkerName</h4>
+                                <p class="faixa__texto">@string.Join(", ", marcador.BedCodes)</p>
+                            </article>
+                        }
+                    </div>
+                </section>
+            }
         }
 
         <PermissionGuard Permission="@Permissions.ChecklistClose" Access="Session.Access">
             <ChildContent>
                 <div class="linha">
-                    @if (_board.IsSessionOpen)
+                    @if (_sessaoAtual.IsOpen)
                     {
                         <button type="button" class="botao botao--perigo" data-testid="close-session" @onclick="() => _confirmarFechamento = true">
                             Encerrar plantão
@@ -115,64 +116,141 @@ else
                OnConfirm="ReiniciarAsync" />
 
 @code {
-    private ChecklistBoard _board = ChecklistBoard.Empty;
+    private readonly SemaphoreSlim _portaDeRecarga = new(1, 1);
+    private readonly CancellationTokenSource _vida = new();
+    private CurrentSessionView? _sessaoAtual;
     private SessionSummaryDto? _resumo;
     private bool _carregando = true;
     private bool _confirmarFechamento;
     private bool _confirmarReinicio;
+    private bool _descartada;
     private string? _mensagem;
 
     private string MensagemFechamento => _resumo?.HasPending == true
         ? $"Ainda há {_resumo.Overall.Pending} tarefa(s) pendente(s). O plantão será encerrado mesmo assim."
         : "O checklist deste plantão será encerrado.";
 
-    protected override async Task OnInitializedAsync() => await CarregarAsync();
-
-    private async Task CarregarAsync()
+    protected override async Task OnInitializedAsync()
     {
-        _carregando = true;
+        Session.Changed += AoMudarDados;
+        Store.Changed += AoMudarDados;
+        SyncStatus.Changed += AoMudarSincronizacao;
+        await RecarregarAsync();
+    }
+
+    private static string StateLabel(ProgressState state) => state switch
+    {
+        ProgressState.Completed => "Concluído",
+        ProgressState.Partial => "Parcial",
+        _ => "Pendente",
+    };
+
+    private void AoMudarDados() => SolicitarRecarga();
+
+    private void AoMudarSincronizacao(ChecklistPlantao.Client.Abstractions.SyncStatus _) => SolicitarRecarga();
+
+    private void SolicitarRecarga()
+    {
+        if (_descartada)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(RecarregarComTratamentoAsync);
+    }
+
+    private async Task RecarregarComTratamentoAsync()
+    {
+        try
+        {
+            await RecarregarAsync();
+        }
+        catch (OperationCanceledException) when (_vida.IsCancellationRequested)
+        {
+        }
+        catch
+        {
+            _carregando = false;
+            _mensagem = "Não foi possível atualizar o resumo agora.";
+            StateHasChanged();
+        }
+    }
+
+    private async Task RecarregarAsync()
+    {
+        await _portaDeRecarga.WaitAsync(_vida.Token);
 
         try
         {
+            _carregando = true;
+
             if (Session.CurrentSectorId is not { } sectorId)
             {
+                _sessaoAtual = null;
+                _resumo = null;
                 return;
             }
 
-            var templates = await Store.GetTemplatesAsync(sectorId);
+            var sessao = await Store.GetCurrentSessionAsync(sectorId, _vida.Token);
+            var resumo = sessao is null
+                ? null
+                : await Store.GetSessionSummaryAsync(sessao.Id, _vida.Token);
 
-            if (templates.Count == 0)
+            if (Session.CurrentSectorId != sectorId)
             {
                 return;
             }
 
-            _board = await Store.GetBoardAsync(sectorId, templates[0].Id);
-
-            if (_board.SessionId != Guid.Empty)
-            {
-                _resumo = await Store.GetSessionSummaryAsync(_board.SessionId);
-            }
+            _sessaoAtual = sessao;
+            _resumo = resumo;
         }
         finally
         {
             _carregando = false;
+            _portaDeRecarga.Release();
         }
     }
 
     private async Task FecharAsync()
     {
-        var ok = await Store.CloseSessionAsync(_board.SessionId, confirmWithPending: true);
+        if (_sessaoAtual is null)
+        {
+            return;
+        }
+
+        var ok = await Store.CloseSessionAsync(_sessaoAtual.Id, confirmWithPending: true, _vida.Token);
         _mensagem = ok
             ? "Plantão encerrado."
             : "Não foi possível encerrar agora. Tente novamente quando o servidor estiver acessível.";
 
-        await CarregarAsync();
+        await RecarregarAsync();
     }
 
     private async Task ReiniciarAsync()
     {
-        var ok = await Store.ResetSessionAsync(_board.SessionId);
+        if (_sessaoAtual is null)
+        {
+            return;
+        }
+
+        var ok = await Store.ResetSessionAsync(_sessaoAtual.Id, _vida.Token);
         _mensagem = ok ? "Checklist reiniciado." : "Não foi possível reiniciar agora.";
-        await CarregarAsync();
+        await RecarregarAsync();
+    }
+
+    public void Dispose()
+    {
+        if (_descartada)
+        {
+            return;
+        }
+
+        _descartada = true;
+        Session.Changed -= AoMudarDados;
+        Store.Changed -= AoMudarDados;
+        SyncStatus.Changed -= AoMudarSincronizacao;
+        _vida.Cancel();
+        _vida.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

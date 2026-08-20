@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace ChecklistPlantao.Contracts.Operations;
 
 public sealed record OperationalSessionDto(
@@ -37,9 +39,23 @@ public sealed record SessionStateDto(
     IReadOnlyList<ChecklistEntryDto> Entries,
     IReadOnlyList<SessionBedMarkerDto> Markers);
 
+public enum ProgressState
+{
+    NotStarted = 0,
+    Partial = 1,
+    Completed = 2,
+}
+
 public sealed record ProgressDto(int Total, int Completed)
 {
     public int Pending => Total - Completed;
+
+    [JsonIgnore]
+    public ProgressState State => Completed <= 0 || Total <= 0
+        ? ProgressState.NotStarted
+        : Completed >= Total
+            ? ProgressState.Completed
+            : ProgressState.Partial;
 }
 
 public sealed record ColumnSummaryDto(Guid ColumnId, string ColumnName, TimeOnly? TriggerTime, ProgressDto Progress);
