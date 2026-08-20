@@ -14,8 +14,18 @@
     --cor-fundo: #f4f6f8;
     --cor-superficie: #ffffff;
     --cor-superficie-alt: #eef2f5;
+    /* Agrupa conteúdo. Não delimita controle, então 3:1 não se aplica. */
     --cor-borda: #cfd8de;
-    --cor-borda-forte: #9aa8b2;
+
+    /*
+        Borda de CONTROLE — campo, botão de contorno, caixa de marcação, cartão clicável.
+
+        Era #9aa8b2, que dá 2,44:1 contra a superfície. O WCAG pede 3:1 para o contorno que
+        identifica um componente, e a borda era a única coisa delimitando esses controles.
+        Este valor é o mais claro que passa nos DOIS fundos: 3,37:1 na superfície, 3,11:1 na
+        página. Medido, não estimado.
+    */
+    --cor-borda-forte: #7e8e9a;
 
     --cor-texto: #16232c;
     --cor-texto-suave: #4b5b66;
@@ -55,8 +65,31 @@
     --raio-sm: 4px;
     --raio-md: 8px;
     --raio-lg: 14px;
-    --sombra-1: 0 1px 2px rgba(22, 35, 44, 0.10);
-    --sombra-2: 0 4px 12px rgba(22, 35, 44, 0.14);
+    /* A ilha expandida. Estava fixo no código, fora da escala. */
+    --raio-ilha: 26px;
+
+    /*
+        Elevação nomeada por INTENÇÃO, e não por número.
+
+        "--sombra-2" não dizia onde usar, e o resultado foi a ilha e o botão de sincronizar
+        nascerem com sombras próprias, fora da escala — duas linguagens visuais no mesmo produto.
+        Com o nome dizendo a função, a escolha na hora de escrever um componente novo é óbvia.
+    */
+    --elev-repouso: 0 1px 2px rgb(22 35 44 / 10%);
+    --elev-flutuante: 0 6px 18px rgb(22 35 44 / 28%);
+    --elev-sobreposto: 0 18px 44px rgb(22 35 44 / 42%);
+
+    /*
+        Véus e realces.
+
+        Cobrir a tela e clarear um botão sobre fundo escuro eram valores soltos espalhados. Como
+        token, o tema noturno os inverte num lugar só — do contrário seria caça a valor fixo.
+    */
+    --veu-leve: rgb(22 35 44 / 28%);
+    --veu-medio: rgb(22 35 44 / 55%);
+    --realce-sutil: rgb(255 255 255 / 14%);
+    --realce-medio: rgb(255 255 255 / 22%);
+    --contorno-claro: rgb(255 255 255 / 55%);
 
     /* Alvos de toque: 48px é o mínimo confortável para uso com uma mão. */
     --toque-min: 48px;
@@ -207,7 +240,7 @@ p { margin: 0 0 var(--esp-3); }
     border: 1px solid var(--cor-borda);
     border-radius: var(--raio-md);
     padding: var(--esp-4);
-    box-shadow: var(--sombra-1);
+    box-shadow: var(--elev-repouso);
 }
 
 .cartao__titulo {
@@ -216,6 +249,10 @@ p { margin: 0 0 var(--esp-3); }
     margin: 0 0 var(--esp-2);
 }
 
+/*
+    Cartão clicável é CONTROLE, e não um agrupamento de conteúdo. A borda é o que o identifica
+    como algo tocável, então segue a regra dos 3:1 — o cartão comum, que só agrupa, não precisa.
+*/
 .cartao--acionavel {
     display: block;
     width: 100%;
@@ -224,6 +261,7 @@ p { margin: 0 0 var(--esp-3); }
     font: inherit;
     color: inherit;
     min-height: var(--toque-grande);
+    border-color: var(--cor-borda-forte);
 }
 
 .cartao--acionavel:hover { border-color: var(--cor-primaria-clara); }
@@ -482,8 +520,8 @@ p { margin: 0 0 var(--esp-3); }
     min-height: 44px;
     padding: var(--esp-1) var(--esp-3);
     border-radius: var(--raio-md);
-    border: 1px solid rgba(255, 255, 255, 0.55);
-    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--contorno-claro);
+    background: var(--realce-sutil);
     color: var(--cor-texto-inverso);
     font: inherit;
     font-size: var(--texto-sm);
@@ -492,7 +530,7 @@ p { margin: 0 0 var(--esp-3); }
 }
 
 .sync-botao:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.22);
+    background: var(--realce-medio);
     border-color: var(--cor-texto-inverso);
 }
 
@@ -520,7 +558,7 @@ p { margin: 0 0 var(--esp-3); }
 }
 
 /* A cor reforça o estado, nunca o transmite sozinha — o texto ao lado já o diz. */
-.sync-botao--ok { border-color: rgba(255, 255, 255, 0.45); }
+.sync-botao--ok { border-color: var(--contorno-claro); }
 .sync-botao--atencao { background: var(--cor-alerta); border-color: var(--cor-alerta-suave); }
 .sync-botao--pendente { background: var(--cor-primaria-clara); border-color: var(--cor-texto-inverso); }
 
@@ -764,7 +802,7 @@ p { margin: 0 0 var(--esp-3); }
 .modal-fundo {
     position: fixed;
     inset: 0;
-    background: rgba(22, 35, 44, 0.55);
+    background: var(--veu-medio);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -775,7 +813,7 @@ p { margin: 0 0 var(--esp-3); }
 .modal {
     background: var(--cor-superficie);
     border-radius: var(--raio-lg);
-    box-shadow: var(--sombra-2);
+    box-shadow: var(--elev-sobreposto);
     max-width: 560px;
     width: 100%;
     max-height: 85vh;
@@ -809,13 +847,13 @@ p { margin: 0 0 var(--esp-3); }
     color: var(--cor-texto-inverso);
     padding: var(--esp-3) var(--esp-4);
     border-radius: var(--raio-lg);
-    box-shadow: var(--sombra-2);
+    box-shadow: var(--elev-sobreposto);
     max-width: calc(100vw - 2 * var(--esp-4));
 }
 
 .toast-desfazer__acao {
     background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.6);
+    border: 1px solid var(--contorno-claro);
     color: var(--cor-texto-inverso);
     border-radius: var(--raio-sm);
     padding: var(--esp-1) var(--esp-3);
@@ -834,7 +872,7 @@ p { margin: 0 0 var(--esp-3); }
     position: fixed;
     inset: 0;
     z-index: var(--z-carregando);
-    background: rgba(22, 35, 44, 0.55);
+    background: var(--veu-medio);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -850,7 +888,7 @@ p { margin: 0 0 var(--esp-3); }
     gap: var(--esp-3);
     background: var(--cor-superficie);
     border-radius: var(--raio-lg);
-    box-shadow: var(--sombra-2);
+    box-shadow: var(--elev-sobreposto);
     padding: var(--esp-5) var(--esp-6);
     max-width: 320px;
     text-align: center;
@@ -952,7 +990,7 @@ p { margin: 0 0 var(--esp-3); }
     inset: 0;
     z-index: calc(var(--z-banner) + 1);
     /* Escurece de leve: separa a ilha da página sem esconder onde a pessoa estava. */
-    background: rgba(22, 35, 44, 0.28);
+    background: var(--veu-leve);
 }
 
 .ilha {
@@ -965,7 +1003,7 @@ p { margin: 0 0 var(--esp-3); }
     border-radius: 999px;
     background: var(--cor-primaria);
     color: var(--cor-texto-inverso);
-    box-shadow: 0 6px 18px rgba(22, 35, 44, 0.28);
+    box-shadow: var(--elev-flutuante);
     overflow: hidden;
 
     /* translateX(-50%) fica no transform para o centro não depender de cálculo de largura. */
@@ -979,8 +1017,8 @@ p { margin: 0 0 var(--esp-3); }
 
 .ilha--aberta {
     width: var(--ilha-largura-aberta);
-    border-radius: 26px;
-    box-shadow: 0 18px 44px rgba(22, 35, 44, 0.42);
+    border-radius: var(--raio-ilha);
+    box-shadow: var(--elev-sobreposto);
 }
 
 /* ---- estado fechado: o gatilho ---- */
@@ -1076,13 +1114,13 @@ p { margin: 0 0 var(--esp-3); }
     cursor: pointer;
 }
 
-.ilha__link:hover { background: rgba(255, 255, 255, 0.14); }
+.ilha__link:hover { background: var(--realce-sutil); }
 
 .ilha__nome { flex: 1 1 auto; }
 
 /* O item atual: fundo, peso e a marca de conferido — nunca só a cor. */
 .ilha__link--atual {
-    background: rgba(255, 255, 255, 0.20);
+    background: var(--realce-medio);
     font-weight: 700;
 }
 
