@@ -4,36 +4,60 @@
 
 <PageTitle>Marcadores</PageTitle>
 
-<div class="linha linha--entre">
-    <h2>Marcadores de leito</h2>
-    <button type="button" class="botao botao--primario" data-testid="marker-new" @onclick="Novo">Novo marcador</button>
-</div>
-
-<p>C.I., Sondas e Drenos são apenas os marcadores iniciais. Você pode criar outros.</p>
+<AdminPageHeader Title="Marcadores de leito"
+                 Description="C.I., Sondas e Drenos são os marcadores iniciais; outros podem ser criados."
+                 BackHref="/admin/sistema">
+    <Actions>
+        <button type="button" class="botao botao--primario" data-testid="marker-new" @onclick="Novo">Novo marcador</button>
+    </Actions>
+</AdminPageHeader>
 
 <AdminFeedback Result="_resultado" />
 
-<div class="tabela__area">
-    <table class="tabela">
-        <thead><tr><th>Marcador</th><th>Código</th><th>Ordem</th><th>Situação</th><th></th></tr></thead>
-        <tbody>
+@if (_marcadores.Count == 0 && !_carregando)
+{
+    <EmptyState Icon="vazio" Title="Nenhum marcador cadastrado" Message="Crie um marcador para classificar leitos durante o plantão." />
+}
+else
+{
+    <div class="linha" style="margin-bottom:var(--esp-3)">
+        <span class="campo__ajuda">O código é a referência estável sincronizada nos dispositivos.</span>
+        <HelpPopover Label="Ajuda sobre o código estável">Renomear um marcador não altera seu código nem perde classificações já sincronizadas.</HelpPopover>
+    </div>
+
+    <div class="lista-responsiva">
+        <div class="lista-responsiva__tabela tabela__area">
+            <table class="tabela">
+                <thead><tr><th>Marcador</th><th>Código</th><th>Ordem</th><th>Situação</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var marcador in _marcadores.OrderBy(m => m.SortOrder))
+                    {
+                        <tr data-testid="@($"marker-row-{marcador.Id}")">
+                            <td>@marcador.Name</td>
+                            <td><code>@marcador.Code</code></td>
+                            <td>@marcador.SortOrder</td>
+                            <td><StatusBadge Text="@(marcador.IsActive ? "Ativo" : "Desativado")" Tone="@(marcador.IsActive ? "sucesso" : "inativo")" /></td>
+                            <td><button type="button" class="botao botao--texto" @onclick="() => Editar(marcador)">Editar</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="lista-responsiva__cards">
             @foreach (var marcador in _marcadores.OrderBy(m => m.SortOrder))
             {
-                <tr data-testid="@($"marker-row-{marcador.Id}")">
-                    <td>@marcador.Name</td>
-                    <td><code>@marcador.Code</code></td>
-                    <td>@marcador.SortOrder</td>
-                    <td>@(marcador.IsActive ? "ativo" : "desativado")</td>
-                    <td><button type="button" class="botao botao--texto" @onclick="() => Editar(marcador)">Editar</button></td>
-                </tr>
+                <article class="cartao admin-item" data-testid="@($"marker-card-{marcador.Id}")">
+                    <div>
+                        <strong>@marcador.Name</strong>
+                        <span class="campo__ajuda"><code>@marcador.Code</code> · Ordem @marcador.SortOrder</span>
+                    </div>
+                    <StatusBadge Text="@(marcador.IsActive ? "Ativo" : "Desativado")" Tone="@(marcador.IsActive ? "sucesso" : "inativo")" />
+                    <button type="button" class="botao botao--texto" @onclick="() => Editar(marcador)">Editar</button>
+                </article>
             }
-        </tbody>
-    </table>
-</div>
-
-<p class="campo__ajuda" style="margin-top:var(--esp-3)">
-    O código não muda ao renomear: ele é a referência estável já sincronizada nos dispositivos.
-</p>
+        </div>
+    </div>
+}
 
 <FormDialog @bind-Visible="_modalAberto"
             Title="@(_editando is null ? "Novo marcador" : $"Editando: {_editando.Name}")"

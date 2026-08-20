@@ -725,6 +725,55 @@ p { margin: 0 0 var(--esp-3); }
 
 .lista-responsiva__cards { display: none; }
 
+.admin-entidade__subtitulo {
+    margin-top: var(--esp-4);
+    padding-top: var(--esp-3);
+    border-top: 1px solid var(--cor-borda);
+}
+
+.admin-entidade__subtitulo h4 { margin: 0; }
+
+.admin-itens { display: grid; gap: var(--esp-2); }
+
+.admin-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--esp-3);
+    padding: var(--esp-3);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-md);
+    background: var(--cor-superficie-alt);
+}
+
+.admin-item > div:first-child { display: grid; gap: 2px; min-width: 0; }
+
+.admin-expansivel {
+    margin-top: var(--esp-4);
+    border-top: 1px solid var(--cor-borda);
+    padding-top: var(--esp-3);
+}
+
+.admin-expansivel > summary {
+    min-height: var(--toque-min);
+    display: flex;
+    align-items: center;
+    color: var(--cor-primaria-texto);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.admin-expansivel[open] > summary { margin-bottom: var(--esp-3); }
+
+.admin-formulario-grupo {
+    margin: var(--esp-4) 0 0;
+    padding: var(--esp-3);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-md);
+}
+
+.admin-formulario-grupo legend { padding: 0 var(--esp-2); font-weight: 700; }
+
 /* ------------------------------------------------------------------ botões */
 
 .botao {
@@ -1961,6 +2010,8 @@ p { margin: 0 0 var(--esp-3); }
     .admin-cabecalho__acoes > * { flex: 1 1 auto; }
     .lista-responsiva__tabela { display: none; }
     .lista-responsiva__cards { display: grid; gap: var(--esp-3); }
+    .admin-item { align-items: flex-start; flex-direction: column; }
+    .admin-item > .linha { width: 100%; }
 }
 
 /*

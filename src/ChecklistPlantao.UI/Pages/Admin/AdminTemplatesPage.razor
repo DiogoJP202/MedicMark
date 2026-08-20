@@ -11,58 +11,74 @@
 
 <PageTitle>Tipos de checklist</PageTitle>
 
-<div class="linha linha--entre">
-    <h2>Tipos de checklist</h2>
-    <button type="button" class="botao botao--primario" data-testid="template-new" @onclick="NovoTemplate">Novo tipo</button>
-</div>
+<AdminPageHeader Title="Tipos de checklist"
+                 Description="Defina o que será conferido, quando e em quais setores."
+                 BackHref="/admin/sistema">
+    <Actions>
+        <button type="button" class="botao botao--primario" data-testid="template-new" @onclick="NovoTemplate">Novo tipo</button>
+    </Actions>
+</AdminPageHeader>
 
 <AdminFeedback Result="_resultado" />
 
 @foreach (var template in _templates)
 {
-    <div class="cartao" style="margin-top:var(--esp-4)">
+    <section class="cartao admin-entidade" style="margin-top:var(--esp-4)">
         <div class="linha linha--entre">
-            <h3 class="cartao__titulo">@template.Name @(template.IsActive ? "" : "(desativado)")</h3>
+            <div>
+                <div class="linha">
+                    <h3 class="cartao__titulo">@template.Name</h3>
+                    <StatusBadge Text="@(template.IsActive ? "Ativo" : "Desativado")" Tone="@(template.IsActive ? "sucesso" : "inativo")" />
+                </div>
+                <p class="campo__ajuda">
+                    @(template.SectorIds.Count == 0 ? "Todos os setores" : $"{template.SectorIds.Count} setor(es)") · @template.Columns.Count coluna(s)
+                </p>
+            </div>
             <div class="linha">
                 <button type="button" class="botao botao--texto" @onclick="() => EditarTemplate(template)">Editar tipo</button>
                 <button type="button" class="botao botao--contorno" @onclick="() => NovaColuna(template)">Nova coluna</button>
             </div>
         </div>
 
-        <p class="campo__ajuda">
-            @(template.SectorIds.Count == 0
-                ? "Vale para todos os setores."
-                : $"Restrito a {template.SectorIds.Count} setor(es).")
-        </p>
-
-        <div class="tabela__area">
-            <table class="tabela">
-                <thead>
-                    <tr>
-                        <th>Coluna</th><th>Horário</th><th>Ordem</th><th>Notifica</th>
-                        <th>Tolerância</th><th>Repetições</th><th>Situação</th><th></th>
-                    </tr>
-                </thead>
-                <tbody>
+        <details class="admin-expansivel">
+            <summary>Gerenciar colunas</summary>
+            <div class="lista-responsiva">
+                <div class="lista-responsiva__tabela tabela__area">
+                    <table class="tabela">
+                        <thead>
+                            <tr><th>Coluna</th><th>Horário</th><th>Ordem</th><th>Notifica</th><th>Situação</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var coluna in template.Columns.OrderBy(c => c.SortOrder))
+                            {
+                                <tr data-testid="@($"column-row-{coluna.Id}")">
+                                    <td>@coluna.DisplayName</td>
+                                    <td>@(coluna.TriggerTime is { } h ? h.ToString("HH':'mm", CultureInfo.InvariantCulture) : "sem horário")</td>
+                                    <td>@coluna.SortOrder</td>
+                                    <td>@(coluna.NotificationEnabled ? "Sim" : "Não")</td>
+                                    <td><StatusBadge Text="@(coluna.IsActive ? "Ativa" : "Desativada")" Tone="@(coluna.IsActive ? "sucesso" : "inativo")" /></td>
+                                    <td><button type="button" class="botao botao--texto" @onclick="() => EditarColuna(template, coluna)">Editar</button></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="lista-responsiva__cards">
                     @foreach (var coluna in template.Columns.OrderBy(c => c.SortOrder))
                     {
-                        <tr data-testid="@($"column-row-{coluna.Id}")">
-                            <td>@coluna.DisplayName</td>
-                            <td>@(coluna.TriggerTime is { } h ? h.ToString("HH':'mm", CultureInfo.InvariantCulture) : "sem horário")</td>
-                            <td>@coluna.SortOrder</td>
-                            <td>@(coluna.NotificationEnabled ? "sim" : "não")</td>
-                            <td>@coluna.GracePeriodMinutes min</td>
-                            <td>@coluna.MaximumRepeats × @coluna.RepeatIntervalMinutes min</td>
-                            <td>@(coluna.IsActive ? "ativa" : "desativada")</td>
-                            <td>
-                                <button type="button" class="botao botao--texto" @onclick="() => EditarColuna(template, coluna)">Editar</button>
-                            </td>
-                        </tr>
+                        <article class="admin-item" data-testid="@($"column-card-{coluna.Id}")">
+                            <div>
+                                <strong>@coluna.DisplayName</strong>
+                                <span class="campo__ajuda">@(coluna.TriggerTime is { } h ? h.ToString("HH':'mm", CultureInfo.InvariantCulture) : "Sem horário") · Ordem @coluna.SortOrder</span>
+                            </div>
+                            <StatusBadge Text="@(coluna.IsActive ? "Ativa" : "Desativada")" Tone="@(coluna.IsActive ? "sucesso" : "inativo")" />
+                            <button type="button" class="botao botao--texto" @onclick="() => EditarColuna(template, coluna)">Editar</button>
+                        </article>
                     }
-                </tbody>
-            </table>
-        </div>
-    </div>
+                </div>
+            </div>
+        </details>
+    </section>
 }
 
 <FormDialog @bind-Visible="_modalTemplate"
@@ -111,50 +127,69 @@
             OnSave="SalvarColunaAsync">
     <AdminFeedback Result="_erroDoModal" />
 
-    <div class="linha">
-        <div class="campo" style="flex:1 1 160px">
-            <label class="campo__rotulo" for="col-nome">Nome exibido</label>
-            <input id="col-nome" class="campo__controle" data-testid="column-name" @bind="_nomeColuna" />
+    <fieldset class="admin-formulario-grupo">
+        <legend>Identificação e horário</legend>
+        <div class="linha">
+            <div class="campo" style="flex:1 1 160px">
+                <label class="campo__rotulo" for="col-nome">Nome exibido</label>
+                <input id="col-nome" class="campo__controle" data-testid="column-name" @bind="_nomeColuna" />
+            </div>
+            <div class="campo" style="flex:0 1 140px">
+                <label class="campo__rotulo" for="col-hora">Horário real</label>
+                <input id="col-hora" class="campo__controle" type="time" data-testid="column-time" @bind="_horaColuna" />
+                <span class="campo__ajuda">Sem horário, a coluna não gera notificação.</span>
+            </div>
+            <div class="campo" style="flex:0 1 100px">
+                <label class="campo__rotulo" for="col-ordem">Ordem</label>
+                <input id="col-ordem" class="campo__controle" type="number" @bind="_ordemColuna" />
+            </div>
         </div>
-        <div class="campo" style="flex:0 1 140px">
-            <label class="campo__rotulo" for="col-hora">Horário real</label>
-            <input id="col-hora" class="campo__controle" type="time" data-testid="column-time" @bind="_horaColuna" />
-            <span class="campo__ajuda">Sem horário, a coluna não gera notificação.</span>
-        </div>
-        <div class="campo" style="flex:0 1 100px">
-            <label class="campo__rotulo" for="col-ordem">Ordem</label>
-            <input id="col-ordem" class="campo__controle" type="number" @bind="_ordemColuna" />
-        </div>
-    </div>
+        <Caixa @bind-Value="_colunaAtiva" Label="Coluna ativa" />
+    </fieldset>
 
-    <div class="linha">
-        <Caixa @bind-Value="_notificar" Label="Notificar" TestId="column-notify" />
-        <Caixa @bind-Value="_colunaAtiva" Label="Ativa" />
-        <Caixa @bind-Value="_permitirAdiar" Label="Permitir adiar" />
-    </div>
+    <fieldset class="admin-formulario-grupo">
+        <legend>Notificação</legend>
+        <Caixa @bind-Value="_notificar" Label="Notificar no horário" TestId="column-notify" />
 
-    <div class="linha">
-        <div class="campo" style="flex:0 1 130px">
-            <label class="campo__rotulo" for="col-antecedencia">Antecedência (min)</label>
-            <input id="col-antecedencia" class="campo__controle" type="number" min="0" @bind="_antecedencia" />
-        </div>
-        <div class="campo" style="flex:0 1 130px">
-            <label class="campo__rotulo" for="col-tolerancia">Tolerância (min)</label>
-            <input id="col-tolerancia" class="campo__controle" type="number" min="0" @bind="_tolerancia" />
-        </div>
-        <div class="campo" style="flex:0 1 150px">
-            <label class="campo__rotulo" for="col-intervalo">Intervalo de repetição (min)</label>
-            <input id="col-intervalo" class="campo__controle" type="number" min="0" @bind="_intervalo" />
-        </div>
-        <div class="campo" style="flex:0 1 130px">
-            <label class="campo__rotulo" for="col-repeticoes">Máximo de repetições</label>
-            <input id="col-repeticoes" class="campo__controle" type="number" min="0" @bind="_repeticoes" />
-        </div>
-        <div class="campo" style="flex:0 1 130px">
-            <label class="campo__rotulo" for="col-adiar">Minutos do adiamento</label>
-            <input id="col-adiar" class="campo__controle" type="number" min="1" @bind="_minutosAdiar" />
-        </div>
-    </div>
+        @if (_notificar)
+        {
+            <div class="linha" data-testid="notification-options">
+                <div class="campo" style="flex:0 1 160px">
+                    <label class="campo__rotulo" for="col-antecedencia">Antecedência (min) <HelpPopover Label="Ajuda sobre antecedência">Dispara um aviso antes do horário principal.</HelpPopover></label>
+                    <input id="col-antecedencia" class="campo__controle" type="number" min="0" @bind="_antecedencia" />
+                </div>
+                <div class="campo" style="flex:0 1 160px">
+                    <label class="campo__rotulo" for="col-tolerancia">Tolerância (min) <HelpPopover Label="Ajuda sobre tolerância">Após este período, a coluna passa a ser considerada atrasada.</HelpPopover></label>
+                    <input id="col-tolerancia" class="campo__controle" type="number" min="0" @bind="_tolerancia" />
+                </div>
+            </div>
+        }
+    </fieldset>
+
+    @if (_notificar)
+    {
+        <fieldset class="admin-formulario-grupo" data-testid="repeat-options">
+            <legend>Repetição e adiamento</legend>
+            <div class="linha">
+                <div class="campo" style="flex:0 1 180px">
+                    <label class="campo__rotulo" for="col-intervalo">Intervalo (min) <HelpPopover Label="Ajuda sobre repetição">Tempo entre os lembretes enquanto houver pendências.</HelpPopover></label>
+                    <input id="col-intervalo" class="campo__controle" type="number" min="0" @bind="_intervalo" />
+                </div>
+                <div class="campo" style="flex:0 1 170px">
+                    <label class="campo__rotulo" for="col-repeticoes">Máximo de repetições</label>
+                    <input id="col-repeticoes" class="campo__controle" type="number" min="0" @bind="_repeticoes" />
+                </div>
+            </div>
+            <Caixa @bind-Value="_permitirAdiar" Label="Permitir adiar" TestId="column-snooze" />
+            @if (_permitirAdiar)
+            {
+                <div class="campo" style="max-width:220px" data-testid="snooze-options">
+                    <label class="campo__rotulo" for="col-adiar">Minutos do adiamento <HelpPopover Label="Ajuda sobre adiamento">Intervalo oferecido ao tocar em adiar no alerta.</HelpPopover></label>
+                    <input id="col-adiar" class="campo__controle" type="number" min="1" @bind="_minutosAdiar" />
+                </div>
+            }
+        </fieldset>
+    }
 </FormDialog>
 
 <LoadingOverlay Visible="_carregando" Message="Carregando os tipos de checklist…" />

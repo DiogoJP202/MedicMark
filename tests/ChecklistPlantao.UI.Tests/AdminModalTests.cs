@@ -30,6 +30,9 @@ public sealed class AdminModalTests : BunitContext
     private static BedMarkerDefinitionDto Marcador(string nome = "C.I.") =>
         new(Guid.CreateVersion7(), nome, "CI", 10, true, 2);
 
+    private static BedDto Leito(Guid setor, string codigo = "1148") =>
+        new(Guid.CreateVersion7(), setor, codigo, null, 10, true, 2);
+
     // ------------------------------------------------------------------ marcadores
 
     [Fact]
@@ -123,7 +126,7 @@ public sealed class AdminModalTests : BunitContext
         var cut = Render<AdminSectorsPage>();
 
         Assert.NotNull(cut.Find("[data-testid=sector-new]"));
-        Assert.NotNull(cut.Find("[data-testid=bed-new]"));
+        Assert.NotNull(cut.Find("[data-testid^=bed-new-]"));
     }
 
     [Fact]
@@ -146,9 +149,25 @@ public sealed class AdminModalTests : BunitContext
         Registrar();
 
         var cut = Render<AdminSectorsPage>();
-        cut.Find("[data-testid=bed-new]").Click();
+        cut.Find("[data-testid^=bed-new-]").Click();
 
         Assert.NotNull(cut.Find("[data-testid=bed-sector]"));
         Assert.Equal(string.Empty, cut.Find("[data-testid=bed-code]").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Leito_aparece_dentro_do_card_do_proprio_setor()
+    {
+        var setor = Setor();
+        var leito = Leito(setor.Id);
+        Admin.Sectors.Add(setor);
+        Admin.Beds.Add(leito);
+        Registrar();
+
+        var cut = Render<AdminSectorsPage>();
+        var card = cut.Find($"[data-testid=sector-row-{setor.Id}]");
+
+        Assert.Contains(leito.Code, card.TextContent, StringComparison.Ordinal);
+        Assert.NotNull(card.QuerySelector($"[data-testid=bed-row-{leito.Id}]"));
     }
 }

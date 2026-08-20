@@ -4,66 +4,80 @@
 
 <PageTitle>Setores e leitos</PageTitle>
 
-<h2>Setores e leitos</h2>
+<AdminPageHeader Title="Setores e leitos"
+                 Description="Organize os leitos dentro do setor em que serão usados no plantão."
+                 BackHref="/admin/sistema">
+    <Actions>
+        <button type="button" class="botao botao--primario" data-testid="sector-new" @onclick="NovoSetor">Novo setor</button>
+    </Actions>
+</AdminPageHeader>
 
 <AdminFeedback Result="_resultado" />
 
-<div class="linha linha--entre">
-    <h3>Setores</h3>
-    <button type="button" class="botao botao--primario" data-testid="sector-new" @onclick="NovoSetor">Novo setor</button>
-</div>
+@if (_setores.Count == 0 && !_carregando)
+{
+    <EmptyState Icon="vazio" Title="Nenhum setor cadastrado" Message="Crie o primeiro setor para depois adicionar os leitos." />
+}
 
-<div class="tabela__area">
-    <table class="tabela">
-        <thead>
-            <tr><th>Setor</th><th>Ordem</th><th>Situação</th><th>Turno</th><th></th></tr>
-        </thead>
-        <tbody>
-            @foreach (var setor in _setores)
+<div class="pilha">
+    @foreach (var setor in _setores.OrderBy(s => s.SortOrder))
+    {
+        var leitosDoSetor = _leitos.Where(b => b.SectorId == setor.Id).OrderBy(b => b.SortOrder).ToList();
+
+        <section class="cartao admin-entidade" data-testid="@($"sector-row-{setor.Id}")">
+            <div class="linha linha--entre">
+                <div>
+                    <div class="linha">
+                        <h3 class="cartao__titulo">@setor.Name</h3>
+                        <StatusBadge Text="@(setor.IsActive ? "Ativo" : "Desativado")" Tone="@(setor.IsActive ? "sucesso" : "inativo")" />
+                    </div>
+                    <p class="campo__ajuda">
+                        Ordem @setor.SortOrder · Turno @(setor.ShiftStart is { } i && setor.ShiftEnd is { } f ? $"{i:HH':'mm}–{f:HH':'mm}" : "padrão do sistema")
+                    </p>
+                </div>
+                <div class="linha">
+                    <button type="button" class="botao botao--texto" @onclick="() => EditarSetor(setor)">Editar setor</button>
+                    <button type="button" class="botao botao--texto" @onclick="() => PedirDesativacao(setor)">
+                        @(setor.IsActive ? "Desativar" : "Reativar")
+                    </button>
+                </div>
+            </div>
+
+            <div class="linha linha--entre admin-entidade__subtitulo">
+                <h4>Leitos (@leitosDoSetor.Count)</h4>
+                <button type="button"
+                        class="botao botao--contorno"
+                        data-testid="@($"bed-new-{setor.Id}")"
+                        @onclick="() => NovoLeito(setor.Id)">Adicionar leito</button>
+            </div>
+
+            @if (leitosDoSetor.Count == 0)
             {
-                <tr data-testid="@($"sector-row-{setor.Id}")">
-                    <td>@setor.Name</td>
-                    <td>@setor.SortOrder</td>
-                    <td>@(setor.IsActive ? "ativo" : "desativado")</td>
-                    <td>@(setor.ShiftStart is { } i && setor.ShiftEnd is { } f ? $"{i:HH':'mm}–{f:HH':'mm}" : "padrão")</td>
-                    <td>
-                        <button type="button" class="botao botao--texto" @onclick="() => EditarSetor(setor)">Editar</button>
-                        <button type="button" class="botao botao--texto" @onclick="() => PedirDesativacao(setor)">
-                            @(setor.IsActive ? "Desativar" : "Reativar")
-                        </button>
-                    </td>
-                </tr>
+                <p class="campo__ajuda">Nenhum leito cadastrado neste setor.</p>
             }
-        </tbody>
-    </table>
-</div>
-
-<div class="linha linha--entre" style="margin-top:var(--esp-6)">
-    <h3>Leitos</h3>
-    <button type="button" class="botao botao--primario" data-testid="bed-new" @onclick="NovoLeito">Novo leito</button>
-</div>
-
-<div class="tabela__area">
-    <table class="tabela">
-        <thead><tr><th>Leito</th><th>Setor</th><th>Ordem</th><th>Situação</th><th></th></tr></thead>
-        <tbody>
-            @foreach (var leito in _leitos.OrderBy(b => b.SortOrder))
+            else
             {
-                <tr data-testid="@($"bed-row-{leito.Id}")">
-                    <td>@leito.Code</td>
-                    <td>@(_setores.FirstOrDefault(s => s.Id == leito.SectorId)?.Name ?? "—")</td>
-                    <td>@leito.SortOrder</td>
-                    <td>@(leito.IsActive ? "ativo" : "desativado")</td>
-                    <td>
-                        <button type="button" class="botao botao--texto" @onclick="() => EditarLeito(leito)">Editar</button>
-                        <button type="button" class="botao botao--texto" @onclick="() => PedirDesativacaoLeito(leito)">
-                            @(leito.IsActive ? "Desativar" : "Reativar")
-                        </button>
-                    </td>
-                </tr>
+                <div class="admin-itens">
+                    @foreach (var leito in leitosDoSetor)
+                    {
+                        <article class="admin-item" data-testid="@($"bed-row-{leito.Id}")">
+                            <div>
+                                <strong>@leito.Code</strong>
+                                <span class="campo__ajuda">Ordem @leito.SortOrder</span>
+                            </div>
+                            <StatusBadge Text="@(leito.IsActive ? "Ativo" : "Desativado")" Tone="@(leito.IsActive ? "sucesso" : "inativo")" />
+                            <div class="linha">
+                                <button type="button" class="botao botao--texto" @onclick="() => EditarLeito(leito)">Editar</button>
+                                <button type="button" class="botao botao--texto" @onclick="() => PedirDesativacaoLeito(leito)">
+                                    @(leito.IsActive ? "Desativar" : "Reativar")
+                                </button>
+                            </div>
+                        </article>
+                    }
+                </div>
             }
-        </tbody>
-    </table>
+        </section>
+    }
 </div>
 
 <FormDialog @bind-Visible="_modalSetor"
@@ -211,14 +225,18 @@
         _modalSetor = true;
     }
 
-    private void NovoLeito()
+    private void NovoLeito(Guid? sectorId = null)
     {
         _leitoEditando = null;
         _codigoLeito = string.Empty;
         _ordemLeito = (_leitos.Count + 1) * 10;
         _leitoAtivo = true;
 
-        if (_setores.Count > 0)
+        if (sectorId is { } selectedSectorId)
+        {
+            _setorDoLeito = selectedSectorId;
+        }
+        else if (_setores.Count > 0)
         {
             _setorDoLeito = _setores[0].Id;
         }

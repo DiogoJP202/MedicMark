@@ -154,4 +154,31 @@ public sealed class AdminTemplatesPageTests : BunitContext
         Assert.NotNull(cut.Find("[data-testid=form-dialog]"));
         Assert.Contains("Já existe uma coluna ativa", cut.Markup, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Desligar_notificacao_oculta_parametros_dependentes()
+    {
+        Admin.Templates.Add(Template());
+        Registrar();
+        var cut = Render<AdminTemplatesPage>();
+        cut.Find("[data-testid^=column-row-] button").Click();
+
+        cut.Find("[data-testid=column-notify]").Change(false);
+
+        Assert.Empty(cut.FindAll("[data-testid=notification-options]"));
+        Assert.Empty(cut.FindAll("[data-testid=repeat-options]"));
+    }
+
+    [Fact]
+    public void Desligar_adiamento_oculta_os_minutos()
+    {
+        Admin.Templates.Add(Template());
+        Registrar();
+        var cut = Render<AdminTemplatesPage>();
+        cut.Find("[data-testid^=column-row-] button").Click();
+
+        cut.Find("[data-testid=column-snooze]").Change(false);
+
+        Assert.Empty(cut.FindAll("[data-testid=snooze-options]"));
+    }
 }
