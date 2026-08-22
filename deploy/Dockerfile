@@ -24,7 +24,7 @@ COPY src/ChecklistPlantao.Server/ src/ChecklistPlantao.Server/
 RUN dotnet publish src/ChecklistPlantao.Server/ChecklistPlantao.Server.csproj \
     -c Release -o /app/publish --no-restore
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.10 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.11 AS runtime
 WORKDIR /app
 
 # A imagem runtime não inclui wget/curl. Instalar somente o cliente usado pelo health check e
