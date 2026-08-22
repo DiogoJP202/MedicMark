@@ -2,7 +2,7 @@
 # Construir a partir da RAIZ do repositório:
 #   docker build -f deploy/Dockerfile -t checklistplantao-server .
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0.201 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.400 AS build
 WORKDIR /src
 
 # Restaura primeiro apenas os manifestos: assim uma alteração de código não invalida
