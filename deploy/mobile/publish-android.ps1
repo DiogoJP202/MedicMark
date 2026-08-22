@@ -62,8 +62,8 @@ if ($LASTEXITCODE -ne 0)
 }
 
 [xml]$project = Get-Content -Raw -LiteralPath $projectFile
-$displayVersion = [string]$project.Project.PropertyGroup.ApplicationDisplayVersion
-$versionCode = [string]$project.Project.PropertyGroup.ApplicationVersion
+$displayVersion = $project.SelectSingleNode('/Project/PropertyGroup/ApplicationDisplayVersion').InnerText.Trim()
+$versionCode = $project.SelectSingleNode('/Project/PropertyGroup/ApplicationVersion').InnerText.Trim()
 $releaseName = "$displayVersion-code$versionCode"
 $releaseDirectory = Join-Path $artifactRoot $releaseName
 $publishDirectory = Join-Path (Split-Path -Parent $projectFile) 'bin\Release\net10.0-android\publish'

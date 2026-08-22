@@ -21,9 +21,9 @@ $androidScript = Join-Path $repositoryRoot 'deploy\mobile\publish-android.ps1'
 $windowsReadme = Join-Path $PSScriptRoot 'WINDOWS-README.txt'
 
 [xml]$project = Get-Content -Raw -LiteralPath $projectFile
-$displayVersion = [string]$project.Project.PropertyGroup.ApplicationDisplayVersion
-$versionCode = [string]$project.Project.PropertyGroup.ApplicationVersion
-$assemblyVersion = [string]$project.Project.PropertyGroup.Version
+$displayVersion = $project.SelectSingleNode('/Project/PropertyGroup/ApplicationDisplayVersion').InnerText.Trim()
+$versionCode = $project.SelectSingleNode('/Project/PropertyGroup/ApplicationVersion').InnerText.Trim()
+$assemblyVersion = $project.SelectSingleNode('/Project/PropertyGroup/Version').InnerText.Trim()
 
 if ([string]::IsNullOrWhiteSpace($Tag))
 {

@@ -74,7 +74,17 @@ public sealed partial class PublicationAssetsTests
         Assert.Contains("-p:WindowsAppSDKSelfContained=true", script, StringComparison.Ordinal);
         Assert.Contains("-p:SelfContained=true", script, StringComparison.Ordinal);
         Assert.DoesNotContain("'-r', 'win-x64'", script, StringComparison.Ordinal);
+        Assert.Contains("SelectSingleNode('/Project/PropertyGroup/ApplicationDisplayVersion')", script, StringComparison.Ordinal);
         Assert.Contains("<RuntimeIdentifier>$(RuntimeIdentifierOverride)</RuntimeIdentifier>", project, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Release_android_le_a_versao_sem_incluir_espacos_de_outros_property_groups()
+    {
+        var script = File.ReadAllText(Path.Combine(Root, "deploy", "mobile", "publish-android.ps1"));
+
+        Assert.Contains("SelectSingleNode('/Project/PropertyGroup/ApplicationDisplayVersion')", script, StringComparison.Ordinal);
+        Assert.Contains("SelectSingleNode('/Project/PropertyGroup/ApplicationVersion')", script, StringComparison.Ordinal);
     }
 
     [GeneratedRegex(@"uses:\s+[^\s@]+@v\d", RegexOptions.IgnoreCase)]
