@@ -7,7 +7,7 @@
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <!-- Linha do .NET 10 usada em toda a solução (exceto pacotes do workload MAUI). -->
-    <MicrosoftDotNetVersion>10.0.10</MicrosoftDotNetVersion>
+    <MicrosoftDotNetVersion>10.0.11</MicrosoftDotNetVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Extensions / hospedagem">
@@ -60,7 +60,7 @@
   </ItemGroup>
 
   <ItemGroup Label="Testes">
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
