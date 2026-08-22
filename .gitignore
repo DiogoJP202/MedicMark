@@ -38,6 +38,7 @@ deploy/data/
 .env
 .env.*
 !.env.example
+/deploy/data-protection/
 appsettings.Local.json
 appsettings.*.Local.json
 *.pfx

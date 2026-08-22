@@ -1,8 +1,8 @@
 # Implantação
 
-> **Nada nesta página foi executado no ambiente de desenvolvimento atual.** Docker não estava
-> disponível; o `Dockerfile` e o `docker-compose.yml` não foram construídos nem testados. Trate
-> este documento como procedimento a validar, não como procedimento validado.
+O `Dockerfile`, o Compose, a persistência, o health check e a restauração após reinicialização
+foram validados em 22/08/2026, em Ubuntu 24.04 Minimal x86_64. O ensaio usou uma VM Oracle Cloud
+`VM.Standard.E2.1.Micro` com 1 GB de RAM e 2 GB de swap.
 
 ## Segredos
 
@@ -40,6 +40,9 @@ cp deploy/.env.example deploy/.env
 Preencha `deploy/.env` e suba:
 
 ```bash
+mkdir -p deploy/data-protection
+sudo chown 10001:10001 deploy/data-protection
+chmod 700 deploy/data-protection
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
@@ -47,8 +50,9 @@ docker compose -f deploy/docker-compose.yml up -d --build
 docker compose -f deploy/docker-compose.yml logs -f servidor
 ```
 
-O banco fica no volume nomeado `checklistplantao-dados`, montado em `/data`. O contêiner roda com
-usuário sem privilégios (uid 10001).
+O banco fica no volume nomeado `checklistplantao-dados`, montado em `/data`. As chaves de Data
+Protection ficam em `deploy/data-protection`. O contêiner roda com usuário sem privilégios
+(uid 10001), por isso esse diretório precisa pertencer a ele.
 
 Depois que o administrador for criado, **remova** `ADMIN_USERNAME` e `ADMIN_PASSWORD` do `.env` e
 recrie o contêiner: eles só têm efeito enquanto não há usuários.
@@ -152,6 +156,22 @@ Em Docker, o volume pode ser copiado com o contêiner parado:
 ```bash
 docker run --rm -v checklistplantao-dados:/data -v "$PWD":/backup alpine tar czf /backup/dados.tar.gz -C /data .
 ```
+
+Em um host Linux, o backup online validado usa `sqlite3`, o script Bash e um timer do systemd:
+
+```bash
+sudo apt-get install -y sqlite3
+sudo install -m 0750 deploy/scripts/backup.sh /usr/local/sbin/medicmark-backup
+sudo install -m 0644 deploy/systemd/medicmark-backup.service /etc/systemd/system/
+sudo install -m 0644 deploy/systemd/medicmark-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now medicmark-backup.timer
+sudo systemctl start medicmark-backup.service
+```
+
+Por padrão ele grava em `/opt/medicmark/backups`, executa às 06:00 UTC, valida cada cópia com
+`PRAGMA integrity_check` e remove arquivos com mais de 30 dias. `DATABASE_PATH`, `BACKUP_DIR` e
+`RETENTION_DAYS` podem sobrescrever esses padrões.
 
 O que o backup preserva de fato: usuários, grupos, setores, leitos, tipos de checklist, colunas,
 marcadores e configurações. As marcações do plantão são temporárias por decisão do cliente e podem

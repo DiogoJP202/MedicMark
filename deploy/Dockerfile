@@ -27,8 +27,13 @@ RUN dotnet publish src/ChecklistPlantao.Server/ChecklistPlantao.Server.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
-# Usuário sem privilégios. O volume de dados precisa pertencer a ele — ver docker-compose.yml.
-RUN useradd --uid 10001 --create-home --shell /usr/sbin/nologin checklist \
+# A imagem runtime não inclui wget/curl. Instalar somente o cliente usado pelo health check e
+# remover o índice do apt mantém a camada pequena e torna o HEALTHCHECK realmente executável.
+# Depois disso o processo da aplicação continua rodando sem privilégios.
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --uid 10001 --create-home --shell /usr/sbin/nologin checklist \
     && mkdir -p /data && chown -R checklist:checklist /data
 
 COPY --from=build --chown=checklist:checklist /app/publish .
@@ -43,6 +48,6 @@ EXPOSE 8080
 
 # O health check é o mesmo endpoint que o orquestrador e o operador usam.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD ["/bin/sh", "-c", "wget --quiet --tries=1 --spider http://localhost:8080/health/ready || exit 1"]
+    CMD ["curl", "--fail", "--silent", "--show-error", "--max-time", "5", "http://localhost:8080/health/ready"]
 
 ENTRYPOINT ["dotnet", "ChecklistPlantao.Server.dll"]
