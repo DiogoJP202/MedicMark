@@ -53,12 +53,12 @@ else
     else
     {
         <p class="campo__ajuda" data-testid="login-server-line">
-            Servidor: <strong>@ServerConfiguration.ServerUrl</strong>
+            <strong>Servidor configurado</strong>
             <button type="button"
                     class="botao botao--texto"
                     data-testid="login-configure-server"
                     @onclick="@(() => Navigation.NavigateTo("/configuracao"))">
-                Alterar
+                Configuração avançada
             </button>
         </p>
     }
@@ -154,6 +154,11 @@ else
             </p>
         }
     </div>
+
+    <p class="campo__ajuda" style="text-align:center;margin-top:var(--esp-4)">
+        Ao usar o aplicativo, seus dados são tratados conforme a
+        <a href="/privacidade" data-testid="login-privacy-link">Política de Privacidade</a>.
+    </p>
 </div>
 }
 

@@ -11,6 +11,7 @@ internal static class UiTestData
     public static readonly Guid Coluna20H = Guid.CreateVersion7();
     public static readonly Guid Coluna22H = Guid.CreateVersion7();
     public static readonly Guid SectorId = Guid.CreateVersion7();
+    public static readonly Guid SessionId = Guid.CreateVersion7();
 
     public static EffectiveAccess AccessWith(params string[] permissions)
     {
@@ -21,7 +22,7 @@ internal static class UiTestData
     }
 
     public static ChecklistCell Cell(Guid bedId, Guid columnId, bool completed, bool overdue = false) =>
-        new(bedId, TemplateId, columnId, completed, 1, overdue);
+        new(SessionId, bedId, TemplateId, columnId, completed, 1, overdue);
 
     /// <summary>Três leitos: o primeiro completo, o segundo parcial, o terceiro nada feito.</summary>
     public static ChecklistBoard Board(bool sessionOpen = true)
@@ -45,7 +46,7 @@ internal static class UiTestData
 
         var template = new ChecklistTemplateDto(TemplateId, "Gelo", "GELO", null, 10, true, [], [], 1);
 
-        return new ChecklistBoard(Guid.CreateVersion7(), SectorId, "Oeste", new DateOnly(2026, 8, 6), template, colunas, linhas, sessionOpen);
+        return new ChecklistBoard(SessionId, SectorId, "Oeste", new DateOnly(2026, 8, 6), template, colunas, linhas, sessionOpen);
     }
 
     public static PendingGroup Pending(string templateName, string columnName, bool overdue, params string[] beds) =>

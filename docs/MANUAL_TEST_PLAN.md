@@ -90,6 +90,23 @@ Legenda: ✅ passou · ❌ falhou · ⏳ não executado
 | 6.5 | Assistente de Foco ativo | Comportamento do sistema; diagnóstico coerente | ⏳ |
 | 6.6 | Clicar no toast | Abre o checklist correto | ⏳ |
 
+## 6A. iPhone/iPad
+
+| # | Cenário | Resultado esperado | Resultado |
+|---|---|---|---|
+| 6A.1 | Primeira correção/teste de alerta | iOS pede autorização para alertas, som e badge | ⏳ |
+| 6A.2 | Negar a autorização | Faixa fixa informa que nenhum alerta será exibido | ⏳ |
+| 6A.3 | Tocar em “Corrigir agora” após negar | Abre os Ajustes do aplicativo | ⏳ |
+| 6A.4 | “Testar notificação” autorizado | Banner e som aparecem em segundos | ⏳ |
+| 6A.5 | Coluna pendente no horário, app encerrado | Alerta local chega sem internet | ⏳ |
+| 6A.6 | Alerta com o app em primeiro plano | Banner/lista/som continuam visíveis | ⏳ |
+| 6A.7 | Tocar no alerta após iniciar o app | Abre o checklist na coluna certa | ⏳ |
+| 6A.8 | Tela bloqueada no horário | Alerta aparece conforme os Ajustes do iOS | ⏳ |
+| 6A.9 | Concluir a coluna e sincronizar | Repetições pendentes são removidas | ⏳ |
+| 6A.10 | Modo Foco/Não Perturbe | Comportamento respeita o iOS; app não promete entrega | ⏳ |
+| 6A.11 | Fechar/reabrir offline | Login local, banco e marcações permanecem | ⏳ |
+| 6A.12 | Build TestFlight Release | Instala, abre e sincroniza como o Debug | ⏳ |
+
 ## 7. Permissões e acesso
 
 | # | Cenário | Resultado esperado | Resultado |

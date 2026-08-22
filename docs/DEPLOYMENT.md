@@ -1,8 +1,8 @@
 # Implantação
 
-> **Nada nesta página foi executado no ambiente de desenvolvimento atual.** Docker não estava
-> disponível; o `Dockerfile` e o `docker-compose.yml` não foram construídos nem testados. Trate
-> este documento como procedimento a validar, não como procedimento validado.
+O `Dockerfile`, o Compose, a persistência, o health check e a restauração após reinicialização
+foram validados em 22/08/2026, em Ubuntu 24.04 Minimal x86_64. O ensaio usou uma VM Oracle Cloud
+`VM.Standard.E2.1.Micro` com 1 GB de RAM e 2 GB de swap.
 
 ## Segredos
 
@@ -40,6 +40,9 @@ cp deploy/.env.example deploy/.env
 Preencha `deploy/.env` e suba:
 
 ```bash
+mkdir -p deploy/data-protection
+sudo chown 10001:10001 deploy/data-protection
+chmod 700 deploy/data-protection
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
@@ -47,8 +50,9 @@ docker compose -f deploy/docker-compose.yml up -d --build
 docker compose -f deploy/docker-compose.yml logs -f servidor
 ```
 
-O banco fica no volume nomeado `checklistplantao-dados`, montado em `/data`. O contêiner roda com
-usuário sem privilégios (uid 10001).
+O banco fica no volume nomeado `checklistplantao-dados`, montado em `/data`. As chaves de Data
+Protection ficam em `deploy/data-protection`. O contêiner roda com usuário sem privilégios
+(uid 10001), por isso esse diretório precisa pertencer a ele.
 
 Depois que o administrador for criado, **remova** `ADMIN_USERNAME` e `ADMIN_PASSWORD` do `.env` e
 recrie o contêiner: eles só têm efeito enquanto não há usuários.
@@ -121,7 +125,7 @@ validação de certificado no aplicativo** — isso anularia a proteção do tr�
 Duas opções:
 
 **Reverse proxy** (recomendado). Nginx, Caddy ou IIS termina o TLS e encaminha para o servidor em
-HTTP interno. Um certificado de uma autoridade pública, se houver nome de domínio resolvível.
+HTTP interno. Pode usar um nome de domínio ou, com um cliente ACME compatível, o próprio IP público.
 
 **Certificado interno.** Se a instituição usa uma autoridade certificadora própria, o certificado
 raiz precisa ser instalado nos aparelhos:
@@ -132,6 +136,58 @@ raiz precisa ser instalado nos aparelhos:
 - **Windows:** importar no repositório "Autoridades de Certificação Raiz Confiáveis" da máquina.
 
 Em desenvolvimento e na rede interna, HTTP é aceitável e está documentado — mas não em produção.
+
+### Oracle Cloud sem domínio — implantação validada
+
+Em 22/08/2026, a VM Oracle Cloud foi configurada com o IP reservado `163.176.119.139`, Nginx no
+host e certificado público da Let's Encrypt para o próprio IP. O contêiner fica acessível apenas
+em `127.0.0.1:8080`; somente o Nginx publica 80 e 443. O HTTP mantém o desafio ACME e redireciona o
+restante para HTTPS.
+
+Certificados para IP da Let's Encrypt usam obrigatoriamente o perfil `shortlived`: duram 160 horas.
+Por isso, Certbot 5.4 ou superior e renovação automática não são opcionais. A instalação validada
+usa Certbot 5.7 pelo Snap:
+
+```bash
+sudo snap install certbot --classic
+sudo ln -sf /snap/bin/certbot /usr/local/bin/certbot
+```
+
+Primeiro instale `deploy/nginx/medicmark-bootstrap.conf`, crie `/var/www/certbot` e confirme o
+desafio sem gravar certificado:
+
+```bash
+sudo certbot certonly --dry-run --non-interactive --agree-tos \
+  --register-unsafely-without-email --preferred-profile shortlived \
+  --webroot --webroot-path /var/www/certbot --ip-address 163.176.119.139
+```
+
+Depois emita o certificado real e registre a recarga do Nginx após cada renovação:
+
+```bash
+sudo certbot certonly --non-interactive --agree-tos \
+  --register-unsafely-without-email --preferred-profile shortlived \
+  --webroot --webroot-path /var/www/certbot --ip-address 163.176.119.139 \
+  --deploy-hook '/usr/bin/systemctl reload nginx'
+```
+
+Instale então `deploy/nginx/medicmark.conf`, valide com `sudo nginx -t` e recarregue o serviço. A
+renovação completa foi exercitada com:
+
+```bash
+sudo certbot renew --cert-name 163.176.119.139 --dry-run --run-deploy-hooks
+```
+
+As portas 80 e 443 precisam estar liberadas tanto na VCN da Oracle quanto no firewall da VM. A
+imagem Ubuntu da Oracle termina a cadeia `INPUT` com `REJECT`; o script
+`deploy/scripts/configure-firewall.sh` e a unidade `deploy/systemd/medicmark-firewall.service`
+reaplicam a exceção após reinicialização.
+
+Verificação externa:
+
+```bash
+curl https://163.176.119.139/health/ready
+```
 
 ## Backup e restauração
 
@@ -152,6 +208,22 @@ Em Docker, o volume pode ser copiado com o contêiner parado:
 ```bash
 docker run --rm -v checklistplantao-dados:/data -v "$PWD":/backup alpine tar czf /backup/dados.tar.gz -C /data .
 ```
+
+Em um host Linux, o backup online validado usa `sqlite3`, o script Bash e um timer do systemd:
+
+```bash
+sudo apt-get install -y sqlite3
+sudo install -m 0750 deploy/scripts/backup.sh /usr/local/sbin/medicmark-backup
+sudo install -m 0644 deploy/systemd/medicmark-backup.service /etc/systemd/system/
+sudo install -m 0644 deploy/systemd/medicmark-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now medicmark-backup.timer
+sudo systemctl start medicmark-backup.service
+```
+
+Por padrão ele grava em `/opt/medicmark/backups`, executa às 06:00 UTC, valida cada cópia com
+`PRAGMA integrity_check` e remove arquivos com mais de 30 dias. `DATABASE_PATH`, `BACKUP_DIR` e
+`RETENTION_DAYS` podem sobrescrever esses padrões.
 
 O que o backup preserva de fato: usuários, grupos, setores, leitos, tipos de checklist, colunas,
 marcadores e configurações. As marcações do plantão são temporárias por decisão do cliente e podem

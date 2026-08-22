@@ -157,10 +157,9 @@ public sealed class SessionService(
         }
 
         logger.LogInformation(
-            "Sessão {SessionId} aberta no setor {SectorId} para a data de serviço {ServiceDate} com {Leitos} leito(s).",
+            "Sessão {SessionId} aberta no setor {SectorId} com {Leitos} leito(s).",
             session.Id,
             sectorId,
-            date,
             bedIds.Count);
 
         return Map(session);

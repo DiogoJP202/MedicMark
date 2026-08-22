@@ -61,7 +61,9 @@ public sealed class NotificationHealthService(
         {
             var plataforma = DeviceInfo.Current.Platform == DevicePlatform.Android
                 ? Domain.Notifications.DevicePlatform.Android
-                : Domain.Notifications.DevicePlatform.Windows;
+                : DeviceInfo.Current.Platform == DevicePlatform.iOS
+                    ? Domain.Notifications.DevicePlatform.Ios
+                    : Domain.Notifications.DevicePlatform.Windows;
 
             if (!configuracao.IsEnabledFor(plataforma))
             {

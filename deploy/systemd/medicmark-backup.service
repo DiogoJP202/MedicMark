@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup consistente do banco SQLite do MedicMark
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/medicmark-backup
+Nice=10
+IOSchedulingClass=idle

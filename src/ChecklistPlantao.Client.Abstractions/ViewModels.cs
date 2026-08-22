@@ -110,6 +110,7 @@ public sealed record SectorSummary(Guid Id, string Name, int PendingTasks, bool 
 
 /// <summary>Uma célula da grade: o cruzamento leito × coluna.</summary>
 public sealed record ChecklistCell(
+    Guid SessionId,
     Guid BedId,
     Guid TemplateId,
     Guid ColumnId,

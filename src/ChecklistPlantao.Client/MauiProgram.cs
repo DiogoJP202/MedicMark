@@ -13,6 +13,25 @@ public static class MauiProgram
     /// <summary>Nome do arquivo do banco local, dentro da pasta de dados do aplicativo.</summary>
     public const string DatabaseFileName = "checklistplantao.db";
 
+#if WINDOWS && DEBUG
+    // Desenvolvimento no Windows costuma executar o servidor local junto do cliente.
+    private const string? DefaultServerUrl = null;
+    private static readonly string[] ReplacedServerUrls = [];
+#else
+    // Endereço da instalação móvel oficial. Mantê-lo aqui deixa a configuração de implantação
+    // centralizada e permite que a tela avançada aceite um servidor alternativo.
+    private const string? DefaultServerUrl = "https://163.176.119.139";
+    private static readonly string[] ReplacedServerUrls = ["http://137.131.172.104"];
+#endif
+
+#if DEBUG
+    private const bool HideServerAddress = false;
+    private const bool RequireHttps = false;
+#else
+    private const bool HideServerAddress = true;
+    private const bool RequireHttps = true;
+#endif
+
     public static MauiApp CreateMauiApp()
     {
         var builder = MauiApp.CreateBuilder();
@@ -30,9 +49,14 @@ public static class MauiProgram
 
         // O banco fica na pasta de dados do aplicativo — persistente, e não temporária.
         var caminhoBanco = Path.Combine(FileSystem.AppDataDirectory, DatabaseFileName);
-        builder.Services.AddChecklistClientCore(caminhoBanco);
+        builder.Services.AddChecklistClientCore(
+            caminhoBanco,
+            DefaultServerUrl,
+            HideServerAddress,
+            RequireHttps,
+            ReplacedServerUrls);
 
-        // Serviços de plataforma: as únicas peças realmente diferentes entre Android e Windows.
+        // Serviços de plataforma: as únicas peças realmente diferentes entre Android, iOS e Windows.
         builder.Services.AddSingleton<ISecureStore, MauiSecureStore>();
         builder.Services.AddSingleton<IConnectivityProbe, MauiConnectivityProbe>();
         builder.Services.AddSingleton<IPlatformInfo, MauiPlatformInfo>();
@@ -46,6 +70,9 @@ public static class MauiProgram
 #if ANDROID
         builder.Services.AddSingleton<ILocalNotificationScheduler, Platforms.Android.AndroidNotificationScheduler>();
         builder.Services.AddSingleton<INotificationPermissionService, Platforms.Android.AndroidNotificationPermissionService>();
+#elif IOS
+        builder.Services.AddSingleton<ILocalNotificationScheduler, Platforms.iOS.IosNotificationScheduler>();
+        builder.Services.AddSingleton<INotificationPermissionService, Platforms.iOS.IosNotificationPermissionService>();
 #elif WINDOWS
         builder.Services.AddSingleton<ILocalNotificationScheduler, Platforms.Windows.WindowsNotificationScheduler>();
         builder.Services.AddSingleton<INotificationPermissionService, Platforms.Windows.WindowsNotificationPermissionService>();

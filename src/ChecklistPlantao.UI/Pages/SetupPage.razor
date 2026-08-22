@@ -8,48 +8,70 @@
 @*
     Configuração inicial do dispositivo.
 
-    O endereço do servidor é sempre configurável — nunca há "localhost" fixo no aplicativo, que
-    roda em aparelhos diferentes da máquina do servidor.
+    O endereço do servidor continua configurável. A distribuição Android oficial já traz o
+    endereço da instalação, enquanto outras distribuições podem iniciar sem um padrão.
 *@
 
-<PageTitle>Configuração do servidor</PageTitle>
+<PageTitle>Configuração avançada</PageTitle>
 
 <div class="app-conteudo" style="max-width:520px;margin:0 auto">
-    <h1>Configuração inicial</h1>
-    <p>Informe o endereço do servidor na rede da instituição e dê um nome a este aparelho.</p>
+    <h1>@(ServerConfiguration.IsConfigured ? "Configuração avançada" : "Configuração inicial")</h1>
 
-    <div class="campo">
-        <label class="campo__rotulo" for="url">Endereço do servidor</label>
-        <input id="url"
-               class="campo__controle"
-               type="url"
-               inputmode="url"
-               placeholder="http://192.168.0.10:5000"
-               data-testid="setup-url"
-               @bind="_url"
-               @bind:event="oninput" />
-        <span class="campo__ajuda">
-            Use o endereço de rede do servidor, não "localhost". Em produção, prefira HTTPS.
-        </span>
-    </div>
+    @if (_enderecoProtegido)
+    {
+        <div class="cartao" data-testid="setup-managed-server">
+            <p class="faixa__titulo">Servidor de produção configurado</p>
+            <p class="faixa__texto">
+                O endereço não é exibido nesta versão. O aplicativo já está pronto para conectar.
+            </p>
+            <button type="button"
+                    class="botao botao--contorno"
+                    data-testid="setup-use-custom"
+                    @onclick="IniciarServidorAlternativo">
+                Usar outro servidor
+            </button>
+        </div>
+    }
+    else
+    {
+        <p>Informe o endereço do servidor e dê um nome a este aparelho.</p>
 
-    <div class="campo">
-        <label class="campo__rotulo" for="dispositivo">Nome deste dispositivo</label>
-        <input id="dispositivo" class="campo__controle" data-testid="setup-device" @bind="_nomeDispositivo" />
-        <span class="campo__ajuda">Aparece no painel administrativo para identificar o aparelho.</span>
-    </div>
+        <div class="campo">
+            <label class="campo__rotulo" for="url">Endereço do servidor</label>
+            <input id="url"
+                   class="campo__controle"
+                   type="url"
+                   inputmode="url"
+                   placeholder="@(ServerConfiguration.RequiresHttps ? "https://servidor.exemplo" : "http://192.168.0.10:5000")"
+                   data-testid="setup-url"
+                   @bind="_url"
+                   @bind:event="oninput" />
+            <span class="campo__ajuda">
+                @(ServerConfiguration.RequiresHttps
+                    ? "Esta versão aceita somente servidores HTTPS."
+                    : "Use o endereço de rede do servidor, não localhost.")
+            </span>
+        </div>
 
-    <div class="linha">
+        <div class="campo">
+            <label class="campo__rotulo" for="dispositivo">Nome deste dispositivo</label>
+            <input id="dispositivo" class="campo__controle" data-testid="setup-device" @bind="_nomeDispositivo" />
+            <span class="campo__ajuda">Aparece no painel administrativo para identificar o aparelho.</span>
+        </div>
+
         <button type="button" class="botao botao--contorno" disabled="@_testando" @onclick="TestarAsync" data-testid="setup-test">
             @(_testando ? "Testando…" : "Testar conexão")
         </button>
-        <button type="button" class="botao botao--primario" disabled="@(!_podeSalvar)" @onclick="SalvarAsync" data-testid="setup-save">
+        <button type="button" class="botao botao--primario" disabled="@(!PodeSalvar)" @onclick="SalvarAsync" data-testid="setup-save">
             Salvar
         </button>
+    }
+
+    <div class="linha">
         @if (ServerConfiguration.IsConfigured)
         {
             <button type="button" class="botao botao--texto" @onclick="@(() => _confirmarRedefinicao = true)">
-                Redefinir
+                Restaurar padrão
             </button>
 
             @*
@@ -76,19 +98,12 @@
         </div>
     }
 
-    @if (ServerConfiguration.IsConfigured)
-    {
-        <div class="cartao" style="margin-top:var(--esp-4)">
-            <p class="faixa__texto"><strong>Servidor atual:</strong> @ServerConfiguration.ServerUrl</p>
-            <p class="faixa__texto"><strong>Dispositivo:</strong> @ServerConfiguration.DeviceName</p>
-        </div>
-    }
 </div>
 
 <ConfirmDialog @bind-Visible="_confirmarRedefinicao"
-               Title="Redefinir a configuração?"
-               Message="O endereço do servidor será apagado deste aparelho. As alterações ainda não sincronizadas continuam salvas localmente."
-               ConfirmText="Redefinir"
+               Title="Restaurar o servidor padrão?"
+               Message="A configuração personalizada será removida e, quando esta versão possuir um servidor padrão, ele será restaurado. As alterações ainda não sincronizadas continuam salvas localmente."
+               ConfirmText="Restaurar"
                OnConfirm="RedefinirAsync" />
 
 @code {
@@ -98,19 +113,33 @@
     private bool _sucesso;
     private string? _resultado;
     private bool _confirmarRedefinicao;
+    private bool _alterandoServidor;
 
-    private bool _podeSalvar;
+    private bool _enderecoProtegido =>
+        ServerConfiguration.IsConfigured &&
+        ServerConfiguration.IsServerAddressHidden &&
+        !_alterandoServidor;
+
+    private bool PodeSalvar =>
+        !_enderecoProtegido &&
+        !string.IsNullOrWhiteSpace(_url) &&
+        !string.IsNullOrWhiteSpace(_nomeDispositivo);
 
     protected override void OnInitialized()
     {
-        _url = ServerConfiguration.ServerUrl ?? string.Empty;
+        _url = ServerConfiguration.IsServerAddressHidden
+            ? string.Empty
+            : ServerConfiguration.ServerUrl ?? string.Empty;
         _nomeDispositivo = ServerConfiguration.DeviceName;
+        _alterandoServidor = !ServerConfiguration.IsConfigured;
     }
 
-    protected override void OnParametersSet() => AtualizarPodeSalvar();
-
-    private void AtualizarPodeSalvar() =>
-        _podeSalvar = !string.IsNullOrWhiteSpace(_url) && !string.IsNullOrWhiteSpace(_nomeDispositivo);
+    private void IniciarServidorAlternativo()
+    {
+        _alterandoServidor = true;
+        _url = string.Empty;
+        _resultado = null;
+    }
 
     private async Task TestarAsync()
     {
@@ -119,6 +148,13 @@
 
         try
         {
+            if (!EnderecoValido(out var erro))
+            {
+                _sucesso = false;
+                _resultado = erro;
+                return;
+            }
+
             var resposta = await ServerConfiguration.TestConnectionAsync(_url.Trim());
 
             if (resposta is null)
@@ -131,16 +167,36 @@
             _sucesso = true;
             _resultado = $"Conectado a {resposta.Application} ({resposta.Environment}). Fuso do servidor: {resposta.TimeZoneId}.";
         }
+        catch (ArgumentException excecao)
+        {
+            _sucesso = false;
+            _resultado = excecao.Message;
+        }
         finally
         {
             _testando = false;
-            AtualizarPodeSalvar();
         }
     }
 
     private async Task SalvarAsync()
     {
-        await ServerConfiguration.SaveAsync(_url.Trim(), _nomeDispositivo.Trim());
+        if (!EnderecoValido(out var erro))
+        {
+            _sucesso = false;
+            _resultado = erro;
+            return;
+        }
+
+        try
+        {
+            await ServerConfiguration.SaveAsync(_url.Trim(), _nomeDispositivo.Trim());
+        }
+        catch (ArgumentException excecao)
+        {
+            _sucesso = false;
+            _resultado = excecao.Message;
+            return;
+        }
 
         // O endereço acabou de mudar: mede o alcance com ele antes de sair da tela, para que a
         // entrada já mostre um estado verificado em vez do inicial.
@@ -152,8 +208,30 @@
     private async Task RedefinirAsync()
     {
         await ServerConfiguration.ResetAsync();
-        _url = string.Empty;
-        _resultado = null;
-        AtualizarPodeSalvar();
+        _url = ServerConfiguration.IsServerAddressHidden
+            ? string.Empty
+            : ServerConfiguration.ServerUrl ?? string.Empty;
+        _alterandoServidor = !ServerConfiguration.IsConfigured;
+        _resultado = ServerConfiguration.IsConfigured ? "Servidor padrão restaurado." : null;
+        _sucesso = ServerConfiguration.IsConfigured;
+    }
+
+    private bool EnderecoValido(out string erro)
+    {
+        if (!Uri.TryCreate(_url.Trim(), UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            erro = "Informe um endereço HTTP ou HTTPS válido.";
+            return false;
+        }
+
+        if (ServerConfiguration.RequiresHttps && uri.Scheme != Uri.UriSchemeHttps)
+        {
+            erro = "Esta versão aceita somente servidores HTTPS.";
+            return false;
+        }
+
+        erro = string.Empty;
+        return true;
     }
 }

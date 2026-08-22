@@ -1,6 +1,6 @@
 # Estado da implementação
 
-Última atualização: 2026-08-20.
+Última atualização: 2026-08-22.
 
 ## Estados usados
 
@@ -20,10 +20,11 @@
 
 | Comando | Resultado |
 |---|---|
-| `dotnet build ChecklistPlantao.sln -c Release --no-restore --nologo` | ✅ 0 erros, **0 avisos** — inclui os dois heads MAUI |
+| `dotnet build ChecklistPlantao.sln -c Release --no-restore --nologo` | ✅ 0 erros, **0 avisos** — Android, iOS simulador e Windows |
 | `dotnet build ChecklistPlantao.NoMaui.slnf -c Release` | ✅ 0 erros, 0 avisos |
-| `dotnet test ChecklistPlantao.NoMaui.slnf -c Release --no-restore --nologo` | ✅ **587 testes, 0 falhas** |
+| `dotnet test ChecklistPlantao.NoMaui.slnf -c Release --nologo` | ✅ **600 testes, 0 falhas** |
 | `dotnet build -f net10.0-android` | ✅ compila |
+| `dotnet build -f net10.0-ios -c Debug` | ✅ compila no Windows, 0 erros e 0 avisos; aparelho/IPA dependem de Mac |
 | `dotnet build -f net10.0-windows10.0.19041.0` | ✅ compila |
 | `dotnet restore` | ✅ sem avisos de vulnerabilidade |
 
@@ -117,8 +118,7 @@ Cobertos por `BatchSameCellTests`, `ErrorBoundaryTests`, `ServerConfigurationRea
 | Dois dispositivos ao mesmo tempo | Marcar em um e ver aparecer no outro | O cliente do hub foi implementado e tem teste de integração; falta ver acontecer entre dois aparelhos |
 | Mensagem de conta bloqueada na tela | Errar a senha 5 vezes | Bloqueia a conta por 15 min; adiado a pedido |
 | Isenção de bateria concedida | "Corrigir agora" → confirmar → "Verificar novamente" | Aguardando execução |
-| Implantação em Docker e ciclo de backup | MANUAL_TEST_PLAN, seção 11 | Docker nunca executado neste ambiente |
-| HTTPS com certificado confiável nos aparelhos | Seção 11 | Nunca exercitado |
+| Nova versão Android usando o HTTPS público | Instalar o APK atual e entrar sem configurar servidor | O aparelho não estava conectado após a emissão do certificado |
 
 ### Terceira rodada validada em execução real — 18/08
 
@@ -259,7 +259,7 @@ Servidor executado de verdade, com estas verificações feitas:
 | 27 | Não existe histórico de usuário por marcação | Implementado · Validado por teste automatizado (inspeciona o modelo do EF) |
 | 28 | Não existem dados de paciente | Implementado · Verificável por inspeção do modelo |
 | 29 | Build dos projetos compatíveis passa | ✅ **Toda a solução, 0 avisos** |
-| 30 | Testes compatíveis passam | ✅ **587 testes** |
+| 30 | Testes compatíveis passam | ✅ **600 testes** |
 
 ---
 
@@ -293,17 +293,28 @@ conflito, backoff com jitter, bootstrap de recuperação, autenticação offline
 
 ### Notificações — Implementado · Validado em aparelho real
 Abstrações, cálculo de agendamento (com teste), Android com AlarmManager + BootReceiver + deep
-link, Windows com toast nativo e agendador in-process, diagnóstico de saúde.
+link, iOS com `UNUserNotificationCenter` + deep link, Windows com toast nativo e agendador
+in-process, diagnóstico de saúde por plataforma.
 
 **Validado em 18/08 num Xiaomi com Android 13**: o botão "Testar alerta" dispara, e o alerta
 agendado chegou no horário da coluna. Era o item de maior risco do projeto.
 
 Continua pendente: alerta com o aparelho **reiniciado** (o `BootReceiver`), e a isenção de bateria
-concedida pelo usuário.
+concedida pelo usuário. No iOS, o código nativo compila sem avisos, mas permissão, entrega com o
+app fechado, tela bloqueada e toque no alerta ainda precisam de validação num iPhone real.
 
-### Implantação — Implementado · Não validado
-`Dockerfile`, `docker-compose.yml` com volume, `.env.example`, `backup.ps1`, `restore.ps1`.
-**Docker não estava disponível neste ambiente: nada foi construído nem executado.**
+### Implantação — Implementado · Validado em VM Oracle Cloud
+
+O `Dockerfile`, o Compose, a persistência, o backup e a restauração foram exercitados em Ubuntu
+24.04 na Oracle Cloud. Em 22/08/2026, o servidor recebeu IP público reservado, Nginx e certificado
+Let's Encrypt válido para o próprio IP. O endpoint HTTPS respondeu externamente e a renovação do
+Certbot passou em simulação.
+
+A distribuição Android oficial `0.1.2 (code 3)` foi assinada por chave RSA 4096 própria, validada
+como API alvo 36 e instalada em aparelho real. O servidor vem configurado sem expor o IP na tela,
+o link e a página interna de privacidade abriram no aparelho, e APK/AAB/hashes foram gerados pelo
+fluxo reproduzível em `deploy/mobile`. A entrada e a primeira sincronização dessa instalação limpa
+ainda precisam ser repetidas com uma credencial de teste.
 
 ---
 
@@ -311,14 +322,17 @@ concedida pelo usuário.
 
 Em ordem de risco:
 
-1. **Implantação em Docker** e o ciclo de backup/restauração. Seção 11.
-2. **HTTPS com certificado confiável** nos aparelhos.
-3. **Aviso em tempo real entre dois aparelhos de verdade** — o cliente do hub existe e tem teste
+1. **Login e sincronização pelo HTTPS no aparelho** — o APK oficial já abre apontando para o
+   servidor e a sonda HTTPS externa passa; falta entrar nessa instalação limpa com uma credencial
+   de teste e conferir o bootstrap completo.
+2. **Aviso em tempo real entre dois aparelhos de verdade** — o cliente do hub existe e tem teste
    de integração contra o hub real, mas ninguém viu ainda uma marcação aparecer sozinha na outra
    tela.
-4. **Alerta após reiniciar o aparelho** (`BootReceiver`) e com o app fechado por horas.
-5. **Fabricantes com restrição agressiva** — o Xiaomi usado no teste é um deles; falta confirmar
+3. **Alerta após reiniciar o aparelho** (`BootReceiver`) e com o app fechado por horas.
+4. **Fabricantes com restrição agressiva** — o Xiaomi usado no teste é um deles; falta confirmar
    o comportamento com a economia de bateria realmente apertada. Cenário 5.15.
+5. **iPhone real** — parear um Mac/Xcode, assinar, instalar e executar o roteiro iOS completo,
+   inclusive offline, notificação em tela bloqueada e deep link.
 
 Saíram desta lista, agora validados em aparelho: notificação agendada disparando no horário,
 botão de teste, reagendamento após sincronizar, e o checklist em uso no celular e no desktop.
@@ -335,8 +349,10 @@ todos corrigidos, todos com teste que os fixa.
 
 O que impede a declaração:
 
-- **a implantação nunca foi exercitada.** Docker e HTTPS com certificado confiável seguem como
-  no primeiro dia;
+- **o login e o bootstrap pelo novo HTTPS ainda não foram repetidos na instalação oficial limpa**,
+  embora o APK abra com o servidor configurado e servidor/certificado respondam externamente;
+- **o porte iOS ainda não passou por um iPhone real**; o alvo, as APIs nativas e o assembly foram
+  compilados, mas assinatura e empacotamento dependem do Xcode em um Mac;
 - **o aviso em tempo real nunca foi visto entre dois aparelhos.** O cliente do hub foi
   implementado e tem teste de integração contra o hub real, mas teste não substitui ver a
   marcação aparecer sozinha na outra tela;

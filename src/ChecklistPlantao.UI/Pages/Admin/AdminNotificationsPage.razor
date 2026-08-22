@@ -5,7 +5,7 @@
 <PageTitle>Notificações</PageTitle>
 
 <AdminPageHeader Title="Notificações"
-                 Description="Configure onde os alertas aparecem, seu conteúdo e o comportamento no Android."
+                 Description="Configure onde os alertas aparecem, seu conteúdo e o comportamento nos celulares."
                  BackHref="/admin/avancado" />
 
 <AdminFeedback Result="_resultado" />
@@ -21,7 +21,7 @@ else
             <legend>Canais e comportamento</legend>
             <p class="campo__ajuda">Escolha as plataformas que recebem alertas e como o aparelho chama a atenção.</p>
             <div class="linha">
-                <Caixa @bind-Value="_android" Label="Habilitado no Android" TestId="notif-android" />
+                <Caixa @bind-Value="_android" Label="Habilitado no Android e iPhone" TestId="notif-android" />
                 <Caixa @bind-Value="_windows" Label="Habilitado no Windows" TestId="notif-windows" />
                 <Caixa @bind-Value="_som" Label="Som" TestId="notif-sound" />
                 <Caixa @bind-Value="_vibracao" Label="Vibração" TestId="notif-vibration" />

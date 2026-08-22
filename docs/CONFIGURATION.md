@@ -114,12 +114,12 @@ dotnet user-secrets set "Bootstrap:AdminPassword" "SuaSenhaForte1" --project src
 
 | Chave | Padrão | O que faz |
 |---|---|---|
-| `LoginPerMinute` | `20` | Tentativas de login por minuto, por origem |
-| `SyncPerMinute` | `30` | Sincronizações por minuto |
-| `SyncBurst` | `60` | Rajada permitida acima do limite por minuto |
+| `LoginPerMinute` | `20` | Tentativas de login por minuto, por IP medido no proxy |
+| `SyncPerMinute` | `30` | Sincronizações por minuto, por dispositivo autenticado |
+| `SyncBurst` | `60` | Rajada permitida por dispositivo acima do limite por minuto |
 
-Em rede hospitalar com NAT, muitos aparelhos compartilham o mesmo IP de origem — aumentar pode ser
-necessário. Números baixos demais aparecem como falha de sincronização intermitente.
+Login continua protegido por IP. Depois da autenticação, o claim do dispositivo separa os postos
+que compartilham o mesmo NAT. Números baixos demais aparecem como falha intermitente.
 
 ## `Cors` — origens permitidas
 
@@ -129,6 +129,16 @@ necessário. Números baixos demais aparecem como falha de sincronização inter
 
 Vazio é o correto para o aplicativo instalado, que não é um site. Só preencha se houver um cliente
 web de verdade.
+
+## `Privacy` — política pública
+
+| Chave | Padrão | O que faz |
+|---|---|---|
+| `SupportUrl` | Issues do MedicMark | Link público de suporte em `/privacidade` e `/privacy` |
+| `ContactEmail` | vazio | Acrescenta um e-mail público, quando a instituição optar por isso |
+
+O projeto não exige e-mail. Para trocar o canal público, use `Privacy__SupportUrl`; apenas URLs
+HTTPS são aceitas. Não use credencial ou endereço interno: os valores ficam públicos na internet.
 
 ## `Logging`
 
@@ -177,7 +187,7 @@ O aplicativo guarda localmente apenas o que é dele:
 
 | Item | Onde | Como muda |
 |---|---|---|
-| Endereço do servidor | banco local | Tela de configuração, no primeiro uso ou pelo botão "Alterar" |
+| Endereço do servidor | banco local | Preenchido automaticamente no Android oficial; editável pelo botão "Alterar" |
 | Nome do dispositivo | banco local | Mesma tela |
 | Setor atual | banco local | Nome do setor, no topo da tela |
 | Tema (claro, escuro ou seguir o aparelho) | armazenamento do WebView | Interruptor no menu do rodapé, ou Estado do dispositivo → Aparência |

@@ -1,0 +1,32 @@
+# Git e configurações locais
+.git/
+.github/
+.vs/
+.idea/
+.vscode/
+.run/
+
+# Saídas de build geradas pelo host. Além de aumentar muito o contexto, os
+# arquivos obj de Windows sobrescrevem o restore Linux feito no Dockerfile.
+**/bin/
+**/obj/
+artifacts/
+out/
+publish/
+**/TestResults/
+
+# Dados operacionais e segredos nunca pertencem à imagem
+*.db
+*.db-shm
+*.db-wal
+data/
+deploy/data/
+deploy/data-protection/
+.env
+.env.*
+deploy/.env
+
+# Arquivos do sistema operacional
+Thumbs.db
+desktop.ini
+.DS_Store

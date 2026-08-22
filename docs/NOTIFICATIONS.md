@@ -56,8 +56,8 @@ Configuráveis no painel administrativo, por coluna:
 | Máximo de repetições | 3 | Quantos lembretes no máximo |
 | Adiar | ligado / 5 min | Botão "Lembrar em N minutos" |
 
-Configurações gerais: som, vibração, prioridade, habilitação por plataforma, modelos de texto e
-alerta em tela cheia.
+Configurações gerais: som, vibração, prioridade, habilitação no canal móvel (Android/iPhone),
+habilitação no Windows, modelos de texto e alerta em tela cheia no Android.
 
 Os modelos aceitam `{checklist}`, `{coluna}`, `{setor}` e `{pendentes}`:
 
@@ -81,6 +81,23 @@ ATENÇÃO — Gelo 22H
 
 **Alertas funcionam com o aplicativo fechado e sobrevivem ao reinício do aparelho.**
 
+## iPhone e iPad
+
+- `UNUserNotificationCenter` agenda os alertas no próprio iOS; não há dependência de push ou rede.
+- A autorização para alerta, som e badge é solicitada pelo fluxo de correção/teste do aplicativo.
+- O estado negado aparece na faixa de saúde, e “Corrigir agora” abre os Ajustes do aplicativo.
+- Alertas aparecem mesmo com o aplicativo fechado. Em primeiro plano, o delegate nativo mantém
+  banner, lista, som e badge visíveis.
+- Tocar no alerta abre `/checklist/{template}/{coluna}` depois que o WebView estiver pronto,
+  inclusive quando o toque inicia o aplicativo.
+- iOS não possui as permissões Android de alarme exato ou isenção de otimização de bateria; o
+  diagnóstico não apresenta essas falsas pendências no iPhone.
+- O sistema aceita um conjunto limitado de pedidos locais pendentes. O aplicativo ordena os
+  horários e mantém os 64 mais próximos; cada sincronização recalcula essa janela.
+
+**Alertas locais funcionam com o aplicativo fechado.** A entrega final continua sujeita aos modos
+Não Perturbe/Foco e às escolhas do usuário nos Ajustes do iOS.
+
 ## Windows
 
 Decisão D-010, confirmada com o cliente. Sem MSIX não há agendamento no sistema operacional, então
@@ -96,8 +113,8 @@ certificado; a interface já comporta essa implementação sem alterar o restant
 
 A regra é única: **se há qualquer problema na lista, o aplicativo não diz que está tudo em ordem.**
 
-`NotificationHealthService` verifica permissão de notificações, permissão de alarme exato, economia
-de bateria, exigência de app em execução, habilitação pela plataforma no painel e existência de
+`NotificationHealthService` verifica permissão de notificações, as permissões Android quando forem
+aplicáveis, exigência de app em execução, habilitação pela plataforma no painel e existência de
 setor selecionado.
 
 Havendo problema, a faixa fica fixa no topo, **não pode ser dispensada** enquanto durar, e oferece
@@ -110,4 +127,6 @@ coluna foram validados com o aplicativo em execução real. Permanecem pendentes
 reiniciar o aparelho (`BootReceiver`), um período prolongado com o aplicativo fechado e a validação
 com isenção/restrição agressiva de bateria. No Windows, continua valendo a limitação deliberada:
 sem MSIX o alerta exige o processo aberto ou minimizado. Os cenários restantes estão em
-[MANUAL_TEST_PLAN.md](MANUAL_TEST_PLAN.md), seções 5 a 9.
+[MANUAL_TEST_PLAN.md](MANUAL_TEST_PLAN.md), seções 5 a 9. No iOS, o código e as APIs nativas foram
+compilados com sucesso, mas autorização, tela bloqueada, toque no deep link e entrega com o app
+fechado ainda precisam ser validados num iPhone real.

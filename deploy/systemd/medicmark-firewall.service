@@ -1,0 +1,12 @@
+[Unit]
+Description=Libera HTTP e HTTPS do MedicMark no firewall da VM
+After=netfilter-persistent.service
+Before=docker.service nginx.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/medicmark-firewall
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

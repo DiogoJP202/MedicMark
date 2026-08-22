@@ -18,10 +18,10 @@ namespace ChecklistPlantao.UI.Tests;
 /// </summary>
 public sealed class ServerConfigurationReachableTests : BunitContext
 {
-    private void RegistrarServicos(bool configurado)
+    private void RegistrarServicos(bool configurado, bool oculto = false, bool exigeHttps = false)
     {
         Services.AddSingleton<IAppSession>(new FakeSession());
-        Services.AddSingleton<IServerConfigurationService>(new FakeServerConfiguration(configurado));
+        Services.AddSingleton<IServerConfigurationService>(new FakeServerConfiguration(configurado, oculto, exigeHttps));
         Services.AddSingleton<ISyncStatusService>(new FakeSyncStatusService());
     }
 
@@ -46,14 +46,15 @@ public sealed class ServerConfigurationReachableTests : BunitContext
     }
 
     [Fact]
-    public void Entrada_mostra_qual_servidor_esta_configurado()
+    public void Entrada_informa_configuracao_sem_expor_endereco_do_servidor()
     {
         RegistrarServicos(configurado: true);
 
         var cut = Render<LoginPage>();
+        var linha = cut.Find("[data-testid=login-server-line]").TextContent;
 
-        // Ver o endereço na tela é o que permite perceber o engano sem precisar procurar.
-        Assert.Contains("http://servidor:5136", cut.Find("[data-testid=login-server-line]").TextContent, StringComparison.Ordinal);
+        Assert.Contains("Servidor configurado", linha, StringComparison.Ordinal);
+        Assert.DoesNotContain("http://servidor:5136", linha, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -64,6 +65,7 @@ public sealed class ServerConfigurationReachableTests : BunitContext
         var cut = Render<SetupPage>();
 
         Assert.NotEmpty(cut.FindAll("[data-testid=setup-back]"));
+        Assert.Contains("http://servidor:5136", cut.Markup, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -77,9 +79,44 @@ public sealed class ServerConfigurationReachableTests : BunitContext
         Assert.Empty(cut.FindAll("[data-testid=setup-back]"));
     }
 
-    private sealed class FakeServerConfiguration(bool configurado) : IServerConfigurationService
+    [Fact]
+    public void Configuracao_oficial_nao_renderiza_nem_pre_preenche_o_endereco()
+    {
+        RegistrarServicos(configurado: true, oculto: true, exigeHttps: true);
+
+        var cut = Render<SetupPage>();
+
+        Assert.Contains("Servidor de produção configurado", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("http://servidor:5136", cut.Markup, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll("[data-testid=setup-url]"));
+
+        cut.Find("[data-testid=setup-use-custom]").Click();
+
+        var entrada = cut.Find("[data-testid=setup-url]");
+        Assert.Equal(string.Empty, entrada.GetAttribute("value"));
+        Assert.DoesNotContain("http://servidor:5136", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Configuracao_oficial_recusa_http_antes_de_tentar_conectar()
+    {
+        RegistrarServicos(configurado: true, oculto: true, exigeHttps: true);
+
+        var cut = Render<SetupPage>();
+        cut.Find("[data-testid=setup-use-custom]").Click();
+        cut.Find("[data-testid=setup-url]").Input("http://servidor-inseguro.example");
+        cut.Find("[data-testid=setup-test]").Click();
+
+        Assert.Contains("somente servidores HTTPS", cut.Markup, StringComparison.Ordinal);
+    }
+
+    private sealed class FakeServerConfiguration(bool configurado, bool oculto, bool exigeHttps) : IServerConfigurationService
     {
         public string? ServerUrl => configurado ? "http://servidor:5136" : null;
+
+        public bool IsServerAddressHidden => oculto;
+
+        public bool RequiresHttps => exigeHttps;
 
         public string DeviceName => "Aparelho de teste";
 

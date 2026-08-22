@@ -67,6 +67,11 @@ suprimi-la por:
 
 - Assistente de Foco / Não Perturbe.
 
+No iPhone, o sistema operacional mantém no máximo um conjunto limitado de notificações locais
+pendentes. O aplicativo agenda deliberadamente as **64 mais próximas** e recalcula essa janela a
+cada sincronização. Se uma configuração administrativa produzir mais ocorrências futuras do que
+isso, as mais distantes só entram depois de novo reagendamento.
+
 **Por isso existe o alerta dentro do aplicativo.** A faixa de tarefas atrasadas e a tela de
 pendências funcionam mesmo quando o alerta do sistema falha. E a tela "Estado do dispositivo"
 mostra exatamente o que está faltando — o aplicativo **nunca** afirma que as notificações estão
@@ -96,8 +101,9 @@ dentro do processo.
 Windows 10 SDK, certificado de assinatura e instalação por MSIX. A interface
 `ILocalNotificationScheduler` já está preparada para receber essa implementação sem alterar o resto.
 
-No **Android não há essa limitação**: o `AlarmManager` dispara com o aplicativo fechado e o
-`BootReceiver` reagenda depois do reinício.
+No **Android e no iPhone não há essa limitação do Windows**: o sistema operacional mantém os
+alertas locais mesmo com o aplicativo fechado. O Android ainda usa o `BootReceiver` para marcar o
+reagendamento depois do reinício.
 
 ---
 
@@ -189,9 +195,11 @@ Registradas em [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md):
   integração ligando o cliente real ao hub real, mas nunca foi visto acontecer entre dois
   aparelhos de verdade;
 - o Windows 10 SDK não está instalado, então o empacotamento MSIX não foi exercitado;
-- Docker não foi executado neste ambiente: o `Dockerfile` e o `docker-compose.yml` **não foram
-  testados**;
-- HTTPS com certificado confiável nos aparelhos não foi validado.
+- Docker, persistência, backup e restauração foram exercitados na VM Oracle Cloud;
+- o HTTPS público no IP reservado foi validado externamente e sua renovação foi simulada com
+  sucesso, mas as versões móveis que usam esse endereço ainda precisam ser validadas nos aparelhos;
+- o alvo iOS compila sem avisos, mas assinatura, IPA e execução em iPhone ainda dependem de um Mac
+  com Xcode e não foram exercitados.
 
 Nada disso é afirmado como testado em nenhum ponto da documentação.
 

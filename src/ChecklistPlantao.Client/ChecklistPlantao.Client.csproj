@@ -1,16 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
     <!--
-        Head MAUI Blazor Hybrid. Só Android e Windows: são as plataformas pedidas.
-        iOS/MacCatalyst foram removidos de propósito (não há requisito e não há
-        como validar aqui) — reintroduzir é acrescentar o TFM nesta linha.
+        Head MAUI Blazor Hybrid para Android, iOS e Windows. O código iOS pode ser
+        restaurado e verificado no Windows, mas a compilação nativa e a assinatura
+        dependem de um Mac com Xcode. Ver docs/IOS_SETUP.md.
 
         ManagePackageVersionsCentrally=false: o SDK do MAUI injeta PackageReference
         implícitos usando $(MauiVersion), o que conflita com Central Package
         Management. Ver docs/DECISIONS.md (D-006).
     -->
     <PropertyGroup>
-        <TargetFrameworks>net10.0-android</TargetFrameworks>
+        <TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>
         <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
 
         <OutputType>Exe</OutputType>
@@ -26,20 +26,37 @@
         <ApplicationTitle>Checklist de Plantão</ApplicationTitle>
         <ApplicationId>br.com.checklistplantao.app</ApplicationId>
 
-        <ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion>
-        <ApplicationVersion>1</ApplicationVersion>
+        <ApplicationDisplayVersion>0.1.3</ApplicationDisplayVersion>
+        <ApplicationVersion>4</ApplicationVersion>
+        <Version>0.1.3</Version>
 
         <!-- Desempacotado no Windows: build MSIX exige o Windows 10 SDK. Ver docs/WINDOWS_SETUP.md. -->
         <WindowsPackageType>None</WindowsPackageType>
 
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
+        <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
         <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
     </PropertyGroup>
 
+    <!--
+        O Windows App SDK ainda precisa que o RID usado na publicação seja copiado para
+        RuntimeIdentifier. RuntimeIdentifierOverride evita o bug de publicação de apps MAUI
+        desempacotados e, no .NET 10, deve usar o RID portátil win-x64.
+    -->
+    <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows' and '$(RuntimeIdentifierOverride)' != ''">
+        <RuntimeIdentifier>$(RuntimeIdentifierOverride)</RuntimeIdentifier>
+    </PropertyGroup>
+
     <ItemGroup>
-        <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#0F3D5C" />
-        <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#0F3D5C" BaseSize="128,128" />
+        <MauiIcon Include="Resources\AppIcon\appicon.svg"
+                  ForegroundFile="Resources\AppIcon\medicmark_icon_v2.png"
+                  ForegroundScale="0.70"
+                  BaseSize="128,128"
+                  Color="#0F3D5C" />
+        <MauiSplashScreen Include="Resources\AppIcon\medicmark_icon_v2.png"
+                          Color="#0F3D5C"
+                          BaseSize="256,256" />
         <MauiImage Include="Resources\Images\*" />
         <MauiFont Include="Resources\Fonts\*" />
         <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
@@ -76,5 +93,17 @@
     <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'android'">
         <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" />
     </ItemGroup>
+
+    <!--
+        Um Release sem chave própria recebe a chave de debug do SDK e parece distribuível por
+        terminar em "-Signed". Impedir Publish nesse estado evita criar uma identidade Android
+        descartável por engano. O build comum continua livre; a publicação oficial passa pelo
+        deploy/mobile/publish-android.ps1.
+    -->
+    <Target Name="RequireAndroidReleaseSigning"
+            BeforeTargets="Publish"
+            Condition="'$(TargetFramework)' == 'net10.0-android' and '$(Configuration)' == 'Release' and '$(AndroidKeyStore)' != 'true'">
+        <Error Text="Publicação Android Release exige uma chave própria. Use deploy/mobile/publish-android.ps1." />
+    </Target>
 
 </Project>

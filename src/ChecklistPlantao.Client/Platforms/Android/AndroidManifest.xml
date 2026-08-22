@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <!--
-    networkSecurityConfig: permite HTTP em texto claro para alcançar o servidor na rede local.
-    Ver Resources/xml/network_security_config.xml para o motivo e o que muda em produção.
+    networkSecurityConfig: exige HTTPS com certificado emitido por uma autoridade pública.
+    Ver Resources/xml/network_security_config.xml.
   -->
-  <application android:allowBackup="true"
+  <application android:allowBackup="false"
                android:icon="@mipmap/appicon"
                android:supportsRtl="true"
                android:networkSecurityConfig="@xml/network_security_config"></application>
@@ -19,15 +19,12 @@
        durante a madrugada perderia todos os horários restantes do plantão. -->
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-  <!-- Alarme no horário exato. USE_EXACT_ALARM é concedida na instalação para aplicativos de
-       alarme/lembrete; SCHEDULE_EXACT_ALARM depende de autorização do usuário. Havendo nenhuma
-       das duas, o aplicativo usa alarme inexato e AVISA que o horário pode não ser exato. -->
+  <!-- Alarme no horário exato. SCHEDULE_EXACT_ALARM depende de autorização do usuário; sem ela,
+       o aplicativo usa alarme inexato e AVISA que o horário pode não ser exato.
+       USE_EXACT_ALARM não é declarado: a Play Store o restringe a despertadores e calendários. -->
   <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-  <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
   <!-- Vibração no alerta. -->
   <uses-permission android:name="android.permission.VIBRATE" />
 
-  <!-- Pedir isenção da economia de bateria. O aplicativo apenas oferece; quem decide é o usuário. -->
-  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 </manifest>

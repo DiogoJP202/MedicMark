@@ -2,11 +2,11 @@
 
 ## Primeira vez neste aparelho
 
-1. **Endereço do servidor.** O aplicativo pede o endereço na primeira abertura — algo como
-   `http://192.168.0.10:5000`, informado pela TI. Toque em **Testar conexão** antes de salvar.
-2. **Nome do aparelho.** Algo que identifique, como "Tablet Oeste 1".
-3. **Entrar.** O primeiro login precisa de rede. Depois disso, você entra mesmo sem conexão.
-4. **Permitir notificações** quando o aparelho perguntar. Sem isso, você não recebe os lembretes
+1. **Entrar.** No Android oficial, o servidor já vem configurado e a entrada abre automaticamente.
+   O primeiro login precisa de rede. Depois disso, você entra mesmo sem conexão.
+2. **Identificar o aparelho.** Se necessário, use **Alterar servidor** para trocar o nome padrão
+   "Dispositivo" por algo como "Tablet Oeste 1". O endereço já preenchido pode ser mantido.
+3. **Permitir notificações** quando o aparelho perguntar. Sem isso, você não recebe os lembretes
    dos horários.
 
 ## O menu

@@ -74,7 +74,9 @@ public sealed class NotificationConfiguration : ISyncVersioned
 
     public bool IsEnabledFor(DevicePlatform platform) => platform switch
     {
-        DevicePlatform.Android => EnabledOnAndroid,
+        // EnabledOnAndroid é mantido no contrato e no banco por compatibilidade. Na interface
+        // ele representa o canal móvel, compartilhado por Android e iPhone.
+        DevicePlatform.Android or DevicePlatform.Ios => EnabledOnAndroid,
         DevicePlatform.Windows => EnabledOnWindows,
         _ => false,
     };

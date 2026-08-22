@@ -1,0 +1,11 @@
+[Unit]
+Description=Backup diario do banco SQLite do MedicMark
+
+[Timer]
+OnCalendar=*-*-* 06:00:00 UTC
+Persistent=true
+RandomizedDelaySec=10m
+Unit=medicmark-backup.service
+
+[Install]
+WantedBy=timers.target

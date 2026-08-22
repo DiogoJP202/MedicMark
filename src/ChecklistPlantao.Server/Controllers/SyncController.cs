@@ -8,10 +8,12 @@ using ChecklistPlantao.Server.Auth;
 using ChecklistPlantao.Server.Realtime;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ChecklistPlantao.Server.Controllers;
 
 [Authorize]
+[EnableRateLimiting(RateLimitPolicies.Sync)]
 [Route("api")]
 public sealed class SyncController(
     SyncService sync,

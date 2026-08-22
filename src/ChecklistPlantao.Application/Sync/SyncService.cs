@@ -63,8 +63,7 @@ public sealed class SyncService(
         var pull = await PullAsync(request.KnownCursor, user, cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation(
-            "Push do dispositivo {DeviceId}: {Total} operação(ões), {Aplicadas} aplicada(s), {Conflitos} conflito(s).",
-            request.DeviceId,
+            "Push de sincronização: {Total} operação(ões), {Aplicadas} aplicada(s), {Conflitos} conflito(s).",
             request.Operations.Count,
             results.Count(r => r.Status == nameof(SyncOperationStatus.Applied)),
             results.Count(r => r.Status == nameof(SyncOperationStatus.Conflict)));

@@ -2,30 +2,14 @@
 <!--
     Política de rede do aplicativo.
 
-    Desde o Android 9 (API 28), tráfego em texto claro é bloqueado por padrão. O servidor do
-    ChecklistPlantão costuma viver na própria rede da instituição, em HTTP — é o cenário que o
-    enunciado descreve e documenta. Sem esta permissão o aplicativo simplesmente não alcançaria
-    o servidor local.
-
-    A permissão é DELIBERADAMENTE ampla porque o endereço do servidor é configurado pelo usuário
-    em tempo de execução: não há como listar domínios de antemão.
-
-    Em produção, o correto é HTTPS com certificado confiável nos aparelhos — ver
-    docs/DEPLOYMENT.md. Quando a instituição migrar para HTTPS, troque
-    cleartextTrafficPermitted para "false" e este arquivo passa a impor a regra.
+    A distribuição Android oficial acessa o servidor de produção somente por HTTPS. Tráfego em
+    texto claro fica bloqueado mesmo se um endereço HTTP for informado manualmente.
 -->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="true">
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <!-- Autoridades públicas do sistema. -->
             <certificates src="system" />
-
-            <!--
-                Certificados instalados pelo usuário. Necessário para uma autoridade
-                certificadora própria da instituição: desde o Android 7, um certificado
-                instalado pelo usuário NÃO é aceito por aplicativos sem esta declaração.
-            -->
-            <certificates src="user" />
         </trust-anchors>
     </base-config>
 </network-security-config>

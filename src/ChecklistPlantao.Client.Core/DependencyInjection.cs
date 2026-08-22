@@ -22,9 +22,15 @@ public static class DependencyInjection
     /// O head MAUI acrescenta as implementações específicas — <see cref="ISecureStore"/>,
     /// <see cref="IConnectivityProbe"/>, <see cref="IPlatformInfo"/>,
     /// <see cref="ILocalNotificationScheduler"/>, <see cref="INotificationPermissionService"/> —
-    /// que são as únicas peças realmente diferentes entre Android e Windows.
+    /// que são as únicas peças realmente diferentes entre Android, iOS e Windows.
     /// </summary>
-    public static IServiceCollection AddChecklistClientCore(this IServiceCollection services, string databasePath)
+    public static IServiceCollection AddChecklistClientCore(
+        this IServiceCollection services,
+        string databasePath,
+        string? defaultServerUrl = null,
+        bool hideServerAddress = false,
+        bool requireHttps = false,
+        params string[] replacedServerUrls)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentException.ThrowIfNullOrWhiteSpace(databasePath);
@@ -45,6 +51,11 @@ public static class DependencyInjection
         // Com a fábrica, cada unidade de trabalho abre e descarta o seu próprio contexto.
         services.AddDbContextFactory<LocalDbContext>(builder => builder.UseSqlite($"Data Source={databasePath}"));
 
+        services.AddSingleton(new ClientConfigurationDefaults(
+            defaultServerUrl,
+            hideServerAddress,
+            requireHttps,
+            replacedServerUrls));
         services.AddSingleton<IClock, SystemClock>();
         services.AddOptions<OfflineAuthOptions>();
 
@@ -133,9 +144,22 @@ public static class DependencyInjection
         // histórico de migrations no aparelho. Ver docs/DECISIONS.md (D-017).
         EnsureLocalSchema(db, services.GetService<ILogger<LocalDbContext>>());
 
-        if (db.DeviceState.FirstOrDefault() is null)
+        var estadoDoDispositivo = db.DeviceState.FirstOrDefault();
+
+        if (estadoDoDispositivo is null)
         {
-            db.DeviceState.Add(new DeviceState());
+            estadoDoDispositivo = new DeviceState();
+            db.DeviceState.Add(estadoDoDispositivo);
+        }
+
+        // Também cobre quem já abriu uma versão anterior e só depois atualizou o aplicativo.
+        // Loopback era usado com adb reverse no desenvolvimento, mas no uso normal aponta para o
+        // próprio celular; servidores reais escolhidos pelo usuário continuam preservados.
+        var padroes = services.GetRequiredService<ClientConfigurationDefaults>();
+
+        if (padroes.ShouldReplace(estadoDoDispositivo.ServerUrl))
+        {
+            estadoDoDispositivo.Configure(padroes.ServerUrl!, estadoDoDispositivo.DeviceName);
         }
 
         if (db.SyncState.FirstOrDefault() is null)

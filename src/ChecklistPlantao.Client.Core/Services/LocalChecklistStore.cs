@@ -215,8 +215,8 @@ public sealed class LocalChecklistStore : IChecklistStore
                 var atrasada = IsOverdue(janela, sessao.ServiceDate, coluna, agoraLocal);
 
                 return porCelula.TryGetValue((leito.Id, coluna.Id), out var entrada)
-                    ? new ChecklistCell(leito.Id, templateId, coluna.Id, entrada.IsCompleted, entrada.Version, atrasada)
-                    : new ChecklistCell(leito.Id, templateId, coluna.Id, false, 0, atrasada);
+                    ? new ChecklistCell(sessao.Id, leito.Id, templateId, coluna.Id, entrada.IsCompleted, entrada.Version, atrasada)
+                    : new ChecklistCell(sessao.Id, leito.Id, templateId, coluna.Id, false, 0, atrasada);
             }).ToList();
 
             var doLeito = marcadoresPorLeito.TryGetValue(leito.Id, out var marcados) ? marcados : [];
@@ -259,12 +259,22 @@ public sealed class LocalChecklistStore : IChecklistStore
         var (db, meu) = await AbrirAsync(cancellationToken).ConfigureAwait(false);
 
         OperationalSession? sessao;
+        bool leitoAtivo;
 
         try
         {
             sessao = await db.OperationalSessions
                 .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.Status == SessionStatus.Open, cancellationToken)
+                .FirstOrDefaultAsync(s => s.Id == cell.SessionId && s.Status == SessionStatus.Open, cancellationToken)
+                .ConfigureAwait(false);
+
+            leitoAtivo = sessao is not null && await db.SessionBeds
+                .AsNoTracking()
+                .AnyAsync(
+                    b => b.SessionId == cell.SessionId
+                        && b.BedId == cell.BedId
+                        && b.IsActiveInSession,
+                    cancellationToken)
                 .ConfigureAwait(false);
         }
         finally
@@ -274,13 +284,18 @@ public sealed class LocalChecklistStore : IChecklistStore
 
         if (sessao is null)
         {
-            return new ToggleOutcome(false, "Não há plantão aberto para marcar.", null);
+            return new ToggleOutcome(false, "O plantão exibido não está mais aberto.", null);
+        }
+
+        if (!leitoAtivo)
+        {
+            return new ToggleOutcome(false, "Este leito não faz parte do plantão exibido.", null);
         }
 
         try
         {
             var entrada = await outbox
-                .ToggleEntryAsync(sessao.Id, cell.BedId, cell.TemplateId, cell.ColumnId, isCompleted, clock.UtcNow, cancellationToken)
+                .ToggleEntryAsync(cell.SessionId, cell.BedId, cell.TemplateId, cell.ColumnId, isCompleted, clock.UtcNow, cancellationToken)
                 .ConfigureAwait(false);
 
             Changed?.Invoke();

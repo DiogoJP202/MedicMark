@@ -37,7 +37,7 @@ public sealed class AuthenticationEndpointService(
         switch (check)
         {
             case CredentialCheckResult.LockedOut:
-                logger.LogWarning("Tentativa de login em conta bloqueada: {UserName}.", normalized);
+                logger.LogWarning("Tentativa de login em conta bloqueada.");
                 return new OperationError(
                     ApiErrorCodes.AccountLocked,
                     "Esta conta está temporariamente bloqueada por excesso de tentativas. Aguarde alguns minutos.");
@@ -47,7 +47,7 @@ public sealed class AuthenticationEndpointService(
 
             default:
                 // Nunca registramos a senha nem distinguimos o motivo para o cliente.
-                logger.LogInformation("Falha de autenticação para {UserName}.", normalized);
+                logger.LogInformation("Falha de autenticação.");
                 return InvalidCredentials();
         }
 
@@ -58,7 +58,7 @@ public sealed class AuthenticationEndpointService(
 
         if (user is null)
         {
-            logger.LogError("Credencial {UserName} existe sem usuário de domínio correspondente.", normalized);
+            logger.LogError("Credencial válida existe sem usuário de domínio correspondente.");
             return InvalidCredentials();
         }
 
@@ -73,7 +73,7 @@ public sealed class AuthenticationEndpointService(
             .IssueAsync(user.Id, user.UserName, user.DisplayName, access, request.DeviceId, cancellationToken)
             .ConfigureAwait(false);
 
-        logger.LogInformation("Login concluído para {UserId} no dispositivo {DeviceId}.", user.Id, request.DeviceId ?? "(não informado)");
+        logger.LogInformation("Login concluído para {UserId}.", user.Id);
 
         return new LoginResponse(pair, Describe(user, access));
     }

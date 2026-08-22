@@ -1,5 +1,8 @@
 # ChecklistPlantão
 
+> Downloads oficiais para Android e Windows:
+> **https://diogojp202.github.io/MedicMark/**
+
 Substitui a folha de papel "CHECKLIST DE PLANTÃO" por um aplicativo instalado, rápido, que
 **funciona sem internet** e **notifica nos horários** das colunas.
 
@@ -9,7 +12,7 @@ três grades (Gelo, Glicemia, SSVV) sobre os mesmos 16 leitos, mais as listas de
 | | |
 |---|---|
 | **Servidor** | ASP.NET Core 10 + SQLite + SignalR |
-| **Aplicativo** | .NET MAUI Blazor Hybrid — Android e Windows, mesma interface |
+| **Aplicativo** | .NET MAUI Blazor Hybrid — Android, iPhone/iPad e Windows, mesma interface |
 | **Offline** | Banco SQLite local + fila de envio (Outbox) com operações idempotentes |
 | **Notificações** | Locais e agendadas no aparelho; não dependem de internet nem de push |
 
@@ -65,12 +68,23 @@ Android (aparelho conectado por USB com depuração ativa):
 dotnet build src/ChecklistPlantao.Client -f net10.0-android -t:Run
 ```
 
-Detalhes e requisitos por plataforma: [docs/ANDROID_SETUP.md](docs/ANDROID_SETUP.md) e
-[docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md).
+iPhone/iPad (o build nativo exige um Mac com Xcode):
 
-Na primeira execução o aplicativo pede o **endereço do servidor** (ex.: `http://192.168.0.10:5000`) —
-nunca `localhost`, porque o aparelho não é a máquina do servidor. O primeiro login precisa de rede;
-a partir daí a entrada offline vale por 7 dias configuráveis.
+```bash
+dotnet build src/ChecklistPlantao.Client -f net10.0-ios -c Debug
+```
+
+Detalhes e requisitos por plataforma: [docs/ANDROID_SETUP.md](docs/ANDROID_SETUP.md),
+[docs/IOS_SETUP.md](docs/IOS_SETUP.md) e [docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md).
+
+Para gerar o APK oficial compartilhável e o AAB da Play Store, use
+`deploy/mobile/publish-android.ps1`. Assinatura, backup da chave, política de privacidade e o passo a
+passo da Play Console estão em [docs/PLAY_STORE_RELEASE.md](docs/PLAY_STORE_RELEASE.md).
+
+As distribuições móveis para Android e iOS já iniciam com o servidor de produção configurado e
+abrem diretamente a entrada. O endereço continua editável em **Alterar servidor**. Builds para
+Windows ou sem padrão pedem o endereço na primeira execução (ex.: `http://192.168.0.10:5000`). O
+primeiro login precisa de rede; a partir daí a entrada offline vale por 7 dias configuráveis.
 
 ## Como rodar testes
 
@@ -107,7 +121,7 @@ src/
                                    contratos entre a interface e o núcleo do cliente
   ChecklistPlantao.UI              RCL: design system, componentes e páginas
   ChecklistPlantao.Client.Core     SQLite local, Outbox, sincronização, auth offline
-  ChecklistPlantao.Client          MAUI Blazor Hybrid (Android + Windows)
+  ChecklistPlantao.Client          MAUI Blazor Hybrid (Android + iOS + Windows)
 tests/                             5 projetos de testes
 deploy/                            Dockerfile, compose, backup e restore
 ```
@@ -123,7 +137,7 @@ deploy/                            Dockerfile, compose, backup e restore
 | mexer em **marcar, fila ou sincronização** | `ChecklistPlantao.Client.Core` — `OutboxWriter` e `SyncEngine` |
 | acrescentar **um endpoint** | `ChecklistPlantao.Server/Controllers` + o caso de uso em `Application` |
 | entender **por que algo é assim** | [DECISIONS.md](docs/DECISIONS.md) — toda decisão tem contexto e consequência |
-| mexer em **algo específico de Android ou Windows** | `ChecklistPlantao.Client/Platforms` |
+| mexer em **algo específico de Android, iOS ou Windows** | `ChecklistPlantao.Client/Platforms` |
 
 O head MAUI (`ChecklistPlantao.Client`) tem **muito pouco código**, e isso é intencional: só duas
 interfaces são realmente diferentes entre plataformas — `ILocalNotificationScheduler` e
@@ -151,6 +165,9 @@ Duas fronteiras que valem conhecer antes de mexer:
 | [SECURITY.md](docs/SECURITY.md) | Autenticação, acesso offline, o que nunca é registrado |
 | [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Docker, serviço no Windows, rede local, HTTPS, backup |
 | [ANDROID_SETUP.md](docs/ANDROID_SETUP.md) | Requisitos, permissões e como validar no aparelho |
+| [PLAY_STORE_RELEASE.md](docs/PLAY_STORE_RELEASE.md) | Assinatura, APK, AAB, compartilhamento e Play Console |
+| [PRIVACY_POLICY.md](docs/PRIVACY_POLICY.md) | Política de privacidade publicada pelo servidor |
+| [IOS_SETUP.md](docs/IOS_SETUP.md) | Mac/Xcode, assinatura, instalação no iPhone e TestFlight |
 | [WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md) | Requisitos e a limitação de notificação |
 | [ROTEIRO_DE_TESTE.md](docs/ROTEIRO_DE_TESTE.md) | **Caminho curto para ver o sistema funcionando**, passo a passo |
 | [MANUAL_TEST_PLAN.md](docs/MANUAL_TEST_PLAN.md) | Cenários que só um dispositivo real valida |
@@ -163,6 +180,6 @@ Duas fronteiras que valem conhecer antes de mexer:
 > de validação pendente em [IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md).
 >
 > As notificações **já foram validadas em aparelho real** — o alerta agendado dispara no horário.
-> Segue pendente toda a implantação: Docker e HTTPS nunca foram exercitados. O aviso em tempo real
-> entre aparelhos está implementado e coberto por teste de integração, mas ainda não foi visto
-> acontecer entre dois aparelhos de verdade.
+> Docker, persistência, backup, restauração e HTTPS público no IP reservado foram exercitados na
+> VM Oracle Cloud. Ainda falta validar no aparelho a versão que usa esse HTTPS e observar o aviso
+> em tempo real entre dois aparelhos de verdade.
