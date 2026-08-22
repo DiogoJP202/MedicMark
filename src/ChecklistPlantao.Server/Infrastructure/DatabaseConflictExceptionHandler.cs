@@ -33,7 +33,7 @@ public sealed class DatabaseConflictExceptionHandler(ILogger<DatabaseConflictExc
         }
 
         // Nível de aviso, não de erro: é uma colisão legítima de dados, não uma falha do servidor.
-        logger.LogWarning(dbUpdate, "Restrição do banco violada em {Caminho}.", httpContext.Request.Path);
+        logger.LogWarning(dbUpdate, "Restrição de unicidade do banco violada.");
 
         var problem = new ProblemDetails
         {
