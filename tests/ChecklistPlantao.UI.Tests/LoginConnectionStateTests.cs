@@ -35,6 +35,7 @@ public sealed class LoginConnectionStateTests : BunitContext
 
         Assert.Contains("Verificando o servidor…", cut.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain("Sem servidor no momento", cut.Markup, StringComparison.Ordinal);
+        Assert.Equal("/privacidade", cut.Find("[data-testid=login-privacy-link]").GetAttribute("href"));
     }
 
     /// <summary>

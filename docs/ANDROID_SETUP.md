@@ -37,14 +37,20 @@ Com o aparelho conectado por USB e depuração USB ativa:
 dotnet build src/ChecklistPlantao.Client -f net10.0-android -t:Run -c Debug
 ```
 
-APK para distribuição interna:
+APK e AAB oficiais para distribuição:
 
-```bash
-dotnet publish src/ChecklistPlantao.Client -f net10.0-android -c Release
+```powershell
+.\deploy\mobile\publish-android.ps1
 ```
 
-O APK sai em `bin/Release/net10.0-android/publish/`. Para distribuir fora da Play Store é preciso
-assinar com uma chave própria (`AndroidSigningKeyStore`) — **nunca** versione o keystore.
+O script exige a chave privada criada uma única vez por
+`.\deploy\mobile\setup-android-signing.ps1`, assina com a chave oficial, verifica que não é uma
+assinatura de debug e grava APK, AAB, certificado e hashes em `artifacts/android/`. A chave e a
+senha ficam fora do repositório em `%USERPROFILE%\.medicmark\android-signing`.
+
+Use o APK para compartilhamento direto e o AAB para a Play Console. O procedimento completo,
+backup obrigatório da chave e formulários da loja estão em
+[PLAY_STORE_RELEASE.md](PLAY_STORE_RELEASE.md).
 
 ## Alcançar o servidor a partir do aparelho (desenvolvimento)
 
@@ -96,9 +102,12 @@ O último é o que importa: `Healthy` vindo dele significa que o aparelho alcan�
 | `INTERNET`, `ACCESS_NETWORK_STATE` | Falar com o servidor | Instalação |
 | `POST_NOTIFICATIONS` | Exibir alertas (Android 13+) | Em execução, no primeiro uso |
 | `RECEIVE_BOOT_COMPLETED` | Reagendar após reinício | Instalação |
-| `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM` | Alerta no horário exato | Depende da versão |
+| `SCHEDULE_EXACT_ALARM` | Solicitar alarme exato ao usuário, com fallback inexato | Em execução, opcional |
 | `VIBRATE` | Vibração no alerta | Instalação |
-| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Oferecer isenção de economia de bateria | Em execução, opcional |
+
+`USE_EXACT_ALARM` e `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` não são declaradas: as duas têm uso
+restrito pela política da Play. O diagnóstico abre as telas de configuração do sistema sem pedir
+uma isenção direta.
 
 ## Alarme exato
 

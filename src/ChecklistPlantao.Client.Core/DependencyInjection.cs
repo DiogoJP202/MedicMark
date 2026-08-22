@@ -22,7 +22,7 @@ public static class DependencyInjection
     /// O head MAUI acrescenta as implementações específicas — <see cref="ISecureStore"/>,
     /// <see cref="IConnectivityProbe"/>, <see cref="IPlatformInfo"/>,
     /// <see cref="ILocalNotificationScheduler"/>, <see cref="INotificationPermissionService"/> —
-    /// que são as únicas peças realmente diferentes entre Android e Windows.
+    /// que são as únicas peças realmente diferentes entre Android, iOS e Windows.
     /// </summary>
     public static IServiceCollection AddChecklistClientCore(
         this IServiceCollection services,

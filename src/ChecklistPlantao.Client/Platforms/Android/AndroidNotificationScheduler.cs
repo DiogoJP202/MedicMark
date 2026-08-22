@@ -340,17 +340,17 @@ public sealed class AndroidNotificationPermissionService : INotificationPermissi
         if (OperatingSystem.IsAndroidVersionAtLeast(31)
             && !(((AlarmManager?)contexto.GetSystemService(Context.AlarmService))?.CanScheduleExactAlarms() ?? true))
         {
-            return new Intent(global::Android.Provider.Settings.ActionRequestScheduleExactAlarm);
+            return new Intent(
+                global::Android.Provider.Settings.ActionRequestScheduleExactAlarm,
+                global::Android.Net.Uri.Parse($"package:{contexto.PackageName}"));
         }
 
-        // 3. Isenção da otimização de bateria. Abre o diálogo do sistema que concede na hora,
-        //    em vez de mandar o usuário procurar a opção nas configurações.
+        // 3. Isenção da otimização de bateria. A Play Store restringe o pedido direto de isenção,
+        //    então abrimos a lista do sistema e deixamos a escolha inteiramente com o usuário.
         if (OperatingSystem.IsAndroidVersionAtLeast(23)
             && !(((PowerManager?)contexto.GetSystemService(Context.PowerService))?.IsIgnoringBatteryOptimizations(contexto.PackageName!) ?? true))
         {
-            return new Intent(
-                global::Android.Provider.Settings.ActionRequestIgnoreBatteryOptimizations,
-                global::Android.Net.Uri.Parse($"package:{contexto.PackageName}"));
+            return new Intent(global::Android.Provider.Settings.ActionIgnoreBatteryOptimizationSettings);
         }
 
         // Nada pendente que o sistema resolva: mostra a tela de notificações do aplicativo.

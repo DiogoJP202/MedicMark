@@ -44,7 +44,7 @@ flowchart BT
     ClientAbs["Client.Abstractions<br/><i>contratos entre interface e núcleo</i>"]
     UI["UI (RCL)<br/><i>design system, componentes, páginas</i>"]
     ClientCore["Client.Core<br/><i>SQLite local, Outbox,<br/>sincronização, auth offline</i>"]
-    Client["Client (MAUI)<br/><i>Android e Windows</i>"]
+    Client["Client (MAUI)<br/><i>Android, iOS e Windows</i>"]
 
     Application --> Domain
     Application --> Contracts

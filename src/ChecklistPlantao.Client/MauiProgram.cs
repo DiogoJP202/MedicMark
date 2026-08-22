@@ -13,7 +13,7 @@ public static class MauiProgram
     /// <summary>Nome do arquivo do banco local, dentro da pasta de dados do aplicativo.</summary>
     public const string DatabaseFileName = "checklistplantao.db";
 
-#if ANDROID
+#if ANDROID || IOS
     // Endereço da instalação móvel oficial. Mantê-lo aqui deixa a configuração de implantação
     // visível e permite que a tela de configuração continue aceitando um servidor alternativo.
     private const string? DefaultServerUrl = "https://163.176.119.139";
@@ -43,7 +43,7 @@ public static class MauiProgram
         var caminhoBanco = Path.Combine(FileSystem.AppDataDirectory, DatabaseFileName);
         builder.Services.AddChecklistClientCore(caminhoBanco, DefaultServerUrl, ReplacedServerUrls);
 
-        // Serviços de plataforma: as únicas peças realmente diferentes entre Android e Windows.
+        // Serviços de plataforma: as únicas peças realmente diferentes entre Android, iOS e Windows.
         builder.Services.AddSingleton<ISecureStore, MauiSecureStore>();
         builder.Services.AddSingleton<IConnectivityProbe, MauiConnectivityProbe>();
         builder.Services.AddSingleton<IPlatformInfo, MauiPlatformInfo>();
@@ -57,6 +57,9 @@ public static class MauiProgram
 #if ANDROID
         builder.Services.AddSingleton<ILocalNotificationScheduler, Platforms.Android.AndroidNotificationScheduler>();
         builder.Services.AddSingleton<INotificationPermissionService, Platforms.Android.AndroidNotificationPermissionService>();
+#elif IOS
+        builder.Services.AddSingleton<ILocalNotificationScheduler, Platforms.iOS.IosNotificationScheduler>();
+        builder.Services.AddSingleton<INotificationPermissionService, Platforms.iOS.IosNotificationPermissionService>();
 #elif WINDOWS
         builder.Services.AddSingleton<ILocalNotificationScheduler, Platforms.Windows.WindowsNotificationScheduler>();
         builder.Services.AddSingleton<INotificationPermissionService, Platforms.Windows.WindowsNotificationPermissionService>();

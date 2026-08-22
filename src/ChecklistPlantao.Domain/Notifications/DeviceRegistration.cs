@@ -7,6 +7,7 @@ public enum DevicePlatform
     Unknown = 0,
     Android = 1,
     Windows = 2,
+    Ios = 3,
 }
 
 /// <summary>

@@ -1,7 +1,10 @@
 using Android.App;
+using Android.Content;
 using Android.Content.PM;
 using Android.OS;
 using AndroidX.Core.View;
+using ChecklistPlantao.Client.Core.Notifications;
+using ChecklistPlantao.Client.Platforms.Android;
 
 namespace ChecklistPlantao.Client;
 
@@ -28,5 +31,13 @@ public class MainActivity : MauiAppCompatActivity
         {
             WindowCompat.SetDecorFitsSystemWindows(janela, true);
         }
+
+        NotificationNavigation.Request(Intent?.GetStringExtra(AndroidNotificationScheduler.ExtraRoute));
+    }
+
+    protected override void OnNewIntent(Intent? intent)
+    {
+        base.OnNewIntent(intent);
+        NotificationNavigation.Request(intent?.GetStringExtra(AndroidNotificationScheduler.ExtraRoute));
     }
 }

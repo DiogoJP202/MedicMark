@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <!--
-    Razor Class Library compartilhada entre os heads Android e Windows.
+    Razor Class Library compartilhada entre os heads Android, iOS e Windows.
     Só conhece os contratos de Client.Abstractions — nada de EF Core, HttpClient ou MAUI aqui.
     Isso mantém a RCL testável com bUnit em net10.0 puro.
   -->

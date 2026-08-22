@@ -130,6 +130,16 @@ necessário. Números baixos demais aparecem como falha de sincronização inter
 Vazio é o correto para o aplicativo instalado, que não é um site. Só preencha se houver um cliente
 web de verdade.
 
+## `Privacy` — política pública
+
+| Chave | Padrão | O que faz |
+|---|---|---|
+| `ContactEmail` | vazio | Exibe um e-mail público em `/privacidade` e `/privacy` |
+
+Em produção, informe pela variável `Privacy__ContactEmail`. Sem ela, a página continua acessível e
+orienta o usuário a usar o e-mail de suporte da ficha do aplicativo na loja. Não use credencial ou
+endereço interno nesse campo: o valor fica público na internet.
+
 ## `Logging`
 
 Segue o padrão do ASP.NET Core. O que o projeto define:

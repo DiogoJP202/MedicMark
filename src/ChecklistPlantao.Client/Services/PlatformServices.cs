@@ -3,8 +3,8 @@ using ChecklistPlantao.Client.Core.Services;
 namespace ChecklistPlantao.Client.Services;
 
 /// <summary>
-/// Armazenamento seguro sobre o <c>SecureStorage</c> do MAUI: Keystore no Android e DPAPI no
-/// Windows. É onde ficam os tokens — nunca no banco local em texto puro.
+/// Armazenamento seguro sobre o <c>SecureStorage</c> do MAUI: Keystore no Android, Keychain no
+/// iOS e DPAPI no Windows. É onde ficam os tokens — nunca no banco local em texto puro.
 /// </summary>
 public sealed class MauiSecureStore : ISecureStore
 {

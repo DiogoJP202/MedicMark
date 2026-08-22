@@ -14,9 +14,11 @@ apareceram, com a causa e a saída de cada um.
 |---|---|---|
 | .NET SDK | 10.0.2xx | Tudo. `global.json` fixa 10.0.201 com `rollForward: latestFeature` |
 | Workload `maui-android` | 10.0.20 | Compilar o aplicativo Android |
+| Workload `maui-ios` | 10.0.20 | Compilar o código do iPhone; empacotar exige Mac/Xcode |
 | Workload `maui-windows` | 10.0.20 | Compilar o aplicativo Windows |
 | Android SDK | API 36 + build-tools 36.0.0 | Empacotar e instalar no aparelho |
 | Microsoft OpenJDK | 17 (faixa aceita: 17.0 → 21.0.99) | Exigido pelo SDK do Android |
+| Xcode | 26 ou posterior compatível | Assinar, executar e publicar iOS; somente no macOS |
 
 Conferir o que já existe:
 
@@ -34,7 +36,7 @@ O workload do MAUI traz o *compilador* Android, **não** o SDK do Google nem o J
 downloads separados.
 
 ```bash
-dotnet workload install maui-android maui-windows
+dotnet workload install maui-android maui-ios maui-windows
 ```
 
 ### 1.2 Android SDK e JDK
@@ -88,7 +90,8 @@ Confirme o nome real da pasta do JDK — algumas instalações criam `jdk-17.0.1
 dotnet build ChecklistPlantao.sln -c Debug
 ```
 
-Deve terminar com **0 erros e 0 avisos**, incluindo os dois heads MAUI.
+Deve terminar com **0 erros e 0 avisos**, incluindo os três alvos do head MAUI. No Windows, isso
+valida o código iOS; gerar o aplicativo nativo ainda é trabalho do Xcode no Mac.
 
 ---
 
@@ -267,7 +270,22 @@ MIUI mata os alarmes. Ver limitação nº 4 em [KNOWN_LIMITATIONS.md](KNOWN_LIMI
 
 ---
 
-## 6. Entrar
+## 6. Aplicativo no iPhone/iPad
+
+O alvo iOS já usa o mesmo servidor HTTPS padrão do Android e não pede configuração inicial. Para
+compilar o código no Windows:
+
+```bash
+dotnet build src/ChecklistPlantao.Client -f net10.0-ios -c Debug
+```
+
+Esse comando valida o assembly, mas não instala no iPhone. Execução, assinatura e geração do IPA
+exigem um Mac com Xcode. O roteiro completo — simulador, aparelho, Pair to Mac, conta Apple e
+TestFlight — está em [IOS_SETUP.md](IOS_SETUP.md).
+
+---
+
+## 7. Entrar
 
 Usuário e senha são os que você definiu em [§2](#2-segredos-do-servidor). Consulte com
 `dotnet user-secrets list`.
@@ -281,7 +299,7 @@ vale por 7 dias configuráveis.
 
 ---
 
-## 7. Testes
+## 8. Testes
 
 ```bash
 dotnet test ChecklistPlantao.NoMaui.slnf -c Debug
@@ -297,6 +315,12 @@ aqui e envelhecer a cada novo cenário.
 ---
 
 ## Quando der errado
+
+### O build iOS compila, mas não gera IPA ou não encontra o Xcode
+
+Isso é esperado no Windows sem um Mac pareado. As ferramentas nativas e o `codesign` são da
+Apple e só rodam no macOS. Faça o primeiro pareamento em **Visual Studio → Tools → iOS → Pair to
+Mac**, ou execute o `dotnet publish` diretamente no Mac; veja [IOS_SETUP.md](IOS_SETUP.md).
 
 ### `XA5300: The Android SDK directory could not be found`
 
