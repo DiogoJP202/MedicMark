@@ -38,8 +38,14 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#0F3D5C" />
-        <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#0F3D5C" BaseSize="128,128" />
+        <MauiIcon Include="Resources\AppIcon\appicon.svg"
+                  ForegroundFile="Resources\AppIcon\medicmark_icon_v2.png"
+                  ForegroundScale="0.70"
+                  BaseSize="128,128"
+                  Color="#0F3D5C" />
+        <MauiSplashScreen Include="Resources\AppIcon\medicmark_icon_v2.png"
+                          Color="#0F3D5C"
+                          BaseSize="256,256" />
         <MauiImage Include="Resources\Images\*" />
         <MauiFont Include="Resources\Fonts\*" />
         <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
