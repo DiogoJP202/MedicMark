@@ -12,7 +12,7 @@
 | Windows | 10 versão 1809 (17763) ou superior |
 | .NET SDK | 10.0.2xx |
 | Workload | `maui-windows` |
-| Windows App SDK | Runtime instalado na máquina |
+| Windows App SDK | Incluído no ZIP oficial |
 
 ```bash
 dotnet workload install maui-windows
@@ -49,12 +49,12 @@ O aplicativo usa `WindowsPackageType=None`. Consequências:
 
 - instalação por cópia de pasta, sem MSIX e sem certificado;
 - **não** exige o Windows 10 SDK para compilar;
-- exige o **runtime do Windows App SDK** na máquina de destino.
+- uma publicação comum exige o **runtime do Windows App SDK** na máquina de destino.
 
 Para evitar essa dependência, publique autocontido:
 
 ```bash
-dotnet publish src/ChecklistPlantao.Client -f net10.0-windows10.0.19041.0 -c Release -p:WindowsAppSDKSelfContained=true -p:SelfContained=true
+dotnet publish src/ChecklistPlantao.Client -f net10.0-windows10.0.19041.0 -c Release -p:RuntimeIdentifierOverride=win-x64 -p:WindowsPackageType=None -p:WindowsAppSDKSelfContained=true -p:SelfContained=true
 ```
 
 O pacote fica maior, mas roda sem instalar nada antes.

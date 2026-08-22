@@ -60,6 +60,23 @@ public sealed partial class PublicationAssetsTests
         Assert.All(workflows, workflow => Assert.DoesNotMatch(MovingActionTag(), workflow));
     }
 
+    [Fact]
+    public void Release_windows_usa_rid_portatil_sem_contaminar_os_outros_targets_maui()
+    {
+        var script = File.ReadAllText(Path.Combine(Root, "deploy", "release", "publish-release.ps1"));
+        var project = File.ReadAllText(Path.Combine(
+            Root,
+            "src",
+            "ChecklistPlantao.Client",
+            "ChecklistPlantao.Client.csproj"));
+
+        Assert.Contains("-p:RuntimeIdentifierOverride=win-x64", script, StringComparison.Ordinal);
+        Assert.Contains("-p:WindowsAppSDKSelfContained=true", script, StringComparison.Ordinal);
+        Assert.Contains("-p:SelfContained=true", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("'-r', 'win-x64'", script, StringComparison.Ordinal);
+        Assert.Contains("<RuntimeIdentifier>$(RuntimeIdentifierOverride)</RuntimeIdentifier>", project, StringComparison.Ordinal);
+    }
+
     [GeneratedRegex(@"uses:\s+[^\s@]+@v\d", RegexOptions.IgnoreCase)]
     private static partial Regex MovingActionTag();
 

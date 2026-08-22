@@ -39,6 +39,15 @@
         <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
     </PropertyGroup>
 
+    <!--
+        O Windows App SDK ainda precisa que o RID usado na publicação seja copiado para
+        RuntimeIdentifier. RuntimeIdentifierOverride evita o bug de publicação de apps MAUI
+        desempacotados e, no .NET 10, deve usar o RID portátil win-x64.
+    -->
+    <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows' and '$(RuntimeIdentifierOverride)' != ''">
+        <RuntimeIdentifier>$(RuntimeIdentifierOverride)</RuntimeIdentifier>
+    </PropertyGroup>
+
     <ItemGroup>
         <MauiIcon Include="Resources\AppIcon\appicon.svg"
                   ForegroundFile="Resources\AppIcon\medicmark_icon_v2.png"
