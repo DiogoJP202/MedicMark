@@ -136,5 +136,5 @@ de Plantão como **irrestrito**. O diagnóstico do aplicativo mostra se a isenç
 | Nenhum alerta | Permissão de notificações negada — a faixa vermelha aponta |
 | Alerta atrasado | Sem alarme exato, ou economia de bateria ativa |
 | Alertas somem após reiniciar | `RECEIVE_BOOT_COMPLETED` bloqueada pelo fabricante |
-| Não conecta ao servidor | Endereço com `localhost`; use o IP da rede. Android 9+ bloqueia HTTP em texto claro por padrão — ver [DEPLOYMENT.md](DEPLOYMENT.md) |
+| Não conecta ao servidor | A distribuição oficial exige HTTPS. Use o servidor padrão ou outro endereço HTTPS com certificado público válido — ver [DEPLOYMENT.md](DEPLOYMENT.md) |
 | "Primeiro acesso exige conexão" | Correto: o primeiro login de cada aparelho precisa do servidor |

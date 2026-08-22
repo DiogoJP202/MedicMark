@@ -8,8 +8,8 @@
 @*
     Configuração inicial do dispositivo.
 
-    O endereço do servidor é sempre configurável — nunca há "localhost" fixo no aplicativo, que
-    roda em aparelhos diferentes da máquina do servidor.
+    O endereço do servidor continua configurável. A distribuição Android oficial já traz o
+    endereço da instalação, enquanto outras distribuições podem iniciar sem um padrão.
 *@
 
 <PageTitle>Configuração do servidor</PageTitle>
@@ -87,7 +87,7 @@
 
 <ConfirmDialog @bind-Visible="_confirmarRedefinicao"
                Title="Redefinir a configuração?"
-               Message="O endereço do servidor será apagado deste aparelho. As alterações ainda não sincronizadas continuam salvas localmente."
+               Message="A configuração personalizada será removida e, quando esta versão possuir um servidor padrão, ele será restaurado. As alterações ainda não sincronizadas continuam salvas localmente."
                ConfirmText="Redefinir"
                OnConfirm="RedefinirAsync" />
 
@@ -152,8 +152,9 @@
     private async Task RedefinirAsync()
     {
         await ServerConfiguration.ResetAsync();
-        _url = string.Empty;
-        _resultado = null;
+        _url = ServerConfiguration.ServerUrl ?? string.Empty;
+        _resultado = ServerConfiguration.IsConfigured ? "Servidor padrão restaurado." : null;
+        _sucesso = ServerConfiguration.IsConfigured;
         AtualizarPodeSalvar();
     }
 }

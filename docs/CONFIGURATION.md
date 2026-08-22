@@ -177,7 +177,7 @@ O aplicativo guarda localmente apenas o que é dele:
 
 | Item | Onde | Como muda |
 |---|---|---|
-| Endereço do servidor | banco local | Tela de configuração, no primeiro uso ou pelo botão "Alterar" |
+| Endereço do servidor | banco local | Preenchido automaticamente no Android oficial; editável pelo botão "Alterar" |
 | Nome do dispositivo | banco local | Mesma tela |
 | Setor atual | banco local | Nome do setor, no topo da tela |
 | Tema (claro, escuro ou seguir o aparelho) | armazenamento do WebView | Interruptor no menu do rodapé, ou Estado do dispositivo → Aparência |

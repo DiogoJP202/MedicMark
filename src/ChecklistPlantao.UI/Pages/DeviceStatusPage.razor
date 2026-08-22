@@ -32,7 +32,7 @@ else
                     <tbody>
                         <tr><th scope="row">Plataforma</th><td>@_dados.Platform</td></tr>
                         <tr><th scope="row">Versão do aplicativo</th><td>@_dados.AppVersion</td></tr>
-                        <tr><th scope="row">Servidor configurado</th><td>@(_dados.ServerUrl ?? "não configurado")</td></tr>
+                        <tr><th scope="row">Servidor configurado</th><td>@(_dados.ServerUrl is null ? "Não" : "Sim")</td></tr>
                         <tr>
                             <th scope="row">Servidor acessível</th>
                             <td>@(_dados.ServerReachable ? "sim" : "não")</td>

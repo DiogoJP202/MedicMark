@@ -125,7 +125,7 @@ validação de certificado no aplicativo** — isso anularia a proteção do tr�
 Duas opções:
 
 **Reverse proxy** (recomendado). Nginx, Caddy ou IIS termina o TLS e encaminha para o servidor em
-HTTP interno. Um certificado de uma autoridade pública, se houver nome de domínio resolvível.
+HTTP interno. Pode usar um nome de domínio ou, com um cliente ACME compatível, o próprio IP público.
 
 **Certificado interno.** Se a instituição usa uma autoridade certificadora própria, o certificado
 raiz precisa ser instalado nos aparelhos:
@@ -136,6 +136,58 @@ raiz precisa ser instalado nos aparelhos:
 - **Windows:** importar no repositório "Autoridades de Certificação Raiz Confiáveis" da máquina.
 
 Em desenvolvimento e na rede interna, HTTP é aceitável e está documentado — mas não em produção.
+
+### Oracle Cloud sem domínio — implantação validada
+
+Em 22/08/2026, a VM Oracle Cloud foi configurada com o IP reservado `163.176.119.139`, Nginx no
+host e certificado público da Let's Encrypt para o próprio IP. O contêiner fica acessível apenas
+em `127.0.0.1:8080`; somente o Nginx publica 80 e 443. O HTTP mantém o desafio ACME e redireciona o
+restante para HTTPS.
+
+Certificados para IP da Let's Encrypt usam obrigatoriamente o perfil `shortlived`: duram 160 horas.
+Por isso, Certbot 5.4 ou superior e renovação automática não são opcionais. A instalação validada
+usa Certbot 5.7 pelo Snap:
+
+```bash
+sudo snap install certbot --classic
+sudo ln -sf /snap/bin/certbot /usr/local/bin/certbot
+```
+
+Primeiro instale `deploy/nginx/medicmark-bootstrap.conf`, crie `/var/www/certbot` e confirme o
+desafio sem gravar certificado:
+
+```bash
+sudo certbot certonly --dry-run --non-interactive --agree-tos \
+  --register-unsafely-without-email --preferred-profile shortlived \
+  --webroot --webroot-path /var/www/certbot --ip-address 163.176.119.139
+```
+
+Depois emita o certificado real e registre a recarga do Nginx após cada renovação:
+
+```bash
+sudo certbot certonly --non-interactive --agree-tos \
+  --register-unsafely-without-email --preferred-profile shortlived \
+  --webroot --webroot-path /var/www/certbot --ip-address 163.176.119.139 \
+  --deploy-hook '/usr/bin/systemctl reload nginx'
+```
+
+Instale então `deploy/nginx/medicmark.conf`, valide com `sudo nginx -t` e recarregue o serviço. A
+renovação completa foi exercitada com:
+
+```bash
+sudo certbot renew --cert-name 163.176.119.139 --dry-run --run-deploy-hooks
+```
+
+As portas 80 e 443 precisam estar liberadas tanto na VCN da Oracle quanto no firewall da VM. A
+imagem Ubuntu da Oracle termina a cadeia `INPUT` com `REJECT`; o script
+`deploy/scripts/configure-firewall.sh` e a unidade `deploy/systemd/medicmark-firewall.service`
+reaplicam a exceção após reinicialização.
+
+Verificação externa:
+
+```bash
+curl https://163.176.119.139/health/ready
+```
 
 ## Backup e restauração
 

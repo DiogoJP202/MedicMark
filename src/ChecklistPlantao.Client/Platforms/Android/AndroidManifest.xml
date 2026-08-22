@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <!--
-    networkSecurityConfig: permite HTTP em texto claro para alcançar o servidor na rede local.
-    Ver Resources/xml/network_security_config.xml para o motivo e o que muda em produção.
+    networkSecurityConfig: exige HTTPS com certificado emitido por uma autoridade pública.
+    Ver Resources/xml/network_security_config.xml.
   -->
   <application android:allowBackup="true"
                android:icon="@mipmap/appicon"

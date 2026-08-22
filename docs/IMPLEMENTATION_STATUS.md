@@ -117,8 +117,7 @@ Cobertos por `BatchSameCellTests`, `ErrorBoundaryTests`, `ServerConfigurationRea
 | Dois dispositivos ao mesmo tempo | Marcar em um e ver aparecer no outro | O cliente do hub foi implementado e tem teste de integração; falta ver acontecer entre dois aparelhos |
 | Mensagem de conta bloqueada na tela | Errar a senha 5 vezes | Bloqueia a conta por 15 min; adiado a pedido |
 | Isenção de bateria concedida | "Corrigir agora" → confirmar → "Verificar novamente" | Aguardando execução |
-| Implantação em Docker e ciclo de backup | MANUAL_TEST_PLAN, seção 11 | Docker nunca executado neste ambiente |
-| HTTPS com certificado confiável nos aparelhos | Seção 11 | Nunca exercitado |
+| Nova versão Android usando o HTTPS público | Instalar o APK atual e entrar sem configurar servidor | O aparelho não estava conectado após a emissão do certificado |
 
 ### Terceira rodada validada em execução real — 18/08
 
@@ -301,9 +300,12 @@ agendado chegou no horário da coluna. Era o item de maior risco do projeto.
 Continua pendente: alerta com o aparelho **reiniciado** (o `BootReceiver`), e a isenção de bateria
 concedida pelo usuário.
 
-### Implantação — Implementado · Não validado
-`Dockerfile`, `docker-compose.yml` com volume, `.env.example`, `backup.ps1`, `restore.ps1`.
-**Docker não estava disponível neste ambiente: nada foi construído nem executado.**
+### Implantação — Implementado · Validado em VM Oracle Cloud
+
+O `Dockerfile`, o Compose, a persistência, o backup e a restauração foram exercitados em Ubuntu
+24.04 na Oracle Cloud. Em 22/08/2026, o servidor recebeu IP público reservado, Nginx e certificado
+Let's Encrypt válido para o próprio IP. O endpoint HTTPS respondeu externamente e a renovação do
+Certbot passou em simulação. Falta somente abrir no aparelho o APK que aponta para esse endereço.
 
 ---
 
@@ -311,13 +313,13 @@ concedida pelo usuário.
 
 Em ordem de risco:
 
-1. **Implantação em Docker** e o ciclo de backup/restauração. Seção 11.
-2. **HTTPS com certificado confiável** nos aparelhos.
-3. **Aviso em tempo real entre dois aparelhos de verdade** — o cliente do hub existe e tem teste
+1. **HTTPS no aparelho** — instalar a versão atual e confirmar entrada/sincronização pelo
+   certificado público do IP.
+2. **Aviso em tempo real entre dois aparelhos de verdade** — o cliente do hub existe e tem teste
    de integração contra o hub real, mas ninguém viu ainda uma marcação aparecer sozinha na outra
    tela.
-4. **Alerta após reiniciar o aparelho** (`BootReceiver`) e com o app fechado por horas.
-5. **Fabricantes com restrição agressiva** — o Xiaomi usado no teste é um deles; falta confirmar
+3. **Alerta após reiniciar o aparelho** (`BootReceiver`) e com o app fechado por horas.
+4. **Fabricantes com restrição agressiva** — o Xiaomi usado no teste é um deles; falta confirmar
    o comportamento com a economia de bateria realmente apertada. Cenário 5.15.
 
 Saíram desta lista, agora validados em aparelho: notificação agendada disparando no horário,
@@ -335,8 +337,8 @@ todos corrigidos, todos com teste que os fixa.
 
 O que impede a declaração:
 
-- **a implantação nunca foi exercitada.** Docker e HTTPS com certificado confiável seguem como
-  no primeiro dia;
+- **o novo HTTPS ainda não foi exercitado no aplicativo Android**, embora servidor, certificado e
+  renovação já tenham sido validados externamente;
 - **o aviso em tempo real nunca foi visto entre dois aparelhos.** O cliente do hub foi
   implementado e tem teste de integração contra o hub real, mas teste não substitui ver a
   marcação aparecer sozinha na outra tela;

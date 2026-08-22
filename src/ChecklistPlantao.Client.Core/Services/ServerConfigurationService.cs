@@ -20,7 +20,8 @@ namespace ChecklistPlantao.Client.Core.Services;
 /// <summary>Endereço do servidor e nome do aparelho, guardados no banco local.</summary>
 public sealed class ServerConfigurationService(
     IDbContextFactory<LocalDbContext> contextos,
-    IServiceProvider services) : IServerConfigurationService, IServerAddressProvider
+    IServiceProvider services,
+    ClientConfigurationDefaults defaults) : IServerConfigurationService, IServerAddressProvider
 {
     /// <summary>
     /// Cache de VALORES, não da entidade. Guardar o <see cref="DeviceState"/> rastreado manteria
@@ -64,7 +65,14 @@ public sealed class ServerConfigurationService(
         await using var db = await contextos.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
 
         var estado = await EnsureAsync(db, cancellationToken).ConfigureAwait(false);
-        estado.ClearServer();
+        if (defaults.ServerUrl is not null)
+        {
+            estado.Configure(defaults.ServerUrl, estado.DeviceName);
+        }
+        else
+        {
+            estado.ClearServer();
+        }
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         _cache = Instantanea(estado);

@@ -46,14 +46,15 @@ public sealed class ServerConfigurationReachableTests : BunitContext
     }
 
     [Fact]
-    public void Entrada_mostra_qual_servidor_esta_configurado()
+    public void Entrada_informa_configuracao_sem_expor_endereco_do_servidor()
     {
         RegistrarServicos(configurado: true);
 
         var cut = Render<LoginPage>();
+        var linha = cut.Find("[data-testid=login-server-line]").TextContent;
 
-        // Ver o endereço na tela é o que permite perceber o engano sem precisar procurar.
-        Assert.Contains("http://servidor:5136", cut.Find("[data-testid=login-server-line]").TextContent, StringComparison.Ordinal);
+        Assert.Contains("Servidor configurado", linha, StringComparison.Ordinal);
+        Assert.DoesNotContain("http://servidor:5136", linha, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -64,6 +65,7 @@ public sealed class ServerConfigurationReachableTests : BunitContext
         var cut = Render<SetupPage>();
 
         Assert.NotEmpty(cut.FindAll("[data-testid=setup-back]"));
+        Assert.Contains("http://servidor:5136", cut.Markup, StringComparison.Ordinal);
     }
 
     [Fact]

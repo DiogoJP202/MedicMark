@@ -26,8 +26,8 @@
         <ApplicationTitle>Checklist de Plantão</ApplicationTitle>
         <ApplicationId>br.com.checklistplantao.app</ApplicationId>
 
-        <ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion>
-        <ApplicationVersion>1</ApplicationVersion>
+        <ApplicationDisplayVersion>0.1.1</ApplicationDisplayVersion>
+        <ApplicationVersion>2</ApplicationVersion>
 
         <!-- Desempacotado no Windows: build MSIX exige o Windows 10 SDK. Ver docs/WINDOWS_SETUP.md. -->
         <WindowsPackageType>None</WindowsPackageType>

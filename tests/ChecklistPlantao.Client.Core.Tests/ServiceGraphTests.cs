@@ -25,12 +25,15 @@ namespace ChecklistPlantao.Client.Core.Tests;
 public sealed class ServiceGraphTests
 {
     /// <summary>Duplos de plataforma, com os MESMOS tempos de vida que <c>MauiProgram</c> registra.</summary>
-    private static ServiceProvider BuildRealContainer(string databasePath)
+    private static ServiceProvider BuildRealContainer(
+        string databasePath,
+        string? defaultServerUrl = null,
+        params string[] replacedServerUrls)
     {
         var services = new ServiceCollection();
 
         services.AddLogging(builder => builder.SetMinimumLevel(LogLevel.None));
-        services.AddChecklistClientCore(databasePath);
+        services.AddChecklistClientCore(databasePath, defaultServerUrl, replacedServerUrls);
 
         services.AddSingleton<ISecureStore, FakeSecureStore>();
         services.AddSingleton<IConnectivityProbe, FakeConnectivityProbe>();
@@ -58,6 +61,132 @@ public sealed class ServiceGraphTests
         {
             using var provider = BuildRealContainer(arquivo);
             Assert.NotNull(provider);
+        }
+        finally
+        {
+            Delete(arquivo);
+        }
+    }
+
+    [Fact]
+    public async Task Servidor_padrao_configura_primeiro_uso_e_e_restaurado_pela_redefinicao()
+    {
+        var arquivo = Path.Combine(Path.GetTempPath(), $"checklist-di-{Guid.CreateVersion7():N}.db");
+
+        try
+        {
+            await using var provider = BuildRealContainer(arquivo, "https://163.176.119.139");
+            provider.InitializeChecklistClient();
+
+            using var escopo = provider.CreateScope();
+            var configuracao = escopo.ServiceProvider.GetRequiredService<IServerConfigurationService>();
+
+            Assert.True(configuracao.IsConfigured);
+            Assert.Equal("https://163.176.119.139/", configuracao.ServerUrl);
+
+            await configuracao.SaveAsync("https://servidor-alternativo.example", "Tablet Oeste 1");
+            Assert.Equal("https://servidor-alternativo.example/", configuracao.ServerUrl);
+
+            await configuracao.ResetAsync();
+
+            Assert.Equal("https://163.176.119.139/", configuracao.ServerUrl);
+            Assert.Equal("Tablet Oeste 1", configuracao.DeviceName);
+        }
+        finally
+        {
+            Delete(arquivo);
+        }
+    }
+
+    [Fact]
+    public async Task Servidor_escolhido_pelo_usuario_nao_e_sobrescrito_pelo_padrao()
+    {
+        var arquivo = Path.Combine(Path.GetTempPath(), $"checklist-di-{Guid.CreateVersion7():N}.db");
+
+        try
+        {
+            await using (var versaoAnterior = BuildRealContainer(arquivo))
+            {
+                versaoAnterior.InitializeChecklistClient();
+
+                using var escopo = versaoAnterior.CreateScope();
+                await escopo.ServiceProvider.GetRequiredService<IServerConfigurationService>()
+                    .SaveAsync("https://servidor-da-instituicao.example", "Tablet UTI 2");
+            }
+
+            await using var versaoAtual = BuildRealContainer(arquivo, "https://163.176.119.139");
+            versaoAtual.InitializeChecklistClient();
+
+            using var novoEscopo = versaoAtual.CreateScope();
+            var configuracao = novoEscopo.ServiceProvider.GetRequiredService<IServerConfigurationService>();
+
+            Assert.Equal("https://servidor-da-instituicao.example/", configuracao.ServerUrl);
+            Assert.Equal("Tablet UTI 2", configuracao.DeviceName);
+        }
+        finally
+        {
+            Delete(arquivo);
+        }
+    }
+
+    [Fact]
+    public async Task Servidor_local_de_desenvolvimento_e_substituido_pelo_padrao_do_android()
+    {
+        var arquivo = Path.Combine(Path.GetTempPath(), $"checklist-di-{Guid.CreateVersion7():N}.db");
+
+        try
+        {
+            await using (var versaoDeDesenvolvimento = BuildRealContainer(arquivo))
+            {
+                versaoDeDesenvolvimento.InitializeChecklistClient();
+
+                using var escopo = versaoDeDesenvolvimento.CreateScope();
+                await escopo.ServiceProvider.GetRequiredService<IServerConfigurationService>()
+                    .SaveAsync("http://localhost:5000", "Celular de teste");
+            }
+
+            await using var versaoOficial = BuildRealContainer(arquivo, "https://163.176.119.139");
+            versaoOficial.InitializeChecklistClient();
+
+            using var novoEscopo = versaoOficial.CreateScope();
+            var configuracao = novoEscopo.ServiceProvider.GetRequiredService<IServerConfigurationService>();
+
+            Assert.Equal("https://163.176.119.139/", configuracao.ServerUrl);
+            Assert.Equal("Celular de teste", configuracao.DeviceName);
+        }
+        finally
+        {
+            Delete(arquivo);
+        }
+    }
+
+    [Fact]
+    public async Task Servidor_padrao_anterior_e_substituido_pelo_endereco_atual()
+    {
+        var arquivo = Path.Combine(Path.GetTempPath(), $"checklist-di-{Guid.CreateVersion7():N}.db");
+
+        try
+        {
+            await using (var versaoAnterior = BuildRealContainer(arquivo))
+            {
+                versaoAnterior.InitializeChecklistClient();
+
+                using var escopo = versaoAnterior.CreateScope();
+                await escopo.ServiceProvider.GetRequiredService<IServerConfigurationService>()
+                    .SaveAsync("http://137.131.172.104", "Celular do plantão");
+            }
+
+            await using var versaoAtual = BuildRealContainer(
+                arquivo,
+                "https://163.176.119.139",
+                "http://137.131.172.104");
+            versaoAtual.InitializeChecklistClient();
+
+            using var novoEscopo = versaoAtual.CreateScope();
+            var configuracao = novoEscopo.ServiceProvider.GetRequiredService<IServerConfigurationService>();
+
+            Assert.Equal("https://163.176.119.139/", configuracao.ServerUrl);
+            Assert.Equal("Celular do plantão", configuracao.DeviceName);
         }
         finally
         {

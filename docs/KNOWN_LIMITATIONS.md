@@ -189,9 +189,9 @@ Registradas em [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md):
   integração ligando o cliente real ao hub real, mas nunca foi visto acontecer entre dois
   aparelhos de verdade;
 - o Windows 10 SDK não está instalado, então o empacotamento MSIX não foi exercitado;
-- Docker não foi executado neste ambiente: o `Dockerfile` e o `docker-compose.yml` **não foram
-  testados**;
-- HTTPS com certificado confiável nos aparelhos não foi validado.
+- Docker, persistência, backup e restauração foram exercitados na VM Oracle Cloud;
+- o HTTPS público no IP reservado foi validado externamente e sua renovação foi simulada com
+  sucesso, mas a versão Android que usa esse endereço ainda precisa ser aberta no aparelho.
 
 Nada disso é afirmado como testado em nenhum ponto da documentação.
 

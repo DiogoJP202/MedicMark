@@ -68,9 +68,10 @@ dotnet build src/ChecklistPlantao.Client -f net10.0-android -t:Run
 Detalhes e requisitos por plataforma: [docs/ANDROID_SETUP.md](docs/ANDROID_SETUP.md) e
 [docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md).
 
-Na primeira execução o aplicativo pede o **endereço do servidor** (ex.: `http://192.168.0.10:5000`) —
-nunca `localhost`, porque o aparelho não é a máquina do servidor. O primeiro login precisa de rede;
-a partir daí a entrada offline vale por 7 dias configuráveis.
+A distribuição Android oficial já inicia com o servidor de produção configurado e abre diretamente
+a entrada. O endereço continua editável em **Alterar servidor**. Builds para Windows ou sem padrão
+pedem o endereço na primeira execução (ex.: `http://192.168.0.10:5000`). O primeiro login precisa de
+rede; a partir daí a entrada offline vale por 7 dias configuráveis.
 
 ## Como rodar testes
 
@@ -163,6 +164,6 @@ Duas fronteiras que valem conhecer antes de mexer:
 > de validação pendente em [IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md).
 >
 > As notificações **já foram validadas em aparelho real** — o alerta agendado dispara no horário.
-> Segue pendente toda a implantação: Docker e HTTPS nunca foram exercitados. O aviso em tempo real
-> entre aparelhos está implementado e coberto por teste de integração, mas ainda não foi visto
-> acontecer entre dois aparelhos de verdade.
+> Docker, persistência, backup, restauração e HTTPS público no IP reservado foram exercitados na
+> VM Oracle Cloud. Ainda falta validar no aparelho a versão que usa esse HTTPS e observar o aviso
+> em tempo real entre dois aparelhos de verdade.
