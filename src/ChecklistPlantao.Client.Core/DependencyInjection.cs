@@ -28,6 +28,8 @@ public static class DependencyInjection
         this IServiceCollection services,
         string databasePath,
         string? defaultServerUrl = null,
+        bool hideServerAddress = false,
+        bool requireHttps = false,
         params string[] replacedServerUrls)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -49,7 +51,11 @@ public static class DependencyInjection
         // Com a fábrica, cada unidade de trabalho abre e descarta o seu próprio contexto.
         services.AddDbContextFactory<LocalDbContext>(builder => builder.UseSqlite($"Data Source={databasePath}"));
 
-        services.AddSingleton(new ClientConfigurationDefaults(defaultServerUrl, replacedServerUrls));
+        services.AddSingleton(new ClientConfigurationDefaults(
+            defaultServerUrl,
+            hideServerAddress,
+            requireHttps,
+            replacedServerUrls));
         services.AddSingleton<IClock, SystemClock>();
         services.AddOptions<OfflineAuthOptions>();
 

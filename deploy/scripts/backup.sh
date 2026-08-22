@@ -9,7 +9,7 @@ temporary="$backup_dir/.checklistplantao-$timestamp.db.tmp"
 destination="$backup_dir/checklistplantao-$timestamp.db"
 
 test -f "$database"
-install -d -m 0750 "$backup_dir"
+install -d -m 0700 "$backup_dir"
 
 cleanup() {
     rm -f -- "$temporary"
@@ -18,7 +18,7 @@ trap cleanup EXIT
 
 # O comando .backup do SQLite produz uma cópia consistente mesmo com WAL e servidor ativos.
 sqlite3 "$database" ".timeout 10000" ".backup '$temporary'"
-chmod 0640 "$temporary"
+chmod 0600 "$temporary"
 mv "$temporary" "$destination"
 trap - EXIT
 

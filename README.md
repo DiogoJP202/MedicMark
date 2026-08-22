@@ -1,5 +1,8 @@
 # ChecklistPlantão
 
+> Downloads oficiais para Android e Windows:
+> **https://diogojp202.github.io/MedicMark/**
+
 Substitui a folha de papel "CHECKLIST DE PLANTÃO" por um aplicativo instalado, rápido, que
 **funciona sem internet** e **notifica nos horários** das colunas.
 

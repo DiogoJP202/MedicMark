@@ -10,7 +10,11 @@ public sealed class ClientConfigurationDefaults
 {
     private readonly HashSet<string> _replacedServerUrls;
 
-    public ClientConfigurationDefaults(string? serverUrl = null, params string[] replacedServerUrls)
+    public ClientConfigurationDefaults(
+        string? serverUrl = null,
+        bool hideServerAddress = false,
+        bool requireHttps = false,
+        params string[] replacedServerUrls)
     {
         ServerUrl = string.IsNullOrWhiteSpace(serverUrl)
             ? null
@@ -20,10 +24,19 @@ public sealed class ClientConfigurationDefaults
             .Where(url => !string.IsNullOrWhiteSpace(url))
             .Select(HttpServerApi.NormalizeUrl)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        HideServerAddress = hideServerAddress;
+        RequireHttps = requireHttps;
     }
 
     /// <summary>Endereço gravado automaticamente quando o aparelho ainda não possui servidor.</summary>
     public string? ServerUrl { get; }
+
+    /// <summary>Não renderiza o endereço configurado nas telas do aplicativo distribuído.</summary>
+    public bool HideServerAddress { get; }
+
+    /// <summary>Exige HTTPS tanto ao testar quanto ao salvar um servidor alternativo.</summary>
+    public bool RequireHttps { get; }
 
     /// <summary>
     /// Endereços de loopback pertencem ao próprio aparelho. Eles eram usados com

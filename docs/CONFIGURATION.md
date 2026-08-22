@@ -114,12 +114,12 @@ dotnet user-secrets set "Bootstrap:AdminPassword" "SuaSenhaForte1" --project src
 
 | Chave | Padrão | O que faz |
 |---|---|---|
-| `LoginPerMinute` | `20` | Tentativas de login por minuto, por origem |
-| `SyncPerMinute` | `30` | Sincronizações por minuto |
-| `SyncBurst` | `60` | Rajada permitida acima do limite por minuto |
+| `LoginPerMinute` | `20` | Tentativas de login por minuto, por IP medido no proxy |
+| `SyncPerMinute` | `30` | Sincronizações por minuto, por dispositivo autenticado |
+| `SyncBurst` | `60` | Rajada permitida por dispositivo acima do limite por minuto |
 
-Em rede hospitalar com NAT, muitos aparelhos compartilham o mesmo IP de origem — aumentar pode ser
-necessário. Números baixos demais aparecem como falha de sincronização intermitente.
+Login continua protegido por IP. Depois da autenticação, o claim do dispositivo separa os postos
+que compartilham o mesmo NAT. Números baixos demais aparecem como falha intermitente.
 
 ## `Cors` — origens permitidas
 
@@ -134,11 +134,11 @@ web de verdade.
 
 | Chave | Padrão | O que faz |
 |---|---|---|
-| `ContactEmail` | vazio | Exibe um e-mail público em `/privacidade` e `/privacy` |
+| `SupportUrl` | Issues do MedicMark | Link público de suporte em `/privacidade` e `/privacy` |
+| `ContactEmail` | vazio | Acrescenta um e-mail público, quando a instituição optar por isso |
 
-Em produção, informe pela variável `Privacy__ContactEmail`. Sem ela, a página continua acessível e
-orienta o usuário a usar o e-mail de suporte da ficha do aplicativo na loja. Não use credencial ou
-endereço interno nesse campo: o valor fica público na internet.
+O projeto não exige e-mail. Para trocar o canal público, use `Privacy__SupportUrl`; apenas URLs
+HTTPS são aceitas. Não use credencial ou endereço interno: os valores ficam públicos na internet.
 
 ## `Logging`
 

@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Net;
 using ChecklistPlantao.Application;
 using ChecklistPlantao.Application.Abstractions;
 using ChecklistPlantao.Contracts.Sync;
@@ -17,6 +18,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -111,6 +113,20 @@ builder.Services
 
 builder.Services.AddProblemDetails();
 
+// O Nginx é o único caminho público até o processo ASP.NET. No Docker, a conexão que chega ao
+// contêiner vem do gateway privado da bridge (172.16/12); no WebApplicationFactory e no uso sem
+// Docker ela vem do loopback. Fora dessas origens, X-Forwarded-* é ignorado para impedir spoofing.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = 1;
+    options.KnownProxies.Clear();
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Add(IPAddress.Loopback);
+    options.KnownProxies.Add(IPAddress.IPv6Loopback);
+    options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("172.16.0.0/12"));
+});
+
 // Antes do tratador padrão: violação de restrição do banco é conflito de dados (409), não falha
 // do servidor (500). Ver DatabaseConflictExceptionHandler.
 builder.Services.AddExceptionHandler<DatabaseConflictExceptionHandler>();
@@ -144,6 +160,7 @@ var app = builder.Build();
 // ---------------------------------------------------------------------------
 // Pipeline
 // ---------------------------------------------------------------------------
+app.UseForwardedHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
@@ -164,8 +181,8 @@ if (allowedOrigins.Length > 0)
     app.UseCors();
 }
 
-app.UseRateLimiter();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapControllers();

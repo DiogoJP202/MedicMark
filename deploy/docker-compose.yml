@@ -11,14 +11,23 @@ services:
     container_name: checklistplantao-servidor
     restart: unless-stopped
 
-    # 0.0.0.0 de propósito: os aparelhos do plantão acessam pela rede local.
-    # Restrinja com firewall ou com um IP específico se a rede não for confiável.
+    # Somente o Nginx do host alcança o Kestrel. Os aparelhos nunca acessam 8080 diretamente.
     ports:
-      - "${SERVER_PORT:-8080}:8080"
+      - "127.0.0.1:${SERVER_PORT:-8080}:8080"
+
+    read_only: true
+    init: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
 
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
+      AllowedHosts: ${ALLOWED_HOSTS:-163.176.119.139}
       Database__Path: /data/checklistplantao.db
       Database__EnableWriteAheadLogging: "true"
 
@@ -31,6 +40,7 @@ services:
       Bootstrap__AdminUserName: ${ADMIN_USERNAME:-}
       Bootstrap__AdminPassword: ${ADMIN_PASSWORD:-}
       Bootstrap__AdminDisplayName: ${ADMIN_DISPLAYNAME:-Administrador}
+      Privacy__SupportUrl: ${PRIVACY_SUPPORT_URL:-https://github.com/DiogoJP202/MedicMark/issues}
 
     volumes:
       # Volume nomeado: o banco sobrevive a recriações do contêiner.

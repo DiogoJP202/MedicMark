@@ -48,6 +48,10 @@ O script exige a chave privada criada uma única vez por
 assinatura de debug e grava APK, AAB, certificado e hashes em `artifacts/android/`. A chave e a
 senha ficam fora do repositório em `%USERPROFILE%\.medicmark\android-signing`.
 
+O download compartilhável é publicado em <https://diogojp202.github.io/MedicMark/>. Como a
+instalação ocorre fora da Play Store, o Android pode pedir autorização para esta fonte; isso não
+é motivo para desativar o Play Protect.
+
 Use o APK para compartilhamento direto e o AAB para a Play Console. O procedimento completo,
 backup obrigatório da chave e formulários da loja estão em
 [PLAY_STORE_RELEASE.md](PLAY_STORE_RELEASE.md).

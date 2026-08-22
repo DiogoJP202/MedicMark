@@ -28,12 +28,19 @@ public sealed class ServiceGraphTests
     private static ServiceProvider BuildRealContainer(
         string databasePath,
         string? defaultServerUrl = null,
+        bool hideServerAddress = false,
+        bool requireHttps = false,
         params string[] replacedServerUrls)
     {
         var services = new ServiceCollection();
 
         services.AddLogging(builder => builder.SetMinimumLevel(LogLevel.None));
-        services.AddChecklistClientCore(databasePath, defaultServerUrl, replacedServerUrls);
+        services.AddChecklistClientCore(
+            databasePath,
+            defaultServerUrl,
+            hideServerAddress,
+            requireHttps,
+            replacedServerUrls: replacedServerUrls);
 
         services.AddSingleton<ISecureStore, FakeSecureStore>();
         services.AddSingleton<IConnectivityProbe, FakeConnectivityProbe>();
@@ -179,7 +186,9 @@ public sealed class ServiceGraphTests
             await using var versaoAtual = BuildRealContainer(
                 arquivo,
                 "https://163.176.119.139",
-                "http://137.131.172.104");
+                hideServerAddress: false,
+                requireHttps: false,
+                replacedServerUrls: ["http://137.131.172.104"]);
             versaoAtual.InitializeChecklistClient();
 
             using var novoEscopo = versaoAtual.CreateScope();
@@ -187,6 +196,40 @@ public sealed class ServiceGraphTests
 
             Assert.Equal("https://163.176.119.139/", configuracao.ServerUrl);
             Assert.Equal("Celular do plantão", configuracao.DeviceName);
+        }
+        finally
+        {
+            Delete(arquivo);
+        }
+    }
+
+    [Fact]
+    public async Task Distribuicao_protegida_oculta_o_endereco_e_recusa_http()
+    {
+        var arquivo = Path.Combine(Path.GetTempPath(), $"checklist-di-{Guid.CreateVersion7():N}.db");
+
+        try
+        {
+            await using var provider = BuildRealContainer(
+                arquivo,
+                "https://163.176.119.139",
+                hideServerAddress: true,
+                requireHttps: true);
+            provider.InitializeChecklistClient();
+
+            using var escopo = provider.CreateScope();
+            var configuracao = escopo.ServiceProvider.GetRequiredService<IServerConfigurationService>();
+
+            Assert.True(configuracao.IsServerAddressHidden);
+            Assert.True(configuracao.RequiresHttps);
+
+            var erro = await Assert.ThrowsAsync<ArgumentException>(() =>
+                configuracao.SaveAsync("http://servidor-inseguro.example", "Posto Oeste"));
+
+            Assert.Contains("HTTPS", erro.Message, StringComparison.Ordinal);
+
+            await configuracao.SaveAsync("https://servidor-seguro.example", "Posto Oeste");
+            Assert.Equal("https://servidor-seguro.example/", configuracao.ServerUrl);
         }
         finally
         {

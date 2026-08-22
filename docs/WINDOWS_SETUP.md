@@ -34,6 +34,15 @@ Publicar:
 dotnet publish src/ChecklistPlantao.Client -f net10.0-windows10.0.19041.0 -c Release
 ```
 
+Release oficial Android + Windows, com testes, hashes e varredura do Defender:
+
+```powershell
+.\deploy\release\publish-release.ps1
+```
+
+O ZIP autocontido é publicado em <https://diogojp202.github.io/MedicMark/>. O build Release traz
+o servidor oficial predefinido e oculto; o build Debug continua livre para desenvolvimento local.
+
 ## Desempacotado, e por quê
 
 O aplicativo usa `WindowsPackageType=None`. Consequências:
@@ -49,6 +58,10 @@ dotnet publish src/ChecklistPlantao.Client -f net10.0-windows10.0.19041.0 -c Rel
 ```
 
 O pacote fica maior, mas roda sem instalar nada antes.
+
+Sem certificado comercial, o SmartScreen pode avisar que o aplicativo ainda não é reconhecido.
+Certificado autoassinado não elimina esse aviso. Confira a origem e o `SHA256SUMS.txt` e não
+desative o Microsoft Defender.
 
 ## Notificações — leia antes de prometer
 

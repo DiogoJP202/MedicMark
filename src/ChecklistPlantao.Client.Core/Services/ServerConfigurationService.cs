@@ -34,6 +34,10 @@ public sealed class ServerConfigurationService(
 
     public string? ServerUrl => Load().ServerUrl;
 
+    public bool IsServerAddressHidden => defaults.HideServerAddress;
+
+    public bool RequiresHttps => defaults.RequireHttps;
+
     public string DeviceName => Load().DeviceName;
 
     public Guid DeviceId => Load().DeviceId;
@@ -47,14 +51,14 @@ public sealed class ServerConfigurationService(
     /// <c>ValidateOnBuild</c> não o enxergaria: a falha só apareceria na resolução.
     /// </summary>
     public Task<ServerProbeResponse?> TestConnectionAsync(string url, CancellationToken cancellationToken = default) =>
-        services.GetRequiredService<IServerApi>().ProbeAsync(url, cancellationToken);
+        services.GetRequiredService<IServerApi>().ProbeAsync(ValidateAndNormalize(url), cancellationToken);
 
     public async Task SaveAsync(string url, string deviceName, CancellationToken cancellationToken = default)
     {
         await using var db = await contextos.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
 
         var estado = await EnsureAsync(db, cancellationToken).ConfigureAwait(false);
-        estado.Configure(HttpServerApi.NormalizeUrl(url), deviceName);
+        estado.Configure(ValidateAndNormalize(url), deviceName);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         _cache = Instantanea(estado);
@@ -76,6 +80,22 @@ public sealed class ServerConfigurationService(
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         _cache = Instantanea(estado);
+    }
+
+    private string ValidateAndNormalize(string url)
+    {
+        if (!Uri.TryCreate(url?.Trim(), UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            throw new ArgumentException("Informe um endereço HTTP ou HTTPS válido.", nameof(url));
+        }
+
+        if (defaults.RequireHttps && uri.Scheme != Uri.UriSchemeHttps)
+        {
+            throw new ArgumentException("Esta versão aceita somente servidores HTTPS.", nameof(url));
+        }
+
+        return HttpServerApi.NormalizeUrl(uri.ToString());
     }
 
     private Configuracao Load()

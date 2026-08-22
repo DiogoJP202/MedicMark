@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
+using ChecklistPlantao.Server.Auth;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
@@ -79,6 +81,24 @@ public static class RateLimitingSetup
     private static RateLimitOptions Limits(HttpContext context) =>
         context.RequestServices.GetRequiredService<IOptions<RateLimitOptions>>().Value;
 
-    private static string ClientKey(HttpContext context) =>
-        context.Connection.RemoteIpAddress?.ToString() ?? "desconhecido";
+    private static string ClientKey(HttpContext context)
+    {
+        // Sincronização autenticada é isolada por aparelho. Assim vários postos que compartilham
+        // o mesmo IP público não bloqueiam uns aos outros. Login ainda é limitado pelo IP medido.
+        var deviceId = context.User.FindFirstValue(AppClaimTypes.DeviceId);
+
+        if (!string.IsNullOrWhiteSpace(deviceId))
+        {
+            return $"dispositivo:{deviceId}";
+        }
+
+        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            return $"usuario:{userId}";
+        }
+
+        return $"ip:{context.Connection.RemoteIpAddress?.ToString() ?? "desconhecido"}";
+    }
 }

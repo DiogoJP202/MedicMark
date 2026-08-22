@@ -18,9 +18,15 @@ public sealed class PrivacyController(IConfiguration configuration) : Controller
     public ContentResult Get()
     {
         var configuredEmail = configuration["Privacy:ContactEmail"]?.Trim();
+        var configuredSupportUrl = configuration["Privacy:SupportUrl"]?.Trim();
+        var supportUrl = Uri.TryCreate(configuredSupportUrl, UriKind.Absolute, out var supportUri) &&
+                         supportUri.Scheme == Uri.UriSchemeHttps
+            ? supportUri.ToString()
+            : "https://github.com/DiogoJP202/MedicMark/issues";
+        var support = $"<a href=\"{WebUtility.HtmlEncode(supportUrl)}\">suporte do MedicMark no GitHub</a>";
         var contact = string.IsNullOrWhiteSpace(configuredEmail)
-            ? "o e-mail público exibido na seção de suporte da ficha do aplicativo na loja"
-            : $"<a href=\"mailto:{WebUtility.HtmlEncode(configuredEmail)}\">{WebUtility.HtmlEncode(configuredEmail)}</a>";
+            ? support
+            : $"{support} ou <a href=\"mailto:{WebUtility.HtmlEncode(configuredEmail)}\">{WebUtility.HtmlEncode(configuredEmail)}</a>";
 
         return Content(
             $$"""
@@ -98,9 +104,9 @@ public sealed class PrivacyController(IConfiguration configuration) : Controller
 
               <h2>Direitos e exclusão</h2>
               <p>Para consultar, corrigir ou solicitar a exclusão de dados de conta ou dispositivo,
-              procure o administrador da instituição que forneceu seu acesso. Também é possível
-              contatar {{contact}}. Desinstalar o aplicativo ou apagar seus dados remove a cópia
-              local; dados do servidor devem ser tratados pelo administrador.</p>
+              procure o administrador da instituição que forneceu seu acesso. Para problemas
+              técnicos, use o {{contact}}. Desinstalar o aplicativo ou apagar seus dados remove a
+              cópia local; dados do servidor devem ser tratados pelo administrador.</p>
 
               <h2>Público</h2>
               <p>O aplicativo não é direcionado a crianças. Ele é uma ferramenta de trabalho para
@@ -111,7 +117,8 @@ public sealed class PrivacyController(IConfiguration configuration) : Controller
               legais mudarem. A data de vigência acima identifica a versão atual.</p>
 
               <h2>Contato</h2>
-              <p>Privacidade e suporte: {{contact}}.</p>
+              <p>Suporte técnico: {{contact}}. Vulnerabilidades devem ser relatadas pelo canal
+              privado de segurança do repositório, nunca em uma issue pública.</p>
             </main>
             </body>
             </html>

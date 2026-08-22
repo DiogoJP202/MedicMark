@@ -55,9 +55,9 @@ adotadas medidas compatíveis com a natureza dos dados tratados.
 ## Direitos e exclusão
 
 Para consultar, corrigir ou solicitar a exclusão de dados de conta ou dispositivo, procure o
-administrador da instituição que forneceu seu acesso. Também é possível usar o e-mail público
-exibido na seção de suporte da ficha do aplicativo na loja. Desinstalar o aplicativo ou apagar
-seus dados remove a cópia local; dados do servidor devem ser tratados pelo administrador.
+administrador da instituição que forneceu seu acesso. Problemas técnicos podem ser informados em
+<https://github.com/DiogoJP202/MedicMark/issues>. Desinstalar o aplicativo ou apagar seus dados
+remove a cópia local; dados do servidor devem ser tratados pelo administrador.
 
 ## Público
 
@@ -67,9 +67,8 @@ autorizados pela instituição.
 ## Alterações e contato
 
 Esta política pode ser atualizada quando o funcionamento do serviço ou requisitos legais mudarem.
-A data de vigência acima identifica a versão atual. O contato público de privacidade e suporte é o
-informado na ficha do aplicativo na loja e, quando configurado no servidor, aparece na versão web
-desta política.
+A data de vigência acima identifica a versão atual. Vulnerabilidades devem ser informadas pelo
+canal privado de segurança do repositório, nunca em uma issue pública.
 
-A versão pública é servida sem autenticação em `/privacidade` e `/privacy`. Configure o contato no
-servidor com `Privacy__ContactEmail`.
+A versão pública é servida sem autenticação em `/privacidade` e `/privacy`. O endereço de suporte
+pode ser configurado com `Privacy__SupportUrl`; `Privacy__ContactEmail` permanece opcional.

@@ -20,5 +20,8 @@ public sealed class PrivacyPolicyTests(ChecklistServerFactory factory) : IClassF
         Assert.Contains("O sistema não cadastra dados de pacientes", body);
         Assert.Contains("Não vendemos dados", body);
         Assert.Contains("Direitos e exclusão", body);
+        Assert.Contains("https://github.com/DiogoJP202/MedicMark/issues", body);
+        Assert.DoesNotContain("mailto:", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("ficha do aplicativo na loja", body, StringComparison.OrdinalIgnoreCase);
     }
 }

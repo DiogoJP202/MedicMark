@@ -59,7 +59,7 @@ Para repetir apenas o empacotamento depois de a suíte já ter passado:
 O arquivo `SHA256SUMS.txt` permite confirmar que uma cópia recebida não foi alterada:
 
 ```powershell
-Get-FileHash .\MedicMark-0.1.2-code3.apk -Algorithm SHA256
+Get-FileHash .\MedicMark-0.1.3-code4.apk -Algorithm SHA256
 ```
 
 ## 3. Compartilhar diretamente

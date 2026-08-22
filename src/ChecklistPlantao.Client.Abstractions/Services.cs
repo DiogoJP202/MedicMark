@@ -118,6 +118,15 @@ public interface IServerConfigurationService
 {
     string? ServerUrl { get; }
 
+    /// <summary>
+    /// A distribuição oficial não revela o endereço salvo na interface. Isto é privacidade de
+    /// apresentação, não uma tentativa de transformar o endereço público em segredo.
+    /// </summary>
+    bool IsServerAddressHidden => false;
+
+    /// <summary>Impede que uma configuração de produção aceite transporte sem TLS.</summary>
+    bool RequiresHttps => false;
+
     string DeviceName { get; }
 
     Guid DeviceId { get; }
